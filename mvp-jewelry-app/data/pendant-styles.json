@@ -1,0 +1,42 @@
+[
+  {
+    "id": "deja",
+    "label": "Deja",
+    "src": "/pendants/deja.png"
+  },
+  {
+    "id": "gatti",
+    "label": "Gatti",
+    "src": "/pendants/gatti.png"
+  },
+  {
+    "id": "jaida",
+    "label": "Jaida",
+    "src": "/pendants/jaida.png"
+  },
+  {
+    "id": "jhon",
+    "label": "Jhon",
+    "src": "/pendants/jhon.png"
+  },
+  {
+    "id": "jwae",
+    "label": "Jwae",
+    "src": "/pendants/jwae.png"
+  },
+  {
+    "id": "king",
+    "label": "King",
+    "src": "/pendants/king.png"
+  },
+  {
+    "id": "lexy",
+    "label": "Lexy",
+    "src": "/pendants/lexy.png"
+  },
+  {
+    "id": "neiko",
+    "label": "Neiko",
+    "src": "/pendants/neiko.png"
+  }
+]

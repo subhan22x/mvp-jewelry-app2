@@ -1,0 +1,25 @@
+id: gatti
+label: Gatti
+templateKey: block_baguette_v1
+emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
+
+defaults:
+  bubbleOutline: true
+  forceAllCaps: false
+  deviationStrength: 0.30
+  view: front_view
+
+variantMatrix:
+  - { deviationStrength: 0.25, bubbleOutline: true,  forceAllCaps: false }
+  - { deviationStrength: 0.30, bubbleOutline: false, forceAllCaps: false }
+  - { deviationStrength: 0.40, bubbleOutline: true,  forceAllCaps: true  }
+  - { deviationStrength: 0.60, bubbleOutline: false, forceAllCaps: true  }
+
+assets:
+  pendantRef: public/pendants/gatti.png
+  emblemRefs:
+    crown: public/emblems/CROWN EMBLEM.png
+    heart: public/emblems/heart emblem.png
+    spade: public/emblems/SPADE EMBLEM.png
+    butterfly: public/emblems/BUTTERFLY EMBLEM.png
+    moneybag: public/emblems/moneybag emblem.png

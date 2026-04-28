@@ -1,0 +1,20 @@
+{
+  "role": "image_generation_request",
+  "version": "1.1",
+  "purpose": "Create an ultra-realistic product photo of a bold slanted name pendant with invisible-set baguette interiors.",
+  "style_control": {
+    "inherit_from_source": true,
+    "deviation_strength": {{DEVIATION}},
+    "notes": "Do not change the core style; allow small controlled variations."
+  },
+  "pendant": {
+    "text": { "content": "{{TEXT}}", "case": "as-is" },
+    "caps_policy": "{{CAPS_POLICY}}",
+    "bubble_outline": {{BUBBLE_OUTLINE}},
+    "emblem": "{{EMBLEM}}",
+    "colorway": "{{COLOR_SCHEME}}",
+    "setting": "invisible_set_baguette"
+  },
+  "background": "suede_matte_black",
+  "render_view": "{{VIEW}}"
+}
