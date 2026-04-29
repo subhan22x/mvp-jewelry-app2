@@ -40,21 +40,26 @@ export async function POST(req: Request) {
       emblem: body.emblem
     });
 
-    const results = [];
-    for (const v of variants) {
-      const { imageUrl } = await generateImage({
-        prompt: v.prompt,
-        attachments: v.attachments,
-        requestId: request.id,
-        variant: v.variant
-      });
-      const row = await prisma.result.create({
-        data: { requestId: request.id, variant: v.variant, prompt: v.prompt, imageUrl }
-      });
-      results.push({ variant: row.variant, imageUrl: row.imageUrl });
-    }
+    // Fire all 4 generation tasks in parallel without blocking the response.
+    // Note: in a Vercel production deploy, use `waitUntil` from @vercel/functions
+    // to ensure the Lambda stays alive until all tasks complete.
+    void Promise.all(variants.map(async (v) => {
+      try {
+        const { imageUrl } = await generateImage({
+          prompt: v.prompt,
+          attachments: v.attachments,
+          requestId: request.id,
+          variant: v.variant
+        });
+        await prisma.result.create({
+          data: { requestId: request.id, variant: v.variant, prompt: v.prompt, imageUrl }
+        });
+      } catch (err) {
+        console.error(`[variant ${v.variant}] generation failed:`, err);
+      }
+    }));
 
-    return NextResponse.json({ requestId: request.id, results }, { status: 201 });
+    return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400 });
   }
