@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import EmblemPicker from "./components/EmblemPicker";
@@ -8,12 +8,12 @@ import { pendantStyles, emblems, type PendantStyle } from "@/lib/assets";
 
 type Step = 0 | 1 | 2 | 3 | 4;
 
-const STEP_LABELS: readonly string[] = ["Name 1", "Name 2", "Name 3", "Name 5", "Name 6"];
-const TYPICAL_SECONDS = 30;
-const MAX_WAIT_SECONDS = 50;
+const STEP_LABELS: readonly string[] = ["Style", "Emblem", "Review", "Creating", "Select"];
+// Poll up to 50 times (× 2 s = 100 s) before giving up
+const MAX_POLL_ATTEMPTS = 50;
 type GoldComboKey = "YELLOW_WHITE" | "ROSE_WHITE" | "WHITE";
 
-type GenerationOption = { id: string; label: string; src: string; variant?: number };
+type GenerationOption = { id: string; label: string; src: string; variant: number };
 
 const GOLD_COMBO_TO_METALS: Record<GoldComboKey, { twoTone: boolean; primary: 'rose_gold' | 'white_gold' | 'yellow_gold'; secondary: 'rose_gold' | 'white_gold' | 'yellow_gold' | null }> = {
   YELLOW_WHITE: { twoTone: true, primary: 'yellow_gold', secondary: 'white_gold' },
@@ -27,9 +27,8 @@ const GOLD_COMBOS: ReadonlyArray<{ id: GoldComboKey; label: string; summary: str
   { id: "WHITE", label: "White Gold", summary: "White gold" }
 ];
 
-const MAX_NAME_LINES = 2; // limit for inputs on the first step
-// helper to present styles in a swipeable two-row carousel
-// Break styles into swipeable two-row columns for the style picker.
+const MAX_NAME_LINES = 2;
+
 const buildPendantColumns = (styles: readonly PendantStyle[], perColumn = 2) =>
   styles.reduce<PendantStyle[][]>((columns, style, index) => {
     if (index % perColumn === 0) {
@@ -43,40 +42,31 @@ const buildPendantColumns = (styles: readonly PendantStyle[], perColumn = 2) =>
 
 export default function NameBuilder() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>(0); // which screen of the flow the user is on
-  const [lines, setLines] = useState<string[]>([""]); // name inputs are stored as an array for easy add/remove // name inputs are stored as an array for easy add/remove
+  const [step, setStep] = useState<Step>(0);
+  const [lines, setLines] = useState<string[]>([""]);
   const [uppercaseApplied, setUppercaseApplied] = useState(false);
   const [styleId, setStyleId] = useState<string>(pendantStyles[0]?.id ?? "");
   const [includeEmblem, setIncludeEmblem] = useState(true);
   const [emblemId, setEmblemId] = useState<string | null>(null);
   const [goldCombo, setGoldCombo] = useState<GoldComboKey>("YELLOW_WHITE");
   const [diamondQuality, setDiamondQuality] = useState<"vs" | "vvs">("vvs");
-  const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [selectedGenerationId, setSelectedGenerationId] = useState<string | null>(null);
   const [generations, setGenerations] = useState<GenerationOption[]>([]);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [previewOption, setPreviewOption] = useState<GenerationOption | null>(null);
 
-  const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Incremented on each new generation kick-off; stale poll callbacks check this
+  // before applying state so a cancelled request can't jump the user to step 4.
+  const generationEpochRef = useRef(0);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const pendantColumns = buildPendantColumns(pendantStyles); // update lib/assets.ts to add/remove styles
+  const pendantColumns = buildPendantColumns(pendantStyles);
   const activeStyle = pendantStyles.find(style => style.id === styleId) ?? pendantStyles[0];
-
-  const generationPlaceholders = useMemo<GenerationOption[]>(() => [
-    { id: "draft-1", label: "Draft 1", src: "/samples/Gemini_Generated_Image_7tlquz7tlquz7tlq.png" },
-    { id: "draft-2", label: "Draft 2", src: "/samples/Gemini_Generated_Image_a8vnkga8vnkga8vn.png" },
-    { id: "draft-3", label: "Draft 3", src: "/samples/JWAE-Custom-Moissanite-Name-Pendant-14K-Gold-icecartel-white.png" },
-    { id: "draft-4", label: "Draft 4", src: "/samples/King slanted.png" }
-  ], []);
-
-  const activeGenerations = useMemo<GenerationOption[]>(() => (generations.length ? generations : generationPlaceholders), [generations, generationPlaceholders]);
-
 
   const selectedEmblem = emblemId ? emblems.find(asset => asset.id === emblemId) ?? null : null;
   const emblemSummary = includeEmblem ? (selectedEmblem ? selectedEmblem.label : "None selected") : "Not included";
-
   const activeGoldCombo = GOLD_COMBOS.find(option => option.id === goldCombo) ?? GOLD_COMBOS[0];
-
   const canAddLine = lines.length < MAX_NAME_LINES;
   const hasPrimaryName = lines[0]?.trim().length > 0;
 
@@ -102,21 +92,37 @@ export default function NameBuilder() {
     setUppercaseApplied(true);
   };
 
+  const cancelPolling = () => {
+    generationEpochRef.current += 1;
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    setIsGenerating(false);
+  };
+
+  const confirmDiscardGenerations = () =>
+    generations.length === 0 ||
+    window.confirm("Going back will discard your generated drafts. Continue?");
+
   const handleBack = () => {
+    if (step === 4 && !confirmDiscardGenerations()) return;
     if (step === 0) {
       router.push("/");
       return;
     }
-    setStep(prev => ((prev - 1) as Step));
+    if (step === 4) {
+      cancelPolling();
+      setGenerations([]);
+      setSelectedGenerationId(null);
+    }
+    const prevStep = step === 4 ? 2 : ((step - 1) as Step);
+    setStep(prevStep as Step);
   };
 
   const handleNext = () => {
-    if (step === 0 && !hasPrimaryName) {
-      return;
-    }
-    if (step > 1) {
-      return;
-    }
+    if (step === 0 && !hasPrimaryName) return;
+    if (step > 1) return;
     setStep(prev => ((prev + 1) as Step));
   };
 
@@ -130,7 +136,7 @@ export default function NameBuilder() {
   const handleAcceptDesign = async () => {
     if (isGenerating) return;
     const trimmedLines = lines.map(entry => entry.trim()).filter(Boolean);
-    if (trimmedLines.length === 0) return;
+    if (!trimmedLines.length) return;
 
     const metals = GOLD_COMBO_TO_METALS[goldCombo];
     const emblemValue = includeEmblem ? emblemId ?? 'none' : 'none';
@@ -149,7 +155,8 @@ export default function NameBuilder() {
     setGenerations([]);
     setSelectedGenerationId(null);
     setIsGenerating(true);
-    setStep(3 as Step);
+
+    const epoch = ++generationEpochRef.current;
 
     try {
       const response = await fetch('/api/requests', {
@@ -158,79 +165,70 @@ export default function NameBuilder() {
         body: JSON.stringify(payload)
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error ?? 'Failed to generate pendant previews.');
-      }
+      if (!response.ok) throw new Error(data?.error ?? 'Failed to start generation.');
+      if (epoch !== generationEpochRef.current) return;
 
-      const mapped: GenerationOption[] = Array.isArray(data?.results)
-        ? data.results.map((entry: any) => ({
-            id: `variant-${entry.variant}`,
-            label: `Draft ${entry.variant}`,
-            src: entry.imageUrl,
-            variant: entry.variant
-          }))
-        : [];
+      const requestId: string = data.requestId;
+      // Move to results immediately — tiles appear as they're generated
+      setStep(4 as Step);
 
-      setGenerations(mapped);
-      if (mapped.length) {
-        setSelectedGenerationId(mapped[0].id);
-        setStep(4 as Step);
-      }
+      let pollCount = 0;
+      const poll = async () => {
+        if (epoch !== generationEpochRef.current) return;
+        pollCount += 1;
+        try {
+          const pollRes = await fetch(`/api/requests/${requestId}`);
+          const pollData = await pollRes.json().catch(() => ({}));
+          if (epoch !== generationEpochRef.current) return;
+
+          const results: Array<{ variant: number; imageUrl: string }> = pollData.results ?? [];
+          const mapped: GenerationOption[] = results.map(r => ({
+            id: `variant-${r.variant}`,
+            label: `Draft ${r.variant}`,
+            src: r.imageUrl,
+            variant: r.variant
+          }));
+          setGenerations(mapped);
+          if (mapped.length > 0) {
+            setSelectedGenerationId(prev => prev ?? mapped[0].id);
+          }
+
+          if (pollData.done || pollCount >= MAX_POLL_ATTEMPTS) {
+            pollTimeoutRef.current = null;
+            setIsGenerating(false);
+            return;
+          }
+        } catch {
+          // silent — keep polling
+        }
+        pollTimeoutRef.current = setTimeout(poll, 2000);
+      };
+
+      // First poll fires immediately so the first image appears as soon as it's ready
+      void poll();
     } catch (error) {
+      if (epoch !== generationEpochRef.current) return;
       console.error(error);
-      setGenerationError(error instanceof Error ? error.message : 'Something went wrong while generating.');
-    } finally {
+      setGenerationError(error instanceof Error ? error.message : 'Something went wrong.');
       setIsGenerating(false);
     }
   };
 
   const handleFinalizeSelection = () => {
     if (!selectedGenerationId) return;
-    // Placeholder for future integration with checkout or contact flow.
+    // Placeholder for future checkout / contact flow.
     console.info("Selected generation", selectedGenerationId);
   };
 
+  // Clean up any pending poll on unmount
   useEffect(() => {
-    if (step !== 3 || !isGenerating) {
-      if (loadingIntervalRef.current) {
-        clearInterval(loadingIntervalRef.current);
-        loadingIntervalRef.current = null;
-      }
-      return;
-    }
-
-    setLoadingSeconds(0);
-    if (loadingIntervalRef.current) {
-      clearInterval(loadingIntervalRef.current);
-    }
-    loadingIntervalRef.current = setInterval(() => {
-      setLoadingSeconds(prev => Math.min(prev + 1, MAX_WAIT_SECONDS));
-    }, 1000);
-
     return () => {
-      if (loadingIntervalRef.current) {
-        clearInterval(loadingIntervalRef.current);
-        loadingIntervalRef.current = null;
-      }
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
     };
-  }, [step, isGenerating]);
-
-  useEffect(() => {
-    if (step !== 4) return;
-    if (activeGenerations.length === 0) return;
-    setSelectedGenerationId(prev => {
-      if (prev && activeGenerations.some(item => item.id === prev)) return prev;
-      return activeGenerations[0].id;
-    });
-  }, [step, activeGenerations]);
-
-  const rawProgress = loadingSeconds <= TYPICAL_SECONDS
-    ? loadingSeconds / TYPICAL_SECONDS
-    : 0.66 + ((loadingSeconds - TYPICAL_SECONDS) / (MAX_WAIT_SECONDS - TYPICAL_SECONDS)) * 0.34;
-  const loadingProgress = Math.min(rawProgress, 1);
-  const loadingBarWidth = Math.max(loadingProgress, 0.05);
+  }, []);
 
   return (
+    <>
     <main className="min-h-dvh px-4 py-10 text-white md:px-8">
       <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-12 pt-10 sm:px-6 md:px-12">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
@@ -388,7 +386,6 @@ export default function NameBuilder() {
                           onClick={() => setGoldCombo(option.id)}
                           aria-pressed={isActive}
                           className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-blue-400 bg-blue-500/20 text-white" : "border-[#71451F] bg-black/45 text-white/80 hover:border-[#986035]"}`}
-
                         >
                           {option.label}
                         </button>
@@ -412,6 +409,7 @@ export default function NameBuilder() {
                           key={option}
                           type="button"
                           onClick={() => setDiamondQuality(option)}
+                          aria-pressed={isActive}
                           className={`min-w-[72px] rounded-2xl border border-white/15 px-4 py-2 text-lg uppercase transition hover:border-white/35 ${isActive ? "border-[3px] border-blue-400 bg-blue-500/15" : "bg-black/45"}`}
                         >
                           {option}
@@ -459,6 +457,11 @@ export default function NameBuilder() {
                       </div>
                     </dl>
                   </div>
+                  {generationError && (
+                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      {generationError}
+                    </div>
+                  )}
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                     <button
                       type="button"
@@ -473,61 +476,9 @@ export default function NameBuilder() {
                       disabled={isGenerating}
                       className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${isGenerating ? 'cursor-wait border border-white/15 bg-black/45 text-white/50' : 'bg-blue-500 text-white hover:bg-blue-400'}`}
                     >
-                      accept
+                      {isGenerating ? 'submitting...' : 'accept'}
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="flex flex-1 flex-col justify-between space-y-14">
-                <div className="rounded-3xl border border-[#71451F]/60 bg-black/40 px-6 py-6">
-                  <h2 className="text-lg font-semibold">Drafting your imagination...</h2>
-                  <p className="mt-2 text-sm text-white/60">We're sculpting shimmering concepts based on your direction.</p>
-                  <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    {activeGenerations.map(option => (
-                      <div key={option.id} className="relative min-h-[220px] rounded-[32px] border border-white/12 bg-gradient-to-br from-white/5 via-white/10 to-white/5 sm:min-h-[260px]">
-                        <div className="absolute inset-0 animate-pulse rounded-[30px] bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-black/60">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#2C48FF] to-[#0CB6DD] transition-[width] duration-500 ease-out"
-                      style={{ width: `${Math.min(loadingBarWidth, 1) * 100}%` }}
-                    />
-                    <div className="relative flex h-11 items-center justify-center px-6 text-sm font-semibold uppercase tracking-[0.3em] text-[#FBD377]">
-                      {loadingSeconds}s elapsed
-                    </div>
-                  </div>
-                  <p className="mt-2 text-xs text-white/60">Generations typically take about 30 seconds, but may take up to 50 seconds.</p>
-                  {generationError && (
-                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                      {generationError}
-                    </div>
-                  )}
-                  {generationError && (
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() => { setGenerationError(null); setStep(2 as Step); }}
-                        className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-sm font-medium transition hover:border-white/35"
-                      >
-                        back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAcceptDesign}
-                        className={`flex-1 rounded-2xl px-5 py-3 text-sm font-semibold transition ${isGenerating ? 'cursor-wait border border-white/15 bg-black/45 text-white/50' : 'bg-blue-500 text-white hover:bg-blue-400'}`}
-                      >
-                        {isGenerating ? 'retrying...' : 'try again'}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -535,30 +486,62 @@ export default function NameBuilder() {
             {step === 4 && (
               <div className="space-y-8">
                 <div className="rounded-3xl border border-[#71451F]/60 bg-black/35 px-6 py-6">
-                  <h2 className="text-lg font-semibold text-center sm:text-left">Choose your favourite</h2>
-                  <p className="mt-2 text-sm text-white/60 text-center sm:text-left">Select the draft that matches your vision best. We'll refine the winner for production.</p>
+                  <h2 className="text-lg font-semibold text-center sm:text-left">
+                    {isGenerating ? "Drafting your designs…" : "Choose your favourite"}
+                  </h2>
+                  <p className="mt-2 text-sm text-white/60 text-center sm:text-left">
+                    {isGenerating
+                      ? "Designs appear as they're generated — pick your favourite when ready."
+                      : "Select the draft that matches your vision best. We'll refine the winner for production."}
+                  </p>
+                  {isGenerating && (
+                    <p className="mt-1 text-xs text-white/35 text-center sm:text-left">
+                      {generations.length} of 4 generated
+                    </p>
+                  )}
                   <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    {activeGenerations.map(option => {
+                    {([1, 2, 3, 4] as const).map(variantNum => {
+                      const option = generations.find(g => g.variant === variantNum);
+                      if (!option) {
+                        return (
+                          <div
+                            key={variantNum}
+                            className="relative min-h-[220px] rounded-[32px] border border-white/12 bg-gradient-to-br from-white/5 via-white/10 to-white/5 sm:min-h-[260px]"
+                          >
+                            <div className="absolute inset-0 animate-pulse rounded-[30px] bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
+                            <div className="absolute inset-0 flex items-end justify-center pb-4">
+                              <span className="text-xs uppercase tracking-widest text-white/25">Draft {variantNum}</span>
+                            </div>
+                          </div>
+                        );
+                      }
                       const isSelected = selectedGenerationId === option.id;
                       return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setSelectedGenerationId(option.id)}
-                          className={`group relative overflow-hidden rounded-[32px] border ${isSelected ? "border-[3px] border-blue-400 shadow-[0_0_35px_rgba(59,130,246,0.45)]" : "border-white/15"} bg-black/35 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400`}
-                          aria-pressed={isSelected}
-                        >
-                          <div className="relative aspect-[3/4] w-full sm:aspect-[4/5]">
-                            <Image
+                        <div key={option.id} className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedGenerationId(option.id)}
+                            className={`group relative block w-full overflow-hidden rounded-[32px] border ${isSelected ? "border-[3px] border-blue-400 shadow-[0_0_35px_rgba(59,130,246,0.45)]" : "border-white/15"} bg-black/35 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400`}
+                            aria-pressed={isSelected}
+                            aria-label={option.label}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
                               src={option.src}
                               alt={option.label}
-                              fill
-                              sizes="(max-width: 768px) 360px, 520px"
-                              className="object-cover transition duration-500 group-hover:scale-105"
+                              className="block h-auto w-full transition duration-500 group-hover:scale-105"
                             />
-                          </div>
-                          <span className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/12 bg-gradient-to-b from-transparent via-transparent to-black/50" aria-hidden />
-                        </button>
+                            <span className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/12 bg-gradient-to-b from-transparent via-transparent to-black/50" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewOption(option)}
+                            className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
+                            aria-label={`Preview ${option.label}`}
+                          >
+                            view
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -567,7 +550,7 @@ export default function NameBuilder() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={() => setStep(2 as Step)}
+                    onClick={() => { if (!confirmDiscardGenerations()) return; cancelPolling(); setGenerations([]); setSelectedGenerationId(null); setStep(2 as Step); }}
                     className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
                   >
                     back
@@ -590,10 +573,11 @@ export default function NameBuilder() {
             <span className="w-16" aria-hidden />
 
             <div className="flex items-center justify-center gap-2">
-              {STEP_LABELS.map((_, index) => (
+              {/* Show 4 dots for the 4 visible steps (0,1,2,4) — step 3 is transient */}
+              {([0, 1, 2, 4] as const).map(idx => (
                 <span
-                  key={index}
-                  className={`h-2.5 w-2.5 rounded-full transition ${index === step ? "bg-blue-400" : "bg-white/25"}`}
+                  key={idx}
+                  className={`h-2.5 w-2.5 rounded-full transition ${idx === step ? "bg-blue-400" : "bg-white/25"}`}
                 />
               ))}
             </div>
@@ -616,6 +600,52 @@ export default function NameBuilder() {
         </div>
       </div>
     </main>
+
+    {previewOption && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${previewOption.label} preview`}
+        onClick={() => setPreviewOption(null)}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          className="relative flex max-h-[92vh] max-w-6xl flex-col items-center gap-4"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewOption.src}
+            alt={previewOption.label}
+            className="block max-h-[80vh] max-w-full rounded-2xl object-contain"
+          />
+          <div className="flex items-center gap-3">
+            <a
+              href={previewOption.src}
+              download={`${previewOption.label.replace(/\s+/g, "-").toLowerCase()}.png`}
+              className="rounded-full bg-blue-500 px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-400"
+            >
+              Download
+            </a>
+            <button
+              type="button"
+              onClick={() => setPreviewOption(null)}
+              className="rounded-full border border-white/30 bg-black/50 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/60"
+            >
+              Close
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPreviewOption(null)}
+            aria-label="Close preview"
+            className="absolute -right-3 -top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-2xl font-bold leading-none text-black shadow-lg hover:bg-white/90"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
-
