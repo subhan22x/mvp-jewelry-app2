@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/image", () => {
   return {
     __esModule: true,
-    default: ({ alt = "", src = "", fill, ...rest }: any) =>
+    default: ({ alt = "", src = "", fill, priority, sizes, quality, placeholder, blurDataURL, ...rest }: any) =>
       React.createElement("img", {
         alt,
         src: typeof src === "string" ? src : "",
