@@ -16,7 +16,7 @@ variantMatrix:
   - { deviationStrength: 0.60, bubbleOutline: false, forceAllCaps: true  }
 
 assets:
-  pendantRef: public/pendants/Deja.png
+  pendantRef: public/pendants/deja.png
   emblemRefs:
     crown: public/emblems/CROWN EMBLEM.png
     heart: public/emblems/heart emblem.png

@@ -10,7 +10,7 @@ export type GenerateArgs = {
   variant: number;
 };
 
-const MODEL_ID = process.env.GEMINI_MODEL_ID ?? 'gemini-2.5-flash-image-preview';
+const MODEL_ID = process.env.GEMINI_MODEL_ID ?? 'gemini-3.1-flash-image-preview';
 const OUTPUT_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), 'public', 'generated');
 
 let cachedClient: GoogleGenAI | null = null;
@@ -50,7 +50,7 @@ export async function generateImage({ prompt, attachments = [], requestId, varia
       }
     ],
     config: {
-      responseModalities: ['IMAGE', 'TEXT']
+      responseModalities: ['IMAGE']
     }
   });
 
