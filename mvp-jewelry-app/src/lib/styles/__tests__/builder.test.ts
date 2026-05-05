@@ -39,6 +39,10 @@ describe("buildVariants", () => {
             font: { preferred_family: "CC Matinee Idol" }
           }
         },
+        composition_control: {
+          aspect_ratio: "9:16",
+          instruction: "Render the final product photo in a vertical 9:16 composition. Keep the full pendant and bail visible with clean margins."
+        },
         text_bubble_outline: { enabled: false }
       }
     });
@@ -55,6 +59,7 @@ describe("buildVariants", () => {
         text_bubble_outline: { enabled: true }
       }
     });
+    expect(variants[1].prompt).not.toHaveProperty("composition_control");
   });
 
   it("builds KING as a forced all-caps prose prompt", () => {
@@ -67,6 +72,8 @@ describe("buildVariants", () => {
       expect(variant.prompt).toContain('Add a butterfly emblem like the one shown in the second picture');
       expect(variant.prompt).toContain('change the color of the entire jewelry pendant to two_tone rose_gold + white_gold');
     }
+    expect(variants[0].prompt).toContain("vertical 9:16 composition");
+    expect(variants[1].prompt).not.toContain("vertical 9:16 composition");
   });
 
   it("builds JHON with Carnivalee Freakshow, as-typed text, and no bubble outline", () => {

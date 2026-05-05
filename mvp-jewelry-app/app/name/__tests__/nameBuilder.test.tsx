@@ -83,6 +83,33 @@ function mockPostError(message = "Gemini unavailable") {
   });
 }
 
+function mockVideoPostSuccess() {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ videoId: "video-test" })
+  });
+}
+
+function mockVideoGetSuccess() {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      id: "video-test",
+      status: "succeeded",
+      videoUrl: "https://cdn.example.com/video.mp4",
+      durationSeconds: 7.25,
+      done: true
+    })
+  });
+}
+
+function mockVideoPostError(message = "Invalid access code.") {
+  mockFetch.mockResolvedValueOnce({
+    ok: false,
+    json: async () => ({ error: message })
+  });
+}
+
 async function setup() {
   const user = userEvent.setup();
   await act(async () => { render(<NameBuilder />); });
@@ -554,10 +581,45 @@ describe("Step 4 — Progressive loading & Results", () => {
     expect(screen.getByRole("button", { name: /^draft 2$/i })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("continue button is enabled when a draft is selected", async () => {
+  it("replaces continue with a red Generate Video button", async () => {
     const { user } = await setup();
     await toStep4(user);
-    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /^continue$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^generate video$/i })).toBeEnabled();
+  });
+
+  it("asks for an access code and starts video generation from the request", async () => {
+    const { user } = await setup();
+    await toStep4(user);
+    await tap(user, screen.getByRole("button", { name: /^generate video$/i }));
+    expect(screen.getByRole("dialog", { name: /generate video/i })).toBeInTheDocument();
+
+    await type(user, screen.getByLabelText(/access code/i), "ID8");
+    mockVideoPostSuccess();
+    mockVideoGetSuccess();
+    await tap(user, screen.getByRole("button", { name: /^generate$/i }));
+
+    await waitFor(() => expect(screen.getByText(/your video/i)).toBeInTheDocument());
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/videos",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ requestId: "req-test", accessCode: "ID8" })
+      })
+    );
+    expect(screen.getByText(/generated in 7\.25 seconds/i)).toBeInTheDocument();
+  });
+
+  it("keeps the access-code dialog open when video access is rejected", async () => {
+    const { user } = await setup();
+    await toStep4(user);
+    await tap(user, screen.getByRole("button", { name: /^generate video$/i }));
+    await type(user, screen.getByLabelText(/access code/i), "WRONG");
+    mockVideoPostError();
+    await tap(user, screen.getByRole("button", { name: /^generate$/i }));
+
+    await waitFor(() => expect(screen.getByText(/invalid access code/i)).toBeInTheDocument());
+    expect(screen.getByRole("dialog", { name: /generate video/i })).toBeInTheDocument();
   });
 
   it("view button opens the preview modal", async () => {
@@ -650,9 +712,9 @@ describe("Step 4 — Progressive loading & Results", () => {
 
 // ---------------------------------------------------------------------------
 describe("Step indicator dots", () => {
-  it("shows 4 dots (skips the transient step 3)", async () => {
+  it("shows 5 dots (skips the transient step 3)", async () => {
     await setup();
-    expect(document.querySelectorAll("footer span.rounded-full")).toHaveLength(4);
+    expect(document.querySelectorAll("footer span.rounded-full")).toHaveLength(5);
   });
 
   it("updates the active dot as the user navigates", async () => {

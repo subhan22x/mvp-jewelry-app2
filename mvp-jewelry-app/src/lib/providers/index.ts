@@ -31,10 +31,11 @@ function getProvider(name: string): ImageProvider {
   return provider;
 }
 
-export function resolveGenerationConfig(variant: number): { provider: ImageProvider; modelId: string; imageSize?: '2K' } {
+export function resolveGenerationConfig(variant: number): { provider: ImageProvider; modelId: string; imageSize: '1K' | '2K'; aspectRatio?: '9:16' } {
   return {
     provider: getProvider('google'),
     modelId: variant === 1 ? GREAT_MODEL_ID : FAST_MODEL_ID,
-    imageSize: variant === 1 ? '2K' : undefined
+    imageSize: variant === 1 ? '2K' : '1K',
+    aspectRatio: variant === 1 ? '9:16' : undefined
   };
 }

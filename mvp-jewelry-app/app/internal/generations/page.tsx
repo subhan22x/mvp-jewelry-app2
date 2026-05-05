@@ -45,7 +45,7 @@ export default async function InternalGenerationsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const [rows, generatedFiles] = await Promise.all([
+  const [rows, videos, generatedFiles] = await Promise.all([
     prisma.result.findMany({
       orderBy: [{ createdAt: "desc" }, { variant: "asc" }],
       take: 100,
@@ -58,6 +58,24 @@ export default async function InternalGenerationsPage({
             uploadFileName: true,
             styleId: true,
             twoTone: true,
+            primaryMetal: true,
+            secondaryMetal: true,
+            emblem: true,
+            createdAt: true
+          }
+        }
+      }
+    }),
+    prisma.videoGeneration.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 50,
+      include: {
+        request: {
+          select: {
+            id: true,
+            text: true,
+            productType: true,
+            styleId: true,
             primaryMetal: true,
             secondaryMetal: true,
             emblem: true,
@@ -239,6 +257,85 @@ export default async function InternalGenerationsPage({
             No generation rows match the current filters.
           </div>
         )}
+
+        <section className="mt-8">
+          <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Internal</p>
+              <h2 className="mt-1 text-xl font-semibold">Video Generations</h2>
+            </div>
+            <div className="text-xs text-zinc-500">{videos.length} recent videos</div>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {videos.map(video => (
+              <article key={video.id} className="rounded border border-white/10 bg-[#17191f] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    video.status === "succeeded"
+                      ? "bg-emerald-400/15 text-emerald-200"
+                      : video.status === "failed"
+                        ? "bg-red-400/15 text-red-200"
+                        : "bg-amber-400/15 text-amber-200"
+                  }`}>
+                    {video.status}
+                  </span>
+                  <span className="text-[10px] text-zinc-500">{formatDate(video.createdAt)}</span>
+                </div>
+
+                <div className="mt-3 overflow-hidden rounded bg-black/40">
+                  {video.videoUrl ? (
+                    <video src={video.videoUrl} controls playsInline className="block w-full bg-black" />
+                  ) : (
+                    <div className="flex aspect-video items-center justify-center px-5 text-center text-xs text-zinc-500">
+                      No video file yet
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 space-y-2 text-[11px] leading-snug text-zinc-300">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-zinc-100">{shortId(video.requestId)} / video</span>
+                    <span className="font-mono text-zinc-400">{seconds(video.durationMs)}</span>
+                  </div>
+                  <div className="truncate font-mono text-zinc-400" title={video.modelId ?? "n/a"}>{video.modelId || "n/a"}</div>
+                  <div className="truncate text-zinc-300">
+                    {video.request.styleId} / {video.request.primaryMetal}
+                    {video.request.secondaryMetal ? ` + ${video.request.secondaryMetal}` : ""} / {video.request.emblem}
+                  </div>
+                  <a href={video.sourceImageUrl} target="_blank" className="block truncate text-blue-300 hover:text-blue-200">
+                    source: {video.sourceImageUrl}
+                  </a>
+                  {video.videoUrl && (
+                    <a href={video.videoUrl} target="_blank" className="block truncate text-blue-300 hover:text-blue-200">
+                      video: {video.videoUrl}
+                    </a>
+                  )}
+                </div>
+
+                {video.error && (
+                  <div className="mt-3">
+                    <div className="text-[10px] uppercase tracking-wide text-red-300/80">Error</div>
+                    <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap rounded border border-red-400/20 bg-red-400/10 p-2 text-[10px] leading-snug text-red-100">{video.error}</pre>
+                  </div>
+                )}
+
+                <details className="mt-3 rounded border border-white/10 bg-black/20">
+                  <summary className="cursor-pointer px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-200">
+                    Video Prompt
+                  </summary>
+                  <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap border-t border-white/10 p-2 font-mono text-[9px] leading-[1.35] text-zinc-300">{video.prompt}</pre>
+                </details>
+              </article>
+            ))}
+          </div>
+
+          {videos.length === 0 && (
+            <div className="mt-4 rounded border border-white/10 bg-white/[0.03] p-6 text-center text-zinc-400">
+              No video generations yet.
+            </div>
+          )}
+        </section>
 
         {orphanFiles.length > 0 && (
           <section className="mt-8 rounded border border-white/10 bg-white/[0.03] p-4">

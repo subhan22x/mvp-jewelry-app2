@@ -7,17 +7,25 @@ import EmblemPicker from "./components/EmblemPicker";
 import LeadCaptureModal from "./components/LeadCaptureModal";
 import { pendantStyles, emblems, type PendantStyle } from "@/lib/assets";
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
-const STEP_LABELS: readonly string[] = ["Style", "Emblem", "Review", "Creating", "Select"];
+const STEP_LABELS: readonly string[] = ["Style", "Emblem", "Review", "Creating", "Select", "Video"];
 // Poll up to 50 times (× 2 s = 100 s) before giving up
 const MAX_POLL_ATTEMPTS = 50;
+const MAX_VIDEO_POLL_ATTEMPTS = 80;
 type GoldComboKey = "YELLOW_WHITE" | "ROSE_WHITE" | "WHITE";
 
 type GenerationOption = { id: string; label: string; src: string; variant: number };
 type GenerationAttempt = {
   variant: number;
   status: "pending" | "succeeded" | "failed";
+  error?: string | null;
+  durationSeconds?: number | null;
+};
+type VideoStatus = {
+  id: string;
+  status: "pending" | "succeeded" | "failed";
+  videoUrl?: string | null;
   error?: string | null;
   durationSeconds?: number | null;
 };
@@ -64,11 +72,18 @@ export default function NameBuilder() {
   const [previewOption, setPreviewOption] = useState<GenerationOption | null>(null);
   const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [capturedRequestId, setCapturedRequestId] = useState<string | null>(null);
+  const [showAccessCodePrompt, setShowAccessCodePrompt] = useState(false);
+  const [videoAccessCode, setVideoAccessCode] = useState("");
+  const [videoStatus, setVideoStatus] = useState<VideoStatus | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
 
   // Incremented on each new generation kick-off; stale poll callbacks check this
   // before applying state so a cancelled request can't jump the user to step 4.
   const generationEpochRef = useRef(0);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const videoEpochRef = useRef(0);
+  const videoPollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const pendantColumns = buildPendantColumns(pendantStyles);
   const activeStyle = pendantStyles.find(style => style.id === styleId) ?? pendantStyles[0];
@@ -78,6 +93,7 @@ export default function NameBuilder() {
   const activeGoldCombo = GOLD_COMBOS.find(option => option.id === goldCombo) ?? GOLD_COMBOS[0];
   const canAddLine = lines.length < MAX_NAME_LINES;
   const hasPrimaryName = lines[0]?.trim().length > 0;
+  const highQualityGeneration = generations.find(generation => generation.variant === 1) ?? null;
 
   const updateLine = (value: string, index: number) => {
     setLines(prev => prev.map((entry, idx) => (idx === index ? value : entry)));
@@ -110,23 +126,43 @@ export default function NameBuilder() {
     setIsGenerating(false);
   };
 
+  const cancelVideoPolling = () => {
+    videoEpochRef.current += 1;
+    if (videoPollTimeoutRef.current) {
+      clearTimeout(videoPollTimeoutRef.current);
+      videoPollTimeoutRef.current = null;
+    }
+    setIsVideoGenerating(false);
+  };
+
   const confirmDiscardGenerations = () =>
-    generations.length === 0 ||
-    window.confirm("Going back will discard your generated drafts. Continue?");
+    generations.length === 0 && !videoStatus ||
+    window.confirm("You will lose your generated drafts and video progress if you leave this flow. Continue?");
+
+  const handleHomeFromResults = () => {
+    if (!confirmDiscardGenerations()) return;
+    cancelPolling();
+    cancelVideoPolling();
+    router.push("/");
+  };
 
   const handleBack = () => {
-    if (step === 4 && !confirmDiscardGenerations()) return;
+    if ((step === 4 || step === 5) && !confirmDiscardGenerations()) return;
     if (step === 0) {
       router.push("/");
       return;
     }
-    if (step === 4) {
+    if (step === 4 || step === 5) {
       cancelPolling();
+      cancelVideoPolling();
       setGenerations([]);
       setSelectedGenerationId(null);
       setShowLeadCapture(false);
+      setShowAccessCodePrompt(false);
+      setVideoStatus(null);
+      setVideoError(null);
     }
-    const prevStep = step === 4 ? 2 : ((step - 1) as Step);
+    const prevStep = step === 4 || step === 5 ? 2 : ((step - 1) as Step);
     setStep(prevStep as Step);
   };
 
@@ -236,16 +272,81 @@ export default function NameBuilder() {
     }
   };
 
-  const handleFinalizeSelection = () => {
-    if (!selectedGenerationId) return;
-    // Placeholder for future checkout / contact flow.
-    console.info("Selected generation", selectedGenerationId);
+  const handleStartVideo = async () => {
+    if (isVideoGenerating) return;
+    if (!capturedRequestId) {
+      setVideoError("Missing request id for this generation.");
+      return;
+    }
+    if (!highQualityGeneration) {
+      setVideoError("The higher quality draft is not ready yet.");
+      return;
+    }
+
+    setVideoError(null);
+    setVideoStatus(null);
+    setIsVideoGenerating(true);
+
+    const epoch = ++videoEpochRef.current;
+    try {
+      const response = await fetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: capturedRequestId, accessCode: videoAccessCode })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error ?? "Failed to start video generation.");
+      if (epoch !== videoEpochRef.current) return;
+
+      const videoId: string = data.videoId;
+      setShowAccessCodePrompt(false);
+      setStep(5 as Step);
+      let pollCount = 0;
+      const poll = async () => {
+        if (epoch !== videoEpochRef.current) return;
+        pollCount += 1;
+        try {
+          const pollRes = await fetch(`/api/videos/${videoId}`);
+          const pollData = await pollRes.json().catch(() => ({}));
+          if (epoch !== videoEpochRef.current) return;
+
+          setVideoStatus({
+            id: videoId,
+            status: pollData.status ?? "pending",
+            videoUrl: pollData.videoUrl ?? null,
+            error: pollData.error ?? null,
+            durationSeconds: pollData.durationSeconds ?? null
+          });
+
+          if (pollData.done || pollCount >= MAX_VIDEO_POLL_ATTEMPTS) {
+            videoPollTimeoutRef.current = null;
+            setIsVideoGenerating(false);
+            if (!pollData.done && pollCount >= MAX_VIDEO_POLL_ATTEMPTS) {
+              setVideoError("Video generation timed out. Please try again.");
+            } else if (pollData.status === "failed") {
+              setVideoError(pollData.error ?? "Video generation failed.");
+            }
+            return;
+          }
+        } catch {
+          // Keep polling through brief network hiccups.
+        }
+        videoPollTimeoutRef.current = setTimeout(poll, 3000);
+      };
+
+      void poll();
+    } catch (error) {
+      if (epoch !== videoEpochRef.current) return;
+      setIsVideoGenerating(false);
+      setVideoError(error instanceof Error ? error.message : "Something went wrong.");
+    }
   };
 
   // Clean up any pending poll on unmount
   useEffect(() => {
     return () => {
       if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      if (videoPollTimeoutRef.current) clearTimeout(videoPollTimeoutRef.current);
     };
   }, []);
 
@@ -557,7 +658,7 @@ export default function NameBuilder() {
                               alt={option.label}
                               className="block h-auto w-full transition duration-500 group-hover:scale-105"
                             />
-                            <span className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/12 bg-gradient-to-b from-transparent via-transparent to-black/50" aria-hidden />
+                            <span className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/12" aria-hidden />
                           </button>
                           <button
                             type="button"
@@ -576,19 +677,96 @@ export default function NameBuilder() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={() => { if (!confirmDiscardGenerations()) return; cancelPolling(); setGenerations([]); setSelectedGenerationId(null); setShowLeadCapture(false); setStep(2 as Step); }}
+                    onClick={handleHomeFromResults}
                     className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
                   >
-                    back
+                    home
                   </button>
                   <button
                     type="button"
-                    onClick={handleFinalizeSelection}
-                    disabled={!selectedGenerationId}
-                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${selectedGenerationId ? "bg-blue-500 text-white hover:bg-blue-400" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
+                    onClick={() => {
+                      setVideoError(null);
+                      setShowAccessCodePrompt(true);
+                    }}
+                    disabled={!highQualityGeneration || isGenerating}
+                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${highQualityGeneration && !isGenerating ? "bg-red-600 text-white hover:bg-red-500" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
                   >
-                    continue
+                    Generate Video
                   </button>
+                </div>
+                {videoError && (
+                  <div className="rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {videoError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 5 && (
+              <div className="space-y-8">
+                <div className="rounded-3xl border border-[#71451F]/60 bg-black/35 px-6 py-6">
+                  <h2 className="text-lg font-semibold text-center sm:text-left">
+                    {isVideoGenerating ? "Generating your video…" : "Your video"}
+                  </h2>
+                  <p className="mt-2 text-sm text-white/60 text-center sm:text-left">
+                    {isVideoGenerating
+                      ? "Seedance is animating the higher-quality draft. This usually takes a little longer than images."
+                      : "Preview the generated pendant video below."}
+                  </p>
+
+                  <div className="mt-6 overflow-hidden rounded-[32px] border border-white/15 bg-black/50">
+                    {videoStatus?.videoUrl ? (
+                      <video
+                        src={videoStatus.videoUrl}
+                        controls
+                        playsInline
+                        className="block w-full bg-black"
+                      />
+                    ) : (
+                      <div className="flex min-h-[360px] items-center justify-center p-8 text-center text-sm text-white/55">
+                        {videoError ? "Video generation did not complete." : "Waiting for the video file..."}
+                      </div>
+                    )}
+                  </div>
+
+                  {videoStatus?.durationSeconds && (
+                    <p className="mt-3 text-xs text-white/45">
+                      Generated in {videoStatus.durationSeconds.toFixed(2)} seconds.
+                    </p>
+                  )}
+
+                  {videoError && (
+                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      {videoError}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleHomeFromResults}
+                      className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
+                    >
+                      home
+                    </button>
+                    {videoStatus?.videoUrl ? (
+                      <a
+                        href={videoStatus.videoUrl}
+                        target="_blank"
+                        className="flex-1 rounded-2xl bg-blue-500 px-5 py-3 text-center text-base font-semibold text-white transition hover:bg-blue-400"
+                      >
+                        open video
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex-1 cursor-wait rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-semibold text-white/50"
+                      >
+                        {isVideoGenerating ? "generating..." : "no video yet"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -600,7 +778,7 @@ export default function NameBuilder() {
 
             <div className="flex items-center justify-center gap-2">
               {/* Show 4 dots for the 4 visible steps (0,1,2,4) — step 3 is transient */}
-              {([0, 1, 2, 4] as const).map(idx => (
+              {([0, 1, 2, 4, 5] as const).map(idx => (
                 <span
                   key={idx}
                   className={`h-2.5 w-2.5 rounded-full transition ${idx === step ? "bg-blue-400" : "bg-white/25"}`}
@@ -670,6 +848,56 @@ export default function NameBuilder() {
             ×
           </button>
         </div>
+      </div>
+    )}
+
+    {showAccessCodePrompt && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Generate video"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      >
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            void handleStartVideo();
+          }}
+          className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#1d120c] p-6 shadow-2xl"
+        >
+          <h2 className="text-lg font-semibold text-white">Generate Video</h2>
+          <p className="mt-2 text-sm text-white/60">
+            Enter the internal access code to animate the higher-quality draft.
+          </p>
+          <label className="mt-5 block text-sm text-white/70">
+            Access code
+            <input
+              value={videoAccessCode}
+              onChange={event => setVideoAccessCode(event.target.value)}
+              autoFocus
+              className="mt-2 w-full rounded-2xl border border-white/15 bg-black/45 px-4 py-3 text-base text-white outline-none transition focus:border-red-400"
+            />
+          </label>
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAccessCodePrompt(false);
+                setVideoAccessCode("");
+              }}
+              className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/35"
+            >
+              cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!videoAccessCode.trim() || isVideoGenerating}
+              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition ${videoAccessCode.trim() && !isVideoGenerating ? "bg-red-600 text-white hover:bg-red-500" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
+            >
+              generate
+            </button>
+          </div>
+        </form>
       </div>
     )}
 

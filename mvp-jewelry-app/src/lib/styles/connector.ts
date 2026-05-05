@@ -41,10 +41,10 @@ export async function saveGeneratedImage({ buffer, mimeType, requestId, variant 
 }
 
 export async function generateImage({ prompt, attachments = [], requestId, variant, modelVariant }: GenerateArgs): Promise<{ imageUrl: string; modelId: string }> {
-  const { provider, modelId, imageSize } = resolveGenerationConfig(modelVariant ?? variant);
+  const { provider, modelId, imageSize, aspectRatio } = resolveGenerationConfig(modelVariant ?? variant);
 
   const { buffer, mimeType } = await withTimeout(
-    provider.generate({ prompt, attachments, modelId, imageSize }),
+    provider.generate({ prompt, attachments, modelId, imageSize, aspectRatio }),
     GENERATION_TIMEOUT_MS
   );
 

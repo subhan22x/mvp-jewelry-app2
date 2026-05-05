@@ -10,7 +10,7 @@ export class GoogleProvider implements ImageProvider {
     this.client = new GoogleGenAI({ apiKey });
   }
 
-  async generate({ prompt, attachments, modelId, imageSize }: ProviderGenerateArgs): Promise<ProviderResult> {
+  async generate({ prompt, attachments, modelId, imageSize, aspectRatio }: ProviderGenerateArgs): Promise<ProviderResult> {
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
       { text: prompt }
     ];
@@ -31,7 +31,9 @@ export class GoogleProvider implements ImageProvider {
       contents: [{ role: 'user', parts }],
       config: {
         responseModalities: ['IMAGE'],
-        ...(imageSize ? { imageConfig: { imageSize } } : {})
+        ...(imageSize || aspectRatio
+          ? { imageConfig: { ...(imageSize ? { imageSize } : {}), ...(aspectRatio ? { aspectRatio } : {}) } }
+          : {})
       }
     });
 

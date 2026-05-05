@@ -28,6 +28,7 @@ model Request {
   emblem         String   // none | crown | heart | spade | butterfly | moneybag
   uploadFileName String?
   Results        Result[]
+  Videos         VideoGeneration[]
 }
 
 model Result {
@@ -53,4 +54,22 @@ model Lead {
   phone     String
   email     String
   createdAt DateTime @default(now())
+}
+
+model VideoGeneration {
+  id             String   @id @default(cuid())
+  requestId      String
+  request        Request  @relation(fields: [requestId], references: [id])
+  sourceResultId String?
+  sourceImageUrl String
+  prompt         String
+  videoUrl       String?
+  modelId        String?
+  providerJobId  String?
+  status         String   @default("pending") // pending | succeeded | failed
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
 }
