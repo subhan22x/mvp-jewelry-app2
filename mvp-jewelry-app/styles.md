@@ -102,10 +102,16 @@ Do not put model ids in `style.yml`. Model selection is separate from prompt sha
 
 Current model mapping in `src/lib/providers/index.ts`:
 
-- Variant 1 uses `gemini-3-pro-image-preview` with `imageSize: "2K"`.
-- Variant 2 uses `gemini-3.1-flash-image-preview`.
+- Variant 1 uses `gemini-3-pro-image-preview` with `imageSize: "2K"` and `aspectRatio: "9:16"`.
+- Variant 2 uses `gemini-3.1-flash-image-preview` with `imageSize: "1K"`.
 
 The connector calls `resolveGenerationConfig(variant)` and passes the returned `modelId` and optional `imageSize` to the provider.
+
+Name variant 1 prompts also get explicit 9:16 language:
+
+- JSON-style prompts receive a top-level `composition_control` object.
+- Prose prompts receive the same instruction appended as text.
+- Instruction: `Render the final product photo in a vertical 9:16 composition. Keep the full pendant and bail visible with clean margins.`
 
 ## Current Variant Pattern
 
@@ -239,6 +245,7 @@ Generated outputs are stored in two places:
 - Images are written to `public/generated/`.
 - Generation metadata is stored in Prisma, including prompt text and fields such as model id, status, error, start/completion time, and duration.
 - Requests include `productType`, so internal review can distinguish `name` and `picture` generations.
+- Video generations are stored in Prisma in `VideoGeneration`. They reference the parent request, the source high-quality result, the public source image URL sent to Wavespeed, the exact video prompt, Wavespeed job id, video URL, model id, status, error, and duration.
 
 The internal review page is available at:
 
@@ -251,6 +258,50 @@ Prisma Studio is useful for raw database inspection when it is running at:
 - `http://localhost:5555`
 
 To inspect the last prompt manually, look at recent `Result` rows and sort by the newest request/result timestamp. The rendered prompt is saved in `Result.prompt`.
+
+## Video Generation
+
+Name pendant results can generate a Seedance video after image generation finishes.
+
+Current behavior:
+
+- The result-screen `continue` button is replaced with a red `Generate Video` button.
+- The bottom-left result action is now `home`. It confirms that generated drafts/video progress will be lost before routing to `/`.
+- Video generation always uses the better model image, `variant: 1`, regardless of which draft tile is selected.
+- Access is gated by `VIDEO_ACCESS_CODE`. The current local access code is `ID8`.
+- The Wavespeed API key is read from `WAVESPEED_API_KEY`.
+- The Seedance endpoint is `bytedance/seedance-2.0/image-to-video`.
+- Default duration is `7` seconds via `VIDEO_DURATION_SECONDS`.
+- Default resolution is `720p` via `VIDEO_RESOLUTION`; supported values are `480p`, `720p`, and `1080p`.
+- Audio defaults off unless `VIDEO_GENERATE_AUDIO=true`.
+- The video prompt is read from `VIDEO_PROMPT` when configured. Until the final prompt is supplied, the code falls back to a conservative jewelry product-video prompt.
+
+Important Wavespeed URL requirement:
+
+- Wavespeed requires a public image URL, not a local filesystem path.
+- The app builds that URL from the generated image path plus `APP_BASE_URL` or `NEXT_PUBLIC_APP_URL`.
+- For local development, use a public tunnel or deployed URL for `APP_BASE_URL`; plain `localhost` generally will not be fetchable by Wavespeed.
+
+Relevant files:
+
+- UI: `app/name/page.tsx`.
+- Submit route: `app/api/videos/route.ts`.
+- Poll route: `app/api/videos/[id]/route.ts`.
+- Provider client: `src/lib/video/wavespeed.ts`.
+- Prisma model: `VideoGeneration`.
+
+## Render Deployment Notes
+
+Render MVP deployment uses the local SQLite app architecture with a persistent disk:
+
+- `render.yaml` defines a web service rooted at `mvp-jewelry-app`.
+- The persistent disk mounts at `/var/data`.
+- `DATABASE_URL=file:/var/data/dev.db` stores SQLite on that disk.
+- `GENERATED_IMAGE_DIR=/var/data/generated` stores generated images on that disk.
+- `npm run start:render` runs `prisma migrate deploy`, seeds the demo user, then starts Next.
+- `/generated/:file` is handled by `app/generated/[file]/route.ts`, so generated files can live outside `public/generated`.
+
+This is meant as the quick internal MVP path. For heavier production usage, migrate Prisma to Postgres and move generated files to object storage.
 
 ## Testing Notes
 

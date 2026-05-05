@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:render": "prisma migrate deploy && npm run db:seed && next start",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "styles": "node scripts/manage-styles.mjs",

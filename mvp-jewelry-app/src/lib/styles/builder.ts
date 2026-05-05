@@ -20,6 +20,29 @@ function splitLines(raw: string): string[] {
   return lines.length ? lines : [raw.trim()];
 }
 
+const VERTICAL_9_16_INSTRUCTION = 'Render the final product photo in a vertical 9:16 composition. Keep the full pendant and bail visible with clean margins.';
+
+function addVariantCompositionGuidance(prompt: string, variant: number) {
+  if (variant !== 1) return prompt;
+
+  try {
+    const parsed = JSON.parse(prompt);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return JSON.stringify({
+        ...parsed,
+        composition_control: {
+          aspect_ratio: '9:16',
+          instruction: VERTICAL_9_16_INSTRUCTION
+        }
+      }, null, 2);
+    }
+  } catch {
+    // Some style prompts are intentionally prose rather than JSON.
+  }
+
+  return `${prompt.trim()}\n\n${VERTICAL_9_16_INSTRUCTION}`;
+}
+
 export function buildVariants(input: CustomerInput): BuiltVariant[] {
   const data = InputSchema.parse(input);
   const style = getStyle(data.styleId);
@@ -77,6 +100,6 @@ export function buildVariants(input: CustomerInput): BuiltVariant[] {
       VIEW: merged.view
     });
 
-    return { variant: variant as 1|2, prompt, attachments: uniqueAttachments };
+    return { variant: variant as 1|2, prompt: addVariantCompositionGuidance(prompt, variant), attachments: uniqueAttachments };
   });
 }

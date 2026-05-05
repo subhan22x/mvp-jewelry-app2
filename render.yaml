@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: mvp-jewelry-app
+    runtime: node
+    plan: starter
+    rootDir: mvp-jewelry-app
+    buildCommand: npm ci && npm run prisma:generate && npm run build
+    startCommand: npm run start:render
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/var/data/dev.db
+      - key: GENERATED_IMAGE_DIR
+        value: /var/data/generated
+      - key: VIDEO_ACCESS_CODE
+        value: ID8
+      - key: VIDEO_DURATION_SECONDS
+        value: "7"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: WAVESPEED_API_KEY
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+    disk:
+      name: jewelry-data
+      mountPath: /var/data
+      sizeGB: 10
