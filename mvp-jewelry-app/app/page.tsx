@@ -15,7 +15,7 @@ type CardConfig = {
 const cards: CardConfig[] = [
   { id: "logo", label: "Logo", href: "#", disabled: true },
   { id: "name", label: "Name", subtitle: "or Initials", href: "/name", active: true, thumb: "/pendants/deja.png" },
-  { id: "picture", label: "Picture Pendants", href: "#", disabled: true },
+  { id: "picture", label: "Picture Pendants", href: "/picture-pendants", thumb: "/picture-pendants/picturependant3.jpg" },
   { id: "custom", label: "Custom Design", href: "#", disabled: true },
   { id: "inspired", label: "Get Inspired", href: "#", disabled: true },
   { id: "draw", label: "Draw your design", href: "#", disabled: true }

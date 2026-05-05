@@ -28,7 +28,7 @@ export default function EmblemPicker({ selected, onSelect, disabled = false }: P
           />
         ))}
       </div>
-      <div className="mt-6 flex justify-center gap-2 overflow-visible sm:mt-8 sm:gap-4">
+      <div className="mt-2 flex justify-center gap-2 overflow-visible sm:mt-3 sm:gap-4">
         <div className="mr-9 sm:mr-12" />
         {bottomRow.map(asset => (
           <EmblemDiamond
@@ -82,20 +82,3 @@ function EmblemDiamond({ assetId, label, src, active, onSelect }: EmblemDiamondP
     </button>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -70,9 +70,9 @@ test.describe("Name builder flow", () => {
     await expect(page.getByRole("button", { name: /^vvs$/i })).toHaveAttribute("aria-pressed", "false");
   });
 
-  // Helper: mock POST (returns requestId) and GET poll (returns all 4 results immediately)
+  // Mocks POST (returns requestId), GET poll (returns 2 results immediately), and leads POST
   async function mockGenerationApi(page: import("@playwright/test").Page, requestId = "e2e-test") {
-    const results = [1, 2, 3, 4].map(v => ({
+    const results = [1, 2].map(v => ({
       variant: v,
       imageUrl: `/samples/Gemini_Generated_Image_7tlquz7tlquz7tlq.png`
     }));
@@ -90,6 +90,21 @@ test.describe("Name builder flow", () => {
         body: JSON.stringify({ id: requestId, results, done: true })
       });
     });
+    await page.route("/api/leads", async route => {
+      await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ leadId: "e2e-lead" }) });
+    });
+  }
+
+  // Fills and submits the lead capture form that appears when entering step 4
+  async function submitLeadForm(page: import("@playwright/test").Page) {
+    await expect(page.getByRole("dialog", { name: /to continue/i })).toBeVisible({ timeout: 10_000 });
+    await page.getByLabel(/^name$/i).fill("E2E User");
+    // PhoneInput renders a visible phone input — use placeholder text to locate it
+    const phoneInput = page.getByPlaceholder(/phone/i).first();
+    await phoneInput.fill("5555551234");
+    await page.getByLabel(/^email address$/i).fill("e2e@example.com");
+    await page.getByRole("button", { name: /^submit$/i }).click();
+    await expect(page.getByRole("dialog", { name: /to continue/i })).not.toBeVisible({ timeout: 5_000 });
   }
 
   test("step 2 — accept calls API and transitions to results (mocked)", async ({ page }) => {
@@ -100,8 +115,9 @@ test.describe("Name builder flow", () => {
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^accept$/i }).click();
 
+    await submitLeadForm(page);
     await expect(page.getByText("Choose your favourite")).toBeVisible({ timeout: 10_000 });
-    expect(await page.getByRole("button", { name: /^draft \d$/i }).count()).toBe(4);
+    expect(await page.getByRole("button", { name: /^draft \d$/i }).count()).toBe(2);
   });
 
   test("step 4 — preview modal opens and closes", async ({ page }) => {
@@ -111,6 +127,7 @@ test.describe("Name builder flow", () => {
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^accept$/i }).click();
+    await submitLeadForm(page);
     await expect(page.getByText("Choose your favourite")).toBeVisible({ timeout: 10_000 });
 
     await page.getByLabel("Preview Draft 1").click();
@@ -127,6 +144,7 @@ test.describe("Name builder flow", () => {
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^accept$/i }).click();
+    await submitLeadForm(page);
     await expect(page.getByText("Choose your favourite")).toBeVisible({ timeout: 10_000 });
 
     page.on("dialog", d => d.accept());

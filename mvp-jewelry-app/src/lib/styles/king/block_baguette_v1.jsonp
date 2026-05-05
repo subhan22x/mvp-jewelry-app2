@@ -1,20 +1,12 @@
-{
-  "role": "image_generation_request",
-  "version": "1.1",
-  "purpose": "Create an ultra-realistic product photo of a bold slanted name pendant with invisible-set baguette interiors.",
-  "style_control": {
-    "inherit_from_source": true,
-    "deviation_strength": {{DEVIATION}},
-    "notes": "Do not change the core style; allow small controlled variations."
-  },
-  "pendant": {
-    "text": { "content": "{{TEXT}}", "case": "as-is" },
-    "caps_policy": "{{CAPS_POLICY}}",
-    "bubble_outline": {{BUBBLE_OUTLINE}},
-    "emblem": "{{EMBLEM}}",
-    "colorway": "{{COLOR_SCHEME}}",
-    "setting": "invisible_set_baguette"
-  },
-  "background": "suede_matte_black",
-  "render_view": "{{VIEW}}"
-}
+You are customizing a jewelry pendant. change the text on this pendant to "{{TEXT}}", keep the style and font the same (notice that the text is quite slanted, make it like that), but make sure the lettering reads "{{TEXT}}" and keeps the integrity of the new text.change the color of the entire jewelry pendant to {{COLOR_SCHEME}}, 
+
+The diamond setting on the lettering is invisible-set baguette interiors so keep that. Make the text interior have invisible set baguette diamonds. change the background to suede black.  
+
+Use the font {{FONT}}
+
+Professional key light from top far right of the background, spotlight from far middle
+                
+
+    A {{EMBLEM}} emblem is a small symbol that generally goes above the lettering, where the bail for the chain is added, it is generally 15 - 30% of the size when compared to the main text on the pendant.      
+
+   Add a {{EMBLEM}} emblem like the one shown in the second picture, this {{EMBLEM}} emblem will go above the name, where there currently is a ring for the pendant to be hung on a chain, this {{EMBLEM}} emblem goes there.
