@@ -14,6 +14,22 @@ const Body = z.object({
   emblem: z.enum(['none','crown','heart','spade','butterfly','moneybag']),
 });
 
+function getGenerationErrorMessage(err: unknown): string {
+  const fallback = 'Image generation failed.';
+  if (!(err instanceof Error)) return fallback;
+
+  const match = err.message.match(/\{.*\}/s);
+  if (!match) return err.message || fallback;
+
+  try {
+    const parsed = JSON.parse(match[0]);
+    const message = parsed?.error?.message ?? parsed?.message;
+    return typeof message === 'string' && message.trim() ? message : fallback;
+  } catch {
+    return err.message || fallback;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
@@ -21,6 +37,7 @@ export async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         userId: body.userId,
+        productType: 'name',
         styleId: body.styleId,
         text: body.text,
         twoTone: body.twoTone,
@@ -40,22 +57,56 @@ export async function POST(req: Request) {
       emblem: body.emblem
     });
 
-    // Fire all 4 generation tasks in parallel without blocking the response.
+    const attemptRows = await Promise.all(variants.map((v) => {
+      const startedAt = new Date();
+      return prisma.result.create({
+        data: {
+          requestId: request.id,
+          variant: v.variant,
+          prompt: v.prompt,
+          status: 'pending',
+          startedAt
+        }
+      });
+    }));
+
+    // Fire all generation tasks in parallel without blocking the response.
     // Note: in a Vercel production deploy, use `waitUntil` from @vercel/functions
     // to ensure the Lambda stays alive until all tasks complete.
-    void Promise.all(variants.map(async (v) => {
+    void Promise.all(variants.map(async (v, index) => {
+      const attempt = attemptRows[index];
+      const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
-        const { imageUrl } = await generateImage({
+        const { imageUrl, modelId } = await generateImage({
           prompt: v.prompt,
           attachments: v.attachments,
           requestId: request.id,
           variant: v.variant
         });
-        await prisma.result.create({
-          data: { requestId: request.id, variant: v.variant, prompt: v.prompt, imageUrl }
+        const completedAt = new Date();
+        await prisma.result.update({
+          where: { id: attempt.id },
+          data: {
+            imageUrl,
+            modelId,
+            status: 'succeeded',
+            error: null,
+            completedAt,
+            durationMs: Math.max(0, completedAt.getTime() - startedMs)
+          }
         });
       } catch (err) {
         console.error(`[variant ${v.variant}] generation failed:`, err);
+        const completedAt = new Date();
+        await prisma.result.update({
+          where: { id: attempt.id },
+          data: {
+            status: 'failed',
+            error: getGenerationErrorMessage(err),
+            completedAt,
+            durationMs: Math.max(0, completedAt.getTime() - startedMs)
+          }
+        });
       }
     }));
 

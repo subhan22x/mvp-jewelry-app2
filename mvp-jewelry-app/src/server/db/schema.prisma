@@ -19,21 +19,38 @@ model Request {
   createdAt      DateTime @default(now())
   userId         String
   user           User     @relation(fields: [userId], references: [id])
+  productType    String   @default("name") // name | picture
   styleId        String
   text           String
   twoTone        Boolean  @default(false)
   primaryMetal   String
   secondaryMetal String?
   emblem         String   // none | crown | heart | spade | butterfly | moneybag
+  uploadFileName String?
   Results        Result[]
 }
 
 model Result {
+  id          String    @id @default(cuid())
+  requestId   String
+  request     Request   @relation(fields: [requestId], references: [id])
+  variant     Int       // 1..2
+  prompt      String
+  imageUrl    String?
+  modelId     String?
+  status      String    @default("pending") // pending | succeeded | failed
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+  createdAt   DateTime  @default(now())
+}
+
+model Lead {
   id        String   @id @default(cuid())
-  requestId String
-  request   Request  @relation(fields: [requestId], references: [id])
-  variant   Int      // 1..4
-  prompt    String
-  imageUrl  String
+  requestId String?
+  name      String
+  phone     String
+  email     String
   createdAt DateTime @default(now())
 }

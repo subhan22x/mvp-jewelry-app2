@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import EmblemPicker from "./components/EmblemPicker";
+import LeadCaptureModal from "./components/LeadCaptureModal";
 import { pendantStyles, emblems, type PendantStyle } from "@/lib/assets";
 
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -14,6 +15,12 @@ const MAX_POLL_ATTEMPTS = 50;
 type GoldComboKey = "YELLOW_WHITE" | "ROSE_WHITE" | "WHITE";
 
 type GenerationOption = { id: string; label: string; src: string; variant: number };
+type GenerationAttempt = {
+  variant: number;
+  status: "pending" | "succeeded" | "failed";
+  error?: string | null;
+  durationSeconds?: number | null;
+};
 
 const GOLD_COMBO_TO_METALS: Record<GoldComboKey, { twoTone: boolean; primary: 'rose_gold' | 'white_gold' | 'yellow_gold'; secondary: 'rose_gold' | 'white_gold' | 'yellow_gold' | null }> = {
   YELLOW_WHITE: { twoTone: true, primary: 'yellow_gold', secondary: 'white_gold' },
@@ -55,6 +62,8 @@ export default function NameBuilder() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewOption, setPreviewOption] = useState<GenerationOption | null>(null);
+  const [showLeadCapture, setShowLeadCapture] = useState(false);
+  const [capturedRequestId, setCapturedRequestId] = useState<string | null>(null);
 
   // Incremented on each new generation kick-off; stale poll callbacks check this
   // before applying state so a cancelled request can't jump the user to step 4.
@@ -115,6 +124,7 @@ export default function NameBuilder() {
       cancelPolling();
       setGenerations([]);
       setSelectedGenerationId(null);
+      setShowLeadCapture(false);
     }
     const prevStep = step === 4 ? 2 : ((step - 1) as Step);
     setStep(prevStep as Step);
@@ -170,6 +180,8 @@ export default function NameBuilder() {
 
       const requestId: string = data.requestId;
       // Move to results immediately — tiles appear as they're generated
+      setCapturedRequestId(requestId);
+      setShowLeadCapture(true);
       setStep(4 as Step);
 
       let pollCount = 0;
@@ -182,6 +194,8 @@ export default function NameBuilder() {
           if (epoch !== generationEpochRef.current) return;
 
           const results: Array<{ variant: number; imageUrl: string }> = pollData.results ?? [];
+          const attempts: GenerationAttempt[] = pollData.attempts ?? [];
+          const failedAttempts = attempts.filter(attempt => attempt.status === "failed");
           const mapped: GenerationOption[] = results.map(r => ({
             id: `variant-${r.variant}`,
             label: `Draft ${r.variant}`,
@@ -196,6 +210,14 @@ export default function NameBuilder() {
           if (pollData.done || pollCount >= MAX_POLL_ATTEMPTS) {
             pollTimeoutRef.current = null;
             setIsGenerating(false);
+            if (!pollData.done && pollCount >= MAX_POLL_ATTEMPTS) {
+              setGenerationError("Image generation timed out before all drafts finished. Please go back and try again.");
+            } else if (failedAttempts.length > 0 && mapped.length === 0) {
+              const firstError = failedAttempts.find(attempt => attempt.error)?.error;
+              setGenerationError(firstError ?? "No successful drafts were generated. Please go back and try again.");
+            } else if (failedAttempts.length > 0) {
+              setGenerationError(`${failedAttempts.length} draft${failedAttempts.length === 1 ? "" : "s"} failed, but you can continue with the generated draft${mapped.length === 1 ? "" : "s"}.`);
+            }
             return;
           }
         } catch {
@@ -229,8 +251,8 @@ export default function NameBuilder() {
 
   return (
     <>
-    <main className="min-h-dvh px-4 py-10 text-white md:px-8">
-      <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-12 pt-10 sm:px-6 md:px-12">
+    <main className="min-h-dvh px-4 py-4 text-white md:px-8">
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6 md:px-12">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
           <button
             type="button"
@@ -251,7 +273,7 @@ export default function NameBuilder() {
             </p>
           </header>
 
-          <section className="mt-8 flex-1">
+          <section className="mt-4 flex-1">
             {step === 0 && (
               <div className="space-y-7">
                 <div>
@@ -347,7 +369,7 @@ export default function NameBuilder() {
             )}
 
             {step === 1 && (
-              <div className="space-y-8">
+              <div className="space-y-4">
                 {/* Emblem step: toggle, picker, gold tones. */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -374,8 +396,7 @@ export default function NameBuilder() {
                 />
 
                 <div>
-                  <h2 className="text-lg font-semibold text-center">Gold Finish</h2>
-                  <p className="mt-1 text-sm text-white/60 text-center">Hand-picked combinations that balance warmth and contrast.</p>
+                  <h2 className="text-lg font-semibold text-center">Select Color Combo</h2>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {GOLD_COMBOS.map(option => {
                       const isActive = goldCombo === option.id;
@@ -496,11 +517,16 @@ export default function NameBuilder() {
                   </p>
                   {isGenerating && (
                     <p className="mt-1 text-xs text-white/35 text-center sm:text-left">
-                      {generations.length} of 4 generated
+                      {generations.length} of 2 generated
                     </p>
                   )}
+                  {generationError && (
+                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      {generationError}
+                    </div>
+                  )}
                   <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    {([1, 2, 3, 4] as const).map(variantNum => {
+                    {([1, 2] as const).map(variantNum => {
                       const option = generations.find(g => g.variant === variantNum);
                       if (!option) {
                         return (
@@ -550,7 +576,7 @@ export default function NameBuilder() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={() => { if (!confirmDiscardGenerations()) return; cancelPolling(); setGenerations([]); setSelectedGenerationId(null); setStep(2 as Step); }}
+                    onClick={() => { if (!confirmDiscardGenerations()) return; cancelPolling(); setGenerations([]); setSelectedGenerationId(null); setShowLeadCapture(false); setStep(2 as Step); }}
                     className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
                   >
                     back
@@ -569,7 +595,7 @@ export default function NameBuilder() {
 
           </section>
 
-          <footer className="mt-12 flex items-center justify-between">
+          <footer className="mt-6 flex items-center justify-between">
             <span className="w-16" aria-hidden />
 
             <div className="flex items-center justify-center gap-2">
@@ -645,6 +671,13 @@ export default function NameBuilder() {
           </button>
         </div>
       </div>
+    )}
+
+    {showLeadCapture && (
+      <LeadCaptureModal
+        requestId={capturedRequestId}
+        onSubmitted={() => setShowLeadCapture(false)}
+      />
     )}
     </>
   );

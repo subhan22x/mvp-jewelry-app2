@@ -9,11 +9,17 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush })
 }));
 
+// Stub PhoneInput so tests can interact with it as a plain input
+vi.mock("react-international-phone", () => ({
+  PhoneInput: ({ value, onChange, inputProps }: any) =>
+    <input {...inputProps} type="tel" value={value} onChange={(e: any) => onChange(e.target.value)} placeholder="Phone number" />
+}));
+
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-// POST returns requestId immediately; GET returns results and done flag
-const MOCK_RESULTS = [1, 2, 3, 4].map(v => ({
+// POST returns requestId immediately; GET returns 2 results and done flag
+const MOCK_RESULTS = [1, 2].map(v => ({
   variant: v,
   imageUrl: `/generated/req-test-v${v}.png`
 }));
@@ -28,7 +34,45 @@ function mockPostSuccess() {
 function mockGetSuccess(results = MOCK_RESULTS) {
   mockFetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ id: "req-test", results, done: results.length >= 4 })
+    json: async () => ({
+      id: "req-test",
+      results,
+      attempts: results.map(result => ({
+        ...result,
+        status: "succeeded",
+        durationSeconds: 2.5
+      })),
+      done: results.length >= 2
+    })
+  });
+}
+
+function mockGetFailed(message = "Provider failed") {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      id: "req-test",
+      results: [],
+      attempts: [
+        { variant: 1, status: "failed", error: message, durationSeconds: 1.25 },
+        { variant: 2, status: "failed", error: message, durationSeconds: 1.5 }
+      ],
+      done: true
+    })
+  });
+}
+
+function mockLeadsSuccess() {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ leadId: "lead-test" })
+  });
+}
+
+function mockLeadsError(message = "Server error") {
+  mockFetch.mockResolvedValueOnce({
+    ok: false,
+    json: async () => ({ error: message })
   });
 }
 
@@ -64,13 +108,25 @@ async function toStep2(user: ReturnType<typeof userEvent.setup>) {
   await tap(user, screen.getByRole("button", { name: /^next$/i }));
 }
 
-// Navigates to step 4 with all 4 images loaded
+// Submits the lead capture modal that appears on entering step 4
+async function submitLeadForm(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = await screen.findByRole("dialog", { name: /to continue/i });
+  await type(user, screen.getByLabelText(/^name$/i), "Test User");
+  await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
+  await type(user, screen.getByLabelText(/^email address$/i), "test@example.com");
+  mockLeadsSuccess();
+  await tap(user, screen.getByRole("button", { name: /^submit$/i }));
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+}
+
+// Navigates to step 4 with all 2 images loaded
 async function toStep4(user: ReturnType<typeof userEvent.setup>) {
   await toStep2(user);
   mockPostSuccess();
-  mockGetSuccess(); // first immediate poll returns all 4 with done:true
+  mockGetSuccess(); // first immediate poll returns all 2 with done:true
   await tap(user, screen.getByRole("button", { name: /^accept$/i }));
-  await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(4));
+  await submitLeadForm(user);
+  await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2));
 }
 
 beforeEach(() => {
@@ -307,13 +363,14 @@ describe("Step 2 — Review", () => {
     expect((screen.getByPlaceholderText(/text on pendant/i) as HTMLInputElement).value).toBe("Aurora");
   });
 
-  it("accept button sends POST to /api/requests and advances to step 4", async () => {
+  it("accept button sends POST to /api/requests and transitions to step 4", async () => {
     const { user } = await setup();
     await toStep2(user);
     mockPostSuccess();
     mockGetSuccess();
     await tap(user, screen.getByRole("button", { name: /^accept$/i }));
-    await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(4));
+    await submitLeadForm(user);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2));
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/requests",
       expect.objectContaining({ method: "POST" })
@@ -339,8 +396,97 @@ describe("Step 2 — Review", () => {
     mockPostSuccess();
     mockGetSuccess();
     await tap(user, screen.getByRole("button", { name: /^accept$/i }));
-    await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(4));
-    expect(mockFetch).toHaveBeenCalledTimes(3); // 2 × POST + 1 × GET
+    await submitLeadForm(user);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2));
+    expect(mockFetch).toHaveBeenCalledTimes(4); // 2 × POST + 1 × GET + 1 × leads
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("Lead capture modal", () => {
+  it("appears immediately when step 4 starts (before lead submit)", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockFetch.mockReturnValueOnce(new Promise(() => {})); // GET never resolves
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("dialog", { name: /to continue/i })).toBeInTheDocument()
+    );
+  });
+
+  it("does not close on overlay backdrop click", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockFetch.mockReturnValueOnce(new Promise(() => {}));
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    const dialog = await screen.findByRole("dialog", { name: /to continue/i });
+    await act(async () => { await user.click(dialog); });
+    expect(dialog).toBeInTheDocument();
+  });
+
+  it("successful submit closes the modal", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockGetSuccess();
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    const dialog = await screen.findByRole("dialog", { name: /to continue/i });
+    await type(user, screen.getByLabelText(/^name$/i), "Test User");
+    await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
+    await type(user, screen.getByLabelText(/^email address$/i), "test@example.com");
+    mockLeadsSuccess();
+    await tap(user, screen.getByRole("button", { name: /^submit$/i }));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  });
+
+  it("server error keeps modal open with values intact", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockGetSuccess();
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await screen.findByRole("dialog", { name: /to continue/i });
+    await type(user, screen.getByLabelText(/^name$/i), "Test User");
+    await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
+    await type(user, screen.getByLabelText(/^email address$/i), "test@example.com");
+    mockLeadsError("Server error");
+    await tap(user, screen.getByRole("button", { name: /^submit$/i }));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.getByRole("dialog", { name: /to continue/i })).toBeInTheDocument();
+    expect((screen.getByLabelText(/^name$/i) as HTMLInputElement).value).toBe("Test User");
+  });
+
+  it("submit button is disabled while request is in flight", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockGetSuccess();
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await screen.findByRole("dialog", { name: /to continue/i });
+    await type(user, screen.getByLabelText(/^name$/i), "Test User");
+    await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
+    await type(user, screen.getByLabelText(/^email address$/i), "test@example.com");
+    // Leads POST never resolves
+    mockFetch.mockReturnValueOnce(new Promise(() => {}));
+    await act(async () => {
+      await user.click(screen.getByRole("button", { name: /^submit$/i }));
+    });
+    expect(screen.getByRole("button", { name: /submitting/i })).toBeDisabled();
+  });
+
+  it("modal closes when navigating back from step 4", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockFetch.mockReturnValueOnce(new Promise(() => {}));
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await screen.findByRole("dialog", { name: /to continue/i });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await tap(user, screen.getAllByRole("button", { name: /^back$/i })[0]);
+    expect(screen.queryByRole("dialog", { name: /to continue/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
   });
 });
 
@@ -357,10 +503,10 @@ describe("Step 4 — Progressive loading & Results", () => {
     expect(screen.queryAllByRole("button", { name: /^draft \d$/i })).toHaveLength(0);
   });
 
-  it("fills in tiles as results arrive and shows all 4 when done", async () => {
+  it("fills in tiles and shows all 2 when done", async () => {
     const { user } = await setup();
     await toStep4(user);
-    expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2);
     expect(screen.queryByText(/drafting your designs/i)).not.toBeInTheDocument();
     expect(screen.getByText(/choose your favourite/i)).toBeInTheDocument();
   });
@@ -375,25 +521,37 @@ describe("Step 4 — Progressive loading & Results", () => {
     const { user } = await setup();
     await toStep2(user);
     mockPostSuccess();
-    // GET returns only 2 of 4 (not done)
+    // GET returns only 1 of 2 (not done)
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         id: "req-test",
-        results: MOCK_RESULTS.slice(0, 2),
+        results: MOCK_RESULTS.slice(0, 1),
         done: false
       })
     });
     await tap(user, screen.getByRole("button", { name: /^accept$/i }));
-    await waitFor(() => screen.getByText(/2 of 4 generated/i));
+    await waitFor(() => screen.getByText(/1 of 2 generated/i));
+  });
+
+  it("stops loading and shows an error when generation attempts finish without images", async () => {
+    const { user } = await setup();
+    await toStep2(user);
+    mockPostSuccess();
+    mockGetFailed("Provider failed after 1.25 seconds");
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await submitLeadForm(user);
+    await waitFor(() => expect(screen.queryByText(/drafting your designs/i)).not.toBeInTheDocument());
+    expect(screen.getByText(/provider failed after 1\.25 seconds/i)).toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: /^draft \d$/i })).toHaveLength(0);
   });
 
   it("clicking a different tile selects it", async () => {
     const { user } = await setup();
     await toStep4(user);
-    await tap(user, screen.getByRole("button", { name: /^draft 3$/i }));
+    await tap(user, screen.getByRole("button", { name: /^draft 2$/i }));
     expect(screen.getByRole("button", { name: /^draft 1$/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /^draft 3$/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^draft 2$/i })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("continue button is enabled when a draft is selected", async () => {

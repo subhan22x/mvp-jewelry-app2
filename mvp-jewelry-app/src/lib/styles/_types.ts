@@ -13,7 +13,7 @@ export type StyleConfig = {
   templateKey: string;        // filename without extension
   emblemsAllowed: Emblem[];
   defaults: (Required<VariantConfig> & { view: string }) & { font?: string; schemeType?: string };
-  variantMatrix: [VariantConfig, VariantConfig, VariantConfig, VariantConfig];
+  variantMatrix: [VariantConfig, VariantConfig];
   assets?: {
     pendantRef?: string;
     bailRef?: string;
@@ -32,7 +32,7 @@ export type CustomerInput = {
 };
 
 export type BuiltVariant = {
-  variant: 1|2|3|4;
+  variant: 1|2;
   prompt: string;
-  attachments: string[]; // resolved file paths if any
+  attachments: string[];
 };

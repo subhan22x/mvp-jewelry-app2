@@ -1,0 +1,42 @@
+[
+  {
+    "id": "pendant1",
+    "label": "Round Classic",
+    "src": "/picture-pendants/pendant1.jpg",
+    "baseImage": "public/picture-pendants/pendant1.jpg",
+    "maskImage": "public/picture-pendants/pendant1_green.jpg",
+    "available": true
+  },
+  {
+    "id": "picturependant2",
+    "label": "Oval Halo",
+    "src": "/picture-pendants/picturependant2.jpg",
+    "baseImage": "public/picture-pendants/picturependant2.jpg",
+    "maskImage": "public/picture-pendants/picturependant2_green.jpg",
+    "available": true
+  },
+  {
+    "id": "picturependant3",
+    "label": "Winged Round",
+    "src": "/picture-pendants/picturependant3.jpg",
+    "baseImage": "public/picture-pendants/picturependant3.jpg",
+    "maskImage": "public/picture-pendants/picturependant3_green.jpg",
+    "available": true
+  },
+  {
+    "id": "picturependant4",
+    "label": "Sunburst Round",
+    "src": "/picture-pendants/picturependant4.jpg",
+    "baseImage": "public/picture-pendants/picturependant4.jpg",
+    "maskImage": "public/picture-pendants/picturependant4_green.jpg",
+    "available": true
+  },
+  {
+    "id": "picturependant5",
+    "label": "Heart Frame",
+    "src": "/picture-pendants/picturependant5.jpg",
+    "baseImage": "public/picture-pendants/picturependant5.jpg",
+    "maskImage": "public/picture-pendants/picturependant5_green.jpg",
+    "available": true
+  }
+]

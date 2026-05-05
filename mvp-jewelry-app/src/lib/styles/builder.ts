@@ -29,13 +29,26 @@ export function buildVariants(input: CustomerInput): BuiltVariant[] {
   const lines = splitLines(data.text);
   const baseFont = style.defaults.font ?? 'inherit_source_style';
 
-  const variants: BuiltVariant[] = [1,2,3,4].map((n) => {
-    const v = style.variantMatrix[n-1];
+  const attachments: string[] = [];
+  if (style.assets?.pendantRef) {
+    attachments.push(path.join(process.cwd(), style.assets.pendantRef));
+  }
+  if (style.assets?.bailRef) {
+    attachments.push(path.join(process.cwd(), style.assets.bailRef));
+  }
+  if (data.emblem !== 'none') {
+    const emblemRef = style.assets?.emblemRefs?.[data.emblem];
+    if (emblemRef) attachments.push(path.join(process.cwd(), emblemRef));
+  }
+
+  const uniqueAttachments = Array.from(new Set(attachments));
+  return [1, 2].map((variant) => {
+    const v = style.variantMatrix[variant - 1];
     const merged = {
       deviation: v.deviationStrength ?? style.defaults.deviationStrength,
-      bubble:    v.bubbleOutline ?? style.defaults.bubbleOutline,
-      caps:      v.forceAllCaps ?? style.defaults.forceAllCaps,
-      view:      style.defaults.view
+      bubble: v.bubbleOutline ?? style.defaults.bubbleOutline,
+      caps: v.forceAllCaps ?? style.defaults.forceAllCaps,
+      view: style.defaults.view
     };
 
     const finalLines = merged.caps ? lines.map(line => line.toUpperCase()) : lines;
@@ -64,21 +77,6 @@ export function buildVariants(input: CustomerInput): BuiltVariant[] {
       VIEW: merged.view
     });
 
-    const attachments: string[] = [];
-    if (style.assets?.pendantRef) {
-      attachments.push(path.join(process.cwd(), style.assets.pendantRef));
-    }
-    if (style.assets?.bailRef) {
-      attachments.push(path.join(process.cwd(), style.assets.bailRef));
-    }
-    if (data.emblem !== 'none') {
-      const emblemRef = style.assets?.emblemRefs?.[data.emblem];
-      if (emblemRef) attachments.push(path.join(process.cwd(), emblemRef));
-    }
-
-    const uniqueAttachments = Array.from(new Set(attachments));
-    return { variant: n as 1|2|3|4, prompt, attachments: uniqueAttachments };
+    return { variant: variant as 1|2, prompt, attachments: uniqueAttachments };
   });
-
-  return variants;
 }

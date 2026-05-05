@@ -1,4 +1,5 @@
 import stylesData from "@/data/pendant-styles.json";
+import pictureStylesData from "@/data/picture-pendant-styles.json";
 
 export type EmblemAsset = {
   id: string;
@@ -13,8 +14,25 @@ export type PendantStyle = {
   accent?: string;
 };
 
+export type PicturePendantStyle = {
+  id: string;
+  label: string;
+  src?: string;
+  baseImage?: string;
+  maskImage?: string;
+  description?: string;
+  available?: boolean;
+};
+
 // Styles are sourced from data/pendant-styles.json; use scripts/manage-styles.mjs to edit.
 export const pendantStyles: PendantStyle[] = (stylesData as PendantStyle[]).map(style => ({ ...style }));
+
+// Picture Pendant styles stay separate from Name styles. A style is selectable
+// only when explicitly marked available after its assets/prompts are added.
+export const picturePendantStyles: PicturePendantStyle[] = (pictureStylesData as PicturePendantStyle[]).map(style => ({
+  ...style,
+  available: style.available === true
+}));
 
 // Emblem art for Name step; drop new PNGs in public/emblems then add them here.
 export const emblems: EmblemAsset[] = [
