@@ -298,7 +298,7 @@ Render MVP deployment uses the local SQLite app architecture with a persistent d
 - The persistent disk mounts at `/var/data`.
 - `DATABASE_URL=file:/var/data/dev.db` stores SQLite on that disk.
 - `GENERATED_IMAGE_DIR=/var/data/generated` stores generated images on that disk.
-- `npm run start:render` runs `prisma migrate deploy`, seeds the demo user, then starts Next.
+- `npm run start` runs `prisma migrate deploy`, seeds the demo user, then starts Next.
 - `/generated/:file` is handled by `app/generated/[file]/route.ts`, so generated files can live outside `public/generated`.
 
 This is meant as the quick internal MVP path. For heavier production usage, migrate Prisma to Postgres and move generated files to object storage.

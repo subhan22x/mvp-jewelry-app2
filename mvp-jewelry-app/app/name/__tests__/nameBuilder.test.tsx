@@ -132,6 +132,7 @@ async function toStep1(user: ReturnType<typeof userEvent.setup>, name = "Aurora"
 
 async function toStep2(user: ReturnType<typeof userEvent.setup>) {
   await toStep1(user);
+  await tap(user, screen.getByRole("button", { name: /crown/i }));
   await tap(user, screen.getByRole("button", { name: /^next$/i }));
 }
 
@@ -333,8 +334,38 @@ describe("Step 1 — Emblem & Gold", () => {
   it("next advances to step 2", async () => {
     const { user } = await setup();
     await toStep1(user);
+    await tap(user, screen.getByRole("button", { name: /crown/i }));
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
     expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+  });
+
+  it("shows a warning below next when emblem is enabled but none is selected", async () => {
+    const { user } = await setup();
+    await toStep1(user);
+    await tap(user, screen.getByRole("button", { name: /^next$/i }));
+
+    expect(screen.getByText(/please select an emblem before continuing/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^accept$/i })).not.toBeInTheDocument();
+  });
+
+  it("clears the warning after selecting an emblem", async () => {
+    const { user } = await setup();
+    await toStep1(user);
+    await tap(user, screen.getByRole("button", { name: /^next$/i }));
+    expect(screen.getByText(/please select an emblem before continuing/i)).toBeInTheDocument();
+
+    await tap(user, screen.getByRole("button", { name: /heart/i }));
+    expect(screen.queryByText(/please select an emblem before continuing/i)).not.toBeInTheDocument();
+  });
+
+  it("allows continuing without an emblem when the emblem option is off", async () => {
+    const { user } = await setup();
+    await toStep1(user);
+    await tap(user, screen.getByLabelText(/toggle emblem/i));
+    await tap(user, screen.getByRole("button", { name: /^next$/i }));
+
+    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(screen.queryByText(/please select an emblem before continuing/i)).not.toBeInTheDocument();
   });
 });
 
@@ -361,10 +392,10 @@ describe("Step 2 — Review", () => {
     expect(screen.getByRole("button", { name: /^vvs$/i })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("shows 'None selected' when emblem toggle is on but nothing chosen", async () => {
+  it("shows selected emblem from the default helper in summary", async () => {
     const { user } = await setup();
     await toStep2(user);
-    expect(screen.getByText("None selected")).toBeInTheDocument();
+    expect(screen.getByText("Crown")).toBeInTheDocument();
   });
 
   it("shows 'Not included' when emblem is toggled off", async () => {
@@ -726,6 +757,7 @@ describe("Step indicator dots", () => {
     expect(activeDotIndex()).toBe(0);
     await toStep1(user);
     expect(activeDotIndex()).toBe(1);
+    await tap(user, screen.getByRole("button", { name: /crown/i }));
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
     expect(activeDotIndex()).toBe(2);
   });
