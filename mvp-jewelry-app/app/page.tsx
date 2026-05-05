@@ -1,35 +1,28 @@
 import Image from "next/image";
 import Link from "next/link";
 
-type CardConfig = {
+type CategoryCard = {
   id: string;
   label: string;
-  subtitle?: string;
   href?: string;
   disabled?: boolean;
-  active?: boolean;
-  thumb?: string;
+  iconSrc: string;
 };
 
-// Home screen tiles live here; add or update cards to change the entry points.
-const cards: CardConfig[] = [
-  { id: "logo", label: "Logo", href: "#", disabled: true },
-  { id: "name", label: "Name", subtitle: "or Initials", href: "/name", active: true, thumb: "/pendants/deja.png" },
-  { id: "picture", label: "Picture Pendants", href: "/picture-pendants", thumb: "/picture-pendants/picturependant3.jpg" },
-  { id: "custom", label: "Custom Design", href: "#", disabled: true },
-  { id: "inspired", label: "Get Inspired", href: "#", disabled: true },
-  { id: "draw", label: "Draw your design", href: "#", disabled: true }
+const categories: CategoryCard[] = [
+  { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png" },
+  { id: "ring", label: "Ring", disabled: true, iconSrc: "/category-icons/ring.png" },
+  { id: "bracelet", label: "Bracelet", disabled: true, iconSrc: "/category-icons/bracelet.png" },
+  { id: "necklace", label: "Necklace", disabled: true, iconSrc: "/category-icons/necklace.png" }
 ];
 
-// Shared styling for each card. Adjust spacing or borders in one place.
-const baseCardClass =
-  "group relative flex min-h-[208px] flex-col items-center justify-between rounded-[28px] border border-white/15 bg-black/90 p-5 text-center transition hover:border-white/35";
+const cardClass =
+  "group relative flex aspect-square flex-col items-center justify-center rounded-[30px] border border-[#d1b873]/25 bg-black/90 p-5 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:border-[#d1b873]/70 hover:shadow-[0_0_28px_rgba(209,184,115,0.14)]";
 
 export default function Page() {
   return (
-    <main className="min-h-dvh px-4 py-10 text-white md:px-8">
-      <div className="mx-auto w-full max-w-4xl px-4 pb-14 pt-10 sm:px-6 md:px-12">
-        {/* Hero copy; tweak typography or messaging here. */}
+    <main className="min-h-dvh px-4 py-8 text-white md:px-8">
+      <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-8 sm:px-6 md:px-12">
         <header className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.35em] text-white/70">001</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight md:text-[2.75rem]">Dream it first</h1>
@@ -44,55 +37,50 @@ export default function Page() {
           </p>
         </header>
 
-        {/* Grid of entry cards; Tailwind grid classes control layout across breakpoints. */}
-        <section className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3">
-          {cards.map(card => {
-            const isActive = Boolean(card.active);
-            const disabledState = card.disabled ? "opacity-45 saturate-[0.7]" : "";
-            const className = `${baseCardClass} ${disabledState} ${isActive ? "border-[3px] border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.35)]" : ""}`;
-
+        <section className="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:gap-8">
+          {categories.map(category => {
             const body = (
               <>
-                <div className="relative aspect-square w-full overflow-hidden rounded-[22px] bg-black">
-                  {card.thumb ? (
-                    <Image
-                      src={card.thumb}
-                      alt={card.label}
-                      fill
-                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-                      className="object-contain object-center"
-                      priority={card.active}
-                    />
-                   ) : null}
+                <div className="relative h-24 w-24 sm:h-32 sm:w-32">
+                  <Image
+                    src={category.iconSrc}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 96px, 128px"
+                    className="object-contain"
+                    priority={category.id === "pendant"}
+                  />
                 </div>
-                <span
-                  className="mt-4 text-sm font-semibold italic leading-tight tracking-wide text-white"
-                  style={{ fontFamily: "var(--font-figtree)" }}
-                >
-                  {card.label}
-                  {card.subtitle ? <><br />{card.subtitle}</> : null}
+                <span className="mt-5 text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                  {category.label}
                 </span>
+                {category.disabled ? (
+                  <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/30">
+                    coming soon
+                  </span>
+                ) : null}
               </>
             );
 
-            return card.disabled || !card.href ? (
-              <div key={card.id} className={className}>
+            const className = `${cardClass} ${category.disabled ? "cursor-not-allowed opacity-55" : ""}`;
+
+            return category.disabled || !category.href ? (
+              <div key={category.id} className={className} aria-disabled="true">
                 {body}
               </div>
             ) : (
-              <Link key={card.id} href={card.href} className={className}>
+              <Link key={category.id} href={category.href} className={className} aria-label={`${category.label} jewelry`}>
                 {body}
               </Link>
             );
           })}
         </section>
 
-        {/* Pagination dots to mirror future carousel steps. */}
-        <footer className="mt-12 flex items-center justify-center gap-2">
-          {[0, 1, 2, 3].map(index => (
+        <footer className="mt-auto flex items-center justify-center gap-7 pt-12">
+          {[0, 1, 2, 3, 4].map(index => (
             <span
               key={index}
-              className={`h-2.5 w-2.5 rounded-full ${index === 1 ? "bg-blue-400" : "bg-white/25"}`}
+              className={`h-4 w-4 rounded-full border-2 border-[#d1b873] ${index === 0 ? "bg-[#d1b873]" : "bg-transparent"}`}
             />
           ))}
         </footer>

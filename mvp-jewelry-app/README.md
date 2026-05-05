@@ -62,7 +62,7 @@ Render settings:
 ```bash
 Root directory: mvp-jewelry-app
 Build command: npm ci && npm run prisma:generate && npm run build
-Start command: npm run start:render
+Start command: npm run start
 Persistent disk mount: /var/data
 ```
 
@@ -102,8 +102,9 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | ------------------------- | ----------------------------------------------------- |
 | `npm run dev`             | Next.js dev server                                    |
 | `npm run build`           | Next.js production build                              |
-| `npm run start`           | Run the production build                              |
-| `npm run start:render`    | Run migrations, seed demo user, and start on Render   |
+| `npm run start`           | Run migrations, seed demo user, and start production  |
+| `npm run start:next`      | Run Next.js production server without migration/seed  |
+| `npm run start:render`    | Alias for `npm run start`                             |
 | `npm test`                | Vitest unit tests                                     |
 | `npm run test:e2e`        | Playwright end-to-end tests (requires dev server)     |
 | `npm run prisma:generate` | Generate Prisma client                                |

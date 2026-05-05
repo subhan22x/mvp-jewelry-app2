@@ -1,17 +1,26 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Home page", () => {
-  test("renders hero copy and pendant cards", async ({ page }) => {
+  test("renders hero copy and jewelry category cards", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dream it first" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /name/i })).toBeVisible();
-    // Disabled cards present but not links
-    await expect(page.getByText("Logo")).toBeVisible();
-    await expect(page.getByText("Custom Design")).toBeVisible();
+    await expect(page.getByRole("link", { name: /pendant jewelry/i })).toBeVisible();
+    await expect(page.getByText("Ring")).toBeVisible();
+    await expect(page.getByText("Bracelet")).toBeVisible();
+    await expect(page.getByText("Necklace")).toBeVisible();
   });
 
-  test("Name card links to /name", async ({ page }) => {
+  test("Pendant card links to /pendants", async ({ page }) => {
     await page.goto("/");
+    await page.getByRole("link", { name: /pendant jewelry/i }).click();
+    await expect(page).toHaveURL("/pendants");
+  });
+
+  test("pendants page renders format cards and links to /name", async ({ page }) => {
+    await page.goto("/pendants");
+    await expect(page.getByRole("link", { name: /name/i })).toBeVisible();
+    await expect(page.getByText("Logo")).toBeVisible();
+    await expect(page.getByText("Custom Design")).toBeVisible();
     await page.getByRole("link", { name: /name/i }).click();
     await expect(page).toHaveURL("/name");
   });

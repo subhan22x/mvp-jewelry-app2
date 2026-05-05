@@ -63,6 +63,7 @@ export default function NameBuilder() {
   const [styleId, setStyleId] = useState<string>(pendantStyles[0]?.id ?? "");
   const [includeEmblem, setIncludeEmblem] = useState(true);
   const [emblemId, setEmblemId] = useState<string | null>(null);
+  const [emblemWarning, setEmblemWarning] = useState<string | null>(null);
   const [goldCombo, setGoldCombo] = useState<GoldComboKey>("YELLOW_WHITE");
   const [diamondQuality, setDiamondQuality] = useState<"vs" | "vvs">("vvs");
   const [selectedGenerationId, setSelectedGenerationId] = useState<string | null>(null);
@@ -168,7 +169,12 @@ export default function NameBuilder() {
 
   const handleNext = () => {
     if (step === 0 && !hasPrimaryName) return;
+    if (step === 1 && includeEmblem && !emblemId) {
+      setEmblemWarning("Please select an emblem before continuing, or turn the emblem option off.");
+      return;
+    }
     if (step > 1) return;
+    setEmblemWarning(null);
     setStep(prev => ((prev + 1) as Step));
   };
 
@@ -479,7 +485,10 @@ export default function NameBuilder() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIncludeEmblem(value => !value)}
+                    onClick={() => {
+                      setIncludeEmblem(value => !value);
+                      setEmblemWarning(null);
+                    }}
                     className={`relative h-7 w-12 rounded-full border border-white/15 transition ${includeEmblem ? "bg-blue-500/80" : "bg-black/50"}`}
                     aria-pressed={includeEmblem}
                     aria-label="Toggle emblem"
@@ -492,7 +501,10 @@ export default function NameBuilder() {
 
                 <EmblemPicker
                   selected={includeEmblem ? emblemId : null}
-                  onSelect={setEmblemId}
+                  onSelect={nextEmblem => {
+                    setEmblemId(nextEmblem);
+                    if (nextEmblem) setEmblemWarning(null);
+                  }}
                   disabled={!includeEmblem}
                 />
 
@@ -800,6 +812,11 @@ export default function NameBuilder() {
               <span className="w-16" aria-hidden />
             )}
           </footer>
+          {step === 1 && emblemWarning && (
+            <div className="mt-4 rounded-2xl border border-amber-300/60 bg-amber-300/12 px-4 py-3 text-sm font-medium text-amber-50">
+              {emblemWarning}
+            </div>
+          )}
 
         </div>
       </div>
