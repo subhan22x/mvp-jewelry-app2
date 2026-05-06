@@ -45,7 +45,7 @@ export default async function InternalGenerationsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const [rows, videos, generatedFiles] = await Promise.all([
+  const [rows, videos, quoteRequests, generatedFiles] = await Promise.all([
     prisma.result.findMany({
       orderBy: [{ createdAt: "desc" }, { variant: "asc" }],
       take: 100,
@@ -83,6 +83,10 @@ export default async function InternalGenerationsPage({
           }
         }
       }
+    }),
+    prisma.quoteRequest.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 50
     }),
     listGeneratedFiles()
   ]);
@@ -333,6 +337,70 @@ export default async function InternalGenerationsPage({
           {videos.length === 0 && (
             <div className="mt-4 rounded border border-white/10 bg-white/[0.03] p-6 text-center text-zinc-400">
               No video generations yet.
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8">
+          <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Internal</p>
+              <h2 className="mt-1 text-xl font-semibold">Quote Requests</h2>
+            </div>
+            <div className="text-xs text-zinc-500">{quoteRequests.length} recent quotes</div>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {quoteRequests.map(quote => (
+              <article key={quote.id} className="rounded border border-white/10 bg-[#17191f] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="rounded bg-blue-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-200">
+                    {quote.status}
+                  </span>
+                  <span className="text-[10px] text-zinc-500">{formatDate(quote.createdAt)}</span>
+                </div>
+
+                <div className="mt-3 aspect-square overflow-hidden rounded bg-black/40">
+                  {quote.designedImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={quote.designedImageUrl} alt={`Quote request ${shortId(quote.id)}`} className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-5 text-center text-xs text-zinc-500">
+                      No designed image saved
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 space-y-2 text-[11px] leading-snug text-zinc-300">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-zinc-100">{shortId(quote.id)}</span>
+                    <span className="text-zinc-400">{quote.generatedAt ? formatDate(quote.generatedAt) : "n/a"}</span>
+                  </div>
+                  <div className="rounded bg-black/25 p-2">
+                    <div className="font-semibold text-zinc-100">{quote.customerName}</div>
+                    <div className="text-zinc-400">{quote.customerPhone}</div>
+                    <a href={`mailto:${quote.customerEmail}`} className="text-blue-300 hover:text-blue-200">{quote.customerEmail}</a>
+                  </div>
+                  <div className="text-zinc-300">
+                    {quote.productType ?? "unknown"} / {quote.styleId ?? "style n/a"} / {quote.primaryMetal ?? "metal n/a"}
+                    {quote.secondaryMetal ? ` + ${quote.secondaryMetal}` : ""} / {quote.emblem ?? "emblem n/a"} / {quote.diamondQuality ?? "diamond n/a"}
+                  </div>
+                  {quote.text && (
+                    <pre className="max-h-20 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] leading-snug text-zinc-100">{quote.text}</pre>
+                  )}
+                  {quote.videoUrl && (
+                    <a href={quote.videoUrl} target="_blank" className="block truncate text-blue-300 hover:text-blue-200">
+                      video: {quote.videoUrl}
+                    </a>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {quoteRequests.length === 0 && (
+            <div className="mt-4 rounded border border-white/10 bg-white/[0.03] p-6 text-center text-zinc-400">
+              No quote requests yet.
             </div>
           )}
         </section>

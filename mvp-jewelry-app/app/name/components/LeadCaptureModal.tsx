@@ -6,7 +6,7 @@ import 'react-international-phone/style.css';
 
 type Props = {
   requestId: string | null;
-  onSubmitted: () => void;
+  onSubmitted: (lead: { leadId: string; name: string; phone: string; email: string }) => void;
 };
 
 export default function LeadCaptureModal({ requestId, onSubmitted }: Props) {
@@ -30,7 +30,8 @@ export default function LeadCaptureModal({ requestId, onSubmitted }: Props) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? 'Something went wrong. Please try again.');
       }
-      onSubmitted();
+      const data = await res.json().catch(() => ({}));
+      onSubmitted({ leadId: data.leadId, name, phone, email });
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong. Please try again.');
       setSubmitting(false);

@@ -29,6 +29,7 @@ type VideoStatus = {
   error?: string | null;
   durationSeconds?: number | null;
 };
+type LeadContact = { leadId: string; name: string; phone: string; email: string };
 
 const GOLD_COMBO_TO_METALS: Record<GoldComboKey, { twoTone: boolean; primary: 'rose_gold' | 'white_gold' | 'yellow_gold'; secondary: 'rose_gold' | 'white_gold' | 'yellow_gold' | null }> = {
   YELLOW_WHITE: { twoTone: true, primary: 'yellow_gold', secondary: 'white_gold' },
@@ -78,6 +79,9 @@ export default function NameBuilder() {
   const [videoStatus, setVideoStatus] = useState<VideoStatus | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  const [leadContact, setLeadContact] = useState<LeadContact | null>(null);
+  const [quoteStatus, setQuoteStatus] = useState<"idle" | "submitting" | "submitted">("idle");
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   // Incremented on each new generation kick-off; stale poll callbacks check this
   // before applying state so a cancelled request can't jump the user to step 4.
@@ -162,6 +166,8 @@ export default function NameBuilder() {
       setShowAccessCodePrompt(false);
       setVideoStatus(null);
       setVideoError(null);
+      setQuoteStatus("idle");
+      setQuoteError(null);
     }
     const prevStep = step === 4 || step === 5 ? 2 : ((step - 1) as Step);
     setStep(prevStep as Step);
@@ -206,6 +212,9 @@ export default function NameBuilder() {
     setGenerationError(null);
     setGenerations([]);
     setSelectedGenerationId(null);
+    setLeadContact(null);
+    setQuoteStatus("idle");
+    setQuoteError(null);
     setIsGenerating(true);
 
     const epoch = ++generationEpochRef.current;
@@ -291,6 +300,8 @@ export default function NameBuilder() {
 
     setVideoError(null);
     setVideoStatus(null);
+    setQuoteStatus("idle");
+    setQuoteError(null);
     setIsVideoGenerating(true);
 
     const epoch = ++videoEpochRef.current;
@@ -345,6 +356,39 @@ export default function NameBuilder() {
       if (epoch !== videoEpochRef.current) return;
       setIsVideoGenerating(false);
       setVideoError(error instanceof Error ? error.message : "Something went wrong.");
+    }
+  };
+
+  const handleQuoteRequest = async () => {
+    if (quoteStatus === "submitting" || quoteStatus === "submitted") return;
+    if (!capturedRequestId) {
+      setQuoteError("Missing request id for this generation.");
+      return;
+    }
+
+    setQuoteError(null);
+    setQuoteStatus("submitting");
+    try {
+      const response = await fetch("/api/quote-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: capturedRequestId,
+          videoId: videoStatus?.id,
+          designedImageUrl: highQualityGeneration?.src,
+          videoUrl: videoStatus?.videoUrl,
+          diamondQuality,
+          customerName: leadContact?.name,
+          customerPhone: leadContact?.phone,
+          customerEmail: leadContact?.email
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error ?? "Failed to send quote request.");
+      setQuoteStatus("submitted");
+    } catch (error) {
+      setQuoteStatus("idle");
+      setQuoteError(error instanceof Error ? error.message : "Something went wrong.");
     }
   };
 
@@ -762,13 +806,20 @@ export default function NameBuilder() {
                       home
                     </button>
                     {videoStatus?.videoUrl ? (
-                      <a
-                        href={videoStatus.videoUrl}
-                        target="_blank"
-                        className="flex-1 rounded-2xl bg-blue-500 px-5 py-3 text-center text-base font-semibold text-white transition hover:bg-blue-400"
+                      <button
+                        type="button"
+                        onClick={handleQuoteRequest}
+                        disabled={quoteStatus !== "idle"}
+                        className={`flex-1 rounded-2xl px-5 py-3 text-center text-base font-semibold text-white transition ${
+                          quoteStatus === "submitted"
+                            ? "cursor-default bg-emerald-600"
+                            : quoteStatus === "submitting"
+                              ? "cursor-wait bg-blue-500/70"
+                              : "bg-blue-500 hover:bg-blue-400"
+                        }`}
                       >
-                        open video
-                      </a>
+                        {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "get a quote"}
+                      </button>
                     ) : (
                       <button
                         type="button"
@@ -779,6 +830,16 @@ export default function NameBuilder() {
                       </button>
                     )}
                   </div>
+                  {quoteStatus === "submitted" && (
+                    <div className="mt-4 rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">
+                      your Design has been sent! We will reach back soon through email or test
+                    </div>
+                  )}
+                  {quoteError && (
+                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      {quoteError}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -921,7 +982,10 @@ export default function NameBuilder() {
     {showLeadCapture && (
       <LeadCaptureModal
         requestId={capturedRequestId}
-        onSubmitted={() => setShowLeadCapture(false)}
+        onSubmitted={(lead) => {
+          setLeadContact(lead);
+          setShowLeadCapture(false);
+        }}
       />
     )}
     </>

@@ -1,6 +1,6 @@
 # Pendant MVP
 
-A custom jewelry pendant ideation web app. A store employee or customer enters a name, picks a style, emblem, and gold finish; the app calls Gemini to generate four AI image previews so the customer can pick a favorite before ordering.
+A custom jewelry pendant ideation web app. A store employee or customer enters a name, picks a style, emblem, and gold finish; the app calls Gemini to generate two AI image previews so the customer can pick a favorite before ordering.
 
 The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is a fast visualizer. Success = "yes, that's close to what I want."
 
@@ -122,7 +122,8 @@ Home
      ├─ Step 2: confirm design + diamond quality (VS / VVS)
      ├─ Step 3: two draft tiles appear progressively as each image is generated
      │          (select favourite, preview full-size, download)
-     └─ Step 4: generate a Seedance video from the higher-quality draft
+     ├─ Step 4: generate a Seedance video from the higher-quality draft
+     └─ Step 5: customer taps Get a quote, creating a QuoteRequest snapshot
 ```
 
 Generation is **asynchronous** — the results screen appears immediately after submitting and tiles fill in one by one as Gemini completes each variant (~10–50 s total). The first image typically appears within 15–20 s.
@@ -150,8 +151,9 @@ app/
   page.tsx                   # home screen with style entry cards
   name/page.tsx              # the 4-step name pendant flow (steps 0–2 + results)
   name/__tests__/            # Vitest unit tests for the name builder
-  api/requests/route.ts      # POST /api/requests — creates a Request and fires 4 async generation tasks
+  api/requests/route.ts      # POST /api/requests — creates a Request and fires 2 async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
+  api/quote-requests/route.ts # POST — persists the customer quote/admin handoff snapshot
 
 data/
   pendant-styles.json        # style list shown in the UI
@@ -169,7 +171,7 @@ src/lib/styles/              # canonical generation system
   <style>/<templateKey>.jsonp # prompt template with {{PLACEHOLDERS}}
 
 prisma/
-  schema.prisma              # User, Request, Result
+  schema.prisma              # User, Request, Result, Lead, VideoGeneration, QuoteRequest
   migrations/
 
 public/
