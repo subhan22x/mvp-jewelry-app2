@@ -44,6 +44,20 @@ function mockGetSuccess() {
   });
 }
 
+function mockLeadSuccess() {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ leadId: 'lead-picture' })
+  });
+}
+
+function mockQuoteSuccess() {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ quoteRequestId: 'quote-picture' })
+  });
+}
+
 async function setup() {
   const user = userEvent.setup();
   await act(async () => { render(<PicturePendantsBuilder />); });
@@ -133,5 +147,46 @@ describe('/picture-pendants', () => {
     expect(body.get('styleId')).toBe('oval');
     expect(body.get('primaryMetal')).toBe('rose_gold');
     expect(body.get('image')).toBeInstanceOf(File);
+  });
+
+  it('sends generated picture pendants as quote requests', async () => {
+    const { user } = await setup();
+    await uploadPicture(user);
+    await click(user, screen.getByRole('button', { name: /^next$/i }));
+    mockPostSuccess();
+    mockGetSuccess();
+
+    await click(user, screen.getByRole('button', { name: /^generate$/i }));
+
+    mockLeadSuccess();
+    await act(async () => {
+      await user.type(await screen.findByLabelText(/^name$/i), 'Royal Ice');
+      await user.type(screen.getByLabelText(/phone number/i), '+15551234567');
+      await user.type(screen.getByLabelText(/email address/i), 'royal@example.com');
+    });
+    await click(user, screen.getByRole('button', { name: /^submit$/i }));
+
+    mockQuoteSuccess();
+    await click(user, await screen.findByRole('button', { name: /get a quote/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/quote-requests', expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: expect.any(String)
+      }));
+    });
+
+    const quoteCall = mockFetch.mock.calls.find(([url]) => url === '/api/quote-requests');
+    expect(quoteCall).toBeTruthy();
+    const quoteBody = JSON.parse(quoteCall?.[1]?.body as string);
+    expect(quoteBody).toMatchObject({
+      requestId: 'picture-req',
+      designedImageUrl: '/generated/picture-req-v1.png',
+      customerName: 'Royal Ice',
+      customerPhone: '+15551234567',
+      customerEmail: 'royal@example.com'
+    });
+    expect(screen.getByText(/your Design has been sent/i)).toBeInTheDocument();
   });
 });

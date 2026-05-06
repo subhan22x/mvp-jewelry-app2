@@ -1,5 +1,5 @@
-const WAVESPEED_SEEDANCE_MODEL = "bytedance/seedance-2.0/image-to-video";
-const WAVESPEED_SEEDANCE_ENDPOINT = "https://api.wavespeed.ai/api/v3/bytedance/seedance-2.0/image-to-video";
+const WAVESPEED_SEEDANCE_MODEL = "bytedance/seedance-2.0-fast/image-to-video";
+const WAVESPEED_SEEDANCE_ENDPOINT = "https://api.wavespeed.ai/api/v3/bytedance/seedance-2.0-fast/image-to-video";
 const WAVESPEED_RESULT_ENDPOINT = "https://api.wavespeed.ai/api/v3/predictions";
 
 type PredictionData = {

@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         sourceResultId: betterResult.id,
         sourceImageUrl,
         prompt,
-        modelId: "bytedance/seedance-2.0/image-to-video",
+        modelId: "bytedance/seedance-2.0-fast/image-to-video",
         status: "pending",
         startedAt
       }
