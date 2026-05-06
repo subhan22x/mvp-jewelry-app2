@@ -117,6 +117,32 @@ describe("/api/videos", () => {
     });
   });
 
+  it("falls back to forwarded host headers when APP_BASE_URL is missing", async () => {
+    const { POST } = await import("../route");
+    delete process.env.APP_BASE_URL;
+    mocks.generateSeedanceVideo.mockResolvedValue({
+      videoUrl: "https://cdn.example.com/video.mp4",
+      modelId: "bytedance/seedance-2.0/image-to-video",
+      providerJobId: "wavespeed-job"
+    });
+
+    const response = await POST(new Request("http://internal-render/api/videos", {
+      method: "POST",
+      headers: {
+        "x-forwarded-host": "mvp-jewelry-app2.onrender.com",
+        "x-forwarded-proto": "https"
+      },
+      body: JSON.stringify(requestBody)
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.videoCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sourceImageUrl: "https://mvp-jewelry-app2.onrender.com/generated/req-test-v1.png"
+      })
+    });
+  });
+
   it("rejects invalid access codes", async () => {
     const { POST } = await import("../route");
 

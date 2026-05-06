@@ -14,15 +14,32 @@ function getExpectedAccessCode() {
   return accessCode;
 }
 
-function getPublicBaseUrl() {
+function getPublicBaseUrl(req: Request) {
   const baseUrl = process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  if (!baseUrl) throw new Error("APP_BASE_URL or NEXT_PUBLIC_APP_URL is required so Wavespeed can fetch the generated image.");
-  return baseUrl;
+  if (baseUrl) return baseUrl;
+
+  const origin = req.headers.get("origin");
+  if (origin) return origin;
+
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (host) {
+    const proto = req.headers.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+
+  throw new Error("APP_BASE_URL or NEXT_PUBLIC_APP_URL is required so Wavespeed can fetch the generated image.");
 }
 
-function toPublicImageUrl(imageUrl: string) {
+function toPublicImageUrl(req: Request, imageUrl: string) {
   if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
-  return new URL(imageUrl, getPublicBaseUrl()).toString();
+  return new URL(imageUrl, getPublicBaseUrl(req)).toString();
+}
+
+function assertPublicImageUrl(sourceImageUrl: string) {
+  const url = new URL(sourceImageUrl);
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    throw new Error("A public APP_BASE_URL or NEXT_PUBLIC_APP_URL is required so Wavespeed can fetch the generated image.");
+  }
 }
 
 function getGenerationErrorMessage(err: unknown) {
@@ -51,7 +68,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "The higher quality draft is not ready, so video generation cannot start yet." }, { status: 400 });
     }
 
-    const sourceImageUrl = toPublicImageUrl(betterResult.imageUrl);
+    const sourceImageUrl = toPublicImageUrl(req, betterResult.imageUrl);
+    assertPublicImageUrl(sourceImageUrl);
     const prompt = buildJewelryVideoPrompt();
     const startedAt = new Date();
     const video = await prisma.videoGeneration.create({
