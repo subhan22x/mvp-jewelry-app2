@@ -27,13 +27,7 @@ export function buildJewelryVideoPrompt() {
   const configuredPrompt = process.env.VIDEO_PROMPT?.trim();
   if (configuredPrompt) return configuredPrompt;
 
-  return [
-    "Create a cinematic product video from this jewelry pendant photo.",
-    "Keep the pendant design, text, stones, metal colors, bail, and black suede background faithful to the source image.",
-    "Use a slow luxury camera push-in with subtle parallax, controlled top-right studio light, diamond scintillation, and tiny glints across the pavé.",
-    "Do not morph the lettering, change the pendant shape, add extra text, or introduce new objects.",
-    "The final video should feel like a premium jewelry advertisement."
-  ].join(" ");
+  return "Cinematic ultra realistic macro product film of this Jewelry Pendant. The piece is heavily encrusted with VVS diamonds and exhibit prismatic light refractions under studio lighting. This video is filmed on a gimbal stabilized iphone 16 pro max Camera Movement: A series of smooth tracking pans, macro zooms (but do not zoom in too close, try to keep atleast half of the object in frame) and lock on arc shots. The camera glides along the edges of the jewelry piece and hovers over the diamond-paved surfaces. Lighting & Environment: Professional studio lighting. realistic shimmering highlights. The background is a deep black velvet to provide a luxury texture. Style: Hyper-realistic, 8k resolution, elegant, prestigious atmosphere, extremely detailed textures, 60fps.";
 }
 
 function getApiKey() {

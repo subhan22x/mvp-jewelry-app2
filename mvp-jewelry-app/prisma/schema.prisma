@@ -29,6 +29,7 @@ model Request {
   uploadFileName String?
   Results        Result[]
   Videos         VideoGeneration[]
+  QuoteRequests  QuoteRequest[]
 }
 
 model Result {
@@ -45,6 +46,7 @@ model Result {
   completedAt DateTime?
   durationMs  Int?
   createdAt   DateTime  @default(now())
+  QuoteRequests QuoteRequest[]
 }
 
 model Lead {
@@ -72,4 +74,33 @@ model VideoGeneration {
   completedAt    DateTime?
   durationMs     Int?
   createdAt      DateTime @default(now())
+  QuoteRequests  QuoteRequest[]
+}
+
+model QuoteRequest {
+  id               String           @id @default(cuid())
+  requestId        String?
+  request          Request?         @relation(fields: [requestId], references: [id])
+  resultId         String?
+  result           Result?          @relation(fields: [resultId], references: [id])
+  videoId          String?
+  video            VideoGeneration? @relation(fields: [videoId], references: [id])
+  designedImageUrl String?
+  videoUrl         String?
+  generatedAt      DateTime?
+  productType      String?
+  styleId          String?
+  text             String?
+  twoTone          Boolean?
+  primaryMetal     String?
+  secondaryMetal   String?
+  emblem           String?
+  diamondQuality   String?
+  customerName     String
+  customerPhone    String
+  customerEmail    String
+  status           String           @default("pending") // pending | priced | sent | closed
+  quotedPriceCents Int?
+  quoteNotes       String?
+  createdAt        DateTime         @default(now())
 }

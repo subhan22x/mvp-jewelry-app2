@@ -246,12 +246,15 @@ Generated outputs are stored in two places:
 - Generation metadata is stored in Prisma, including prompt text and fields such as model id, status, error, start/completion time, and duration.
 - Requests include `productType`, so internal review can distinguish `name` and `picture` generations.
 - Video generations are stored in Prisma in `VideoGeneration`. They reference the parent request, the source high-quality result, the public source image URL sent to Wavespeed, the exact video prompt, Wavespeed job id, video URL, model id, status, error, and duration.
+- Quote handoffs are stored in Prisma in `QuoteRequest`. A quote request snapshots the designed image URL, optional generated video URL, generation timestamp, product/style/text/metals/emblem/diamond choices, and customer name/phone/email.
 
 The internal review page is available at:
 
 - `/internal/generations`
 
 That page is meant for analyzing generated images alongside prompts. It shows images in a grid and prompts in collapsible small-font panels.
+
+It also shows recent quote requests so the designed image, generated video link, customer contact, and design choices are visible before a dedicated admin dashboard exists.
 
 Prisma Studio is useful for raw database inspection when it is running at:
 
@@ -268,6 +271,8 @@ Current behavior:
 - The result-screen `continue` button is replaced with a red `Generate Video` button.
 - The bottom-left result action is now `home`. It confirms that generated drafts/video progress will be lost before routing to `/`.
 - Video generation always uses the better model image, `variant: 1`, regardless of which draft tile is selected.
+- After a video succeeds, the customer-facing action is `get a quote`, not `open video`.
+- Clicking `get a quote` writes a `QuoteRequest` row and shows the banner: `your Design has been sent! We will reach back soon through email or test`.
 - Access is gated by `VIDEO_ACCESS_CODE`. The current local access code is `ID8`.
 - The Wavespeed API key is read from `WAVESPEED_API_KEY`.
 - The Seedance endpoint is `bytedance/seedance-2.0/image-to-video`.
@@ -287,8 +292,35 @@ Relevant files:
 - UI: `app/name/page.tsx`.
 - Submit route: `app/api/videos/route.ts`.
 - Poll route: `app/api/videos/[id]/route.ts`.
+- Quote route: `app/api/quote-requests/route.ts`.
 - Provider client: `src/lib/video/wavespeed.ts`.
 - Prisma model: `VideoGeneration`.
+
+## Quote Requests
+
+Quote requests are the future admin-dashboard bridge between customer ideation and store-owner pricing.
+
+Current behavior:
+
+- The lead modal collects customer name, phone, and email after the image request is created.
+- The video screen `get a quote` button posts to `/api/quote-requests`.
+- The API reconstructs stable generation choices from Prisma instead of trusting the browser for product/style/text/metal/emblem choices.
+- `diamondQuality` is currently captured from UI state because the original `Request` table does not store it.
+- The designed image uses the better model image, `Result.variant = 1`, when available.
+- The quote can also store the generated `videoUrl` when a video exists.
+- Newly created quote rows start with `status: pending`.
+
+Prisma model:
+
+- `QuoteRequest`
+
+Fields captured for admin use:
+
+- Designed image URL and optional video URL.
+- Generation timestamp.
+- Product type, style id, text, metal selection, emblem, and diamond quality.
+- Customer name, phone, and email.
+- Future pricing fields: `quotedPriceCents`, `quoteNotes`, and `status`.
 
 ## Render Deployment Notes
 
