@@ -78,7 +78,7 @@ describe("/api/videos", () => {
     const { POST } = await import("../route");
     mocks.generateSeedanceVideo.mockResolvedValue({
       videoUrl: "https://cdn.example.com/video.mp4",
-      modelId: "bytedance/seedance-2.0/image-to-video",
+      modelId: "bytedance/seedance-2.0-fast/image-to-video",
       providerJobId: "wavespeed-job"
     });
 
@@ -95,7 +95,7 @@ describe("/api/videos", () => {
         sourceResultId: "result-1",
         sourceImageUrl: "https://pendant.example.com/generated/req-test-v1.png",
         prompt: "video prompt",
-        modelId: "bytedance/seedance-2.0/image-to-video",
+        modelId: "bytedance/seedance-2.0-fast/image-to-video",
         status: "pending",
         startedAt: new Date("2026-05-05T12:00:00.000Z")
       })
@@ -122,7 +122,7 @@ describe("/api/videos", () => {
     delete process.env.APP_BASE_URL;
     mocks.generateSeedanceVideo.mockResolvedValue({
       videoUrl: "https://cdn.example.com/video.mp4",
-      modelId: "bytedance/seedance-2.0/image-to-video",
+      modelId: "bytedance/seedance-2.0-fast/image-to-video",
       providerJobId: "wavespeed-job"
     });
 
@@ -190,7 +190,7 @@ describe("/api/videos/[id]", () => {
       sourceResultId: "result-1",
       sourceImageUrl: "https://pendant.example.com/generated/req-test-v1.png",
       videoUrl: "https://cdn.example.com/video.mp4",
-      modelId: "bytedance/seedance-2.0/image-to-video",
+      modelId: "bytedance/seedance-2.0-fast/image-to-video",
       providerJobId: "wavespeed-job",
       status: "succeeded",
       error: null,

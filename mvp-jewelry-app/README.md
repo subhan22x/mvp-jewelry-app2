@@ -33,6 +33,7 @@ GEMINI_API_KEY=your_key_here
 # GENERATED_IMAGE_DIR=public/generated
 # WAVESPEED_API_KEY=your_wavespeed_key_here
 # VIDEO_ACCESS_CODE=ID8
+# OWNER_ACCESS_CODE=ID8
 # VIDEO_DURATION_SECONDS=7
 # APP_BASE_URL=https://your-public-app-url.example
 ```
@@ -52,6 +53,16 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Owner dashboard
+
+The polished store-owner dashboard lives at `/owner`. It is separate from the customer pendant builder and the raw internal generation review page.
+
+- Set `OWNER_ACCESS_CODE` in `.env.local` or Render.
+- Visit `/owner` and enter the access code.
+- Quote requests show first with large design thumbnails and a `Send Quote` action.
+- Other generations show below/alongside as compact cards.
+- `Send Quote` currently saves price, note, and `status: sent` only; email delivery is intentionally not wired yet.
 
 ## Render deployment
 
@@ -74,6 +85,7 @@ GENERATED_IMAGE_DIR=/var/data/generated
 GOOGLE_API_KEY=...
 WAVESPEED_API_KEY=...
 VIDEO_ACCESS_CODE=ID8
+OWNER_ACCESS_CODE=ID8
 VIDEO_DURATION_SECONDS=7
 APP_BASE_URL=https://your-render-service.onrender.com
 ```
@@ -91,6 +103,7 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images are written.           |
 | `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for Seedance video generation. |
 | `VIDEO_ACCESS_CODE`    | (required for videos)                | Internal code required before video generation. |
+| `OWNER_ACCESS_CODE`    | (required for `/owner`)              | Store-owner dashboard access code.             |
 | `VIDEO_DURATION_SECONDS` | `7`                                | Seedance video duration, clamped from 4-15 seconds. |
 | `VIDEO_RESOLUTION`     | `720p`                               | Seedance output resolution: `480p`, `720p`, or `1080p`. |
 | `VIDEO_PROMPT`         | built-in fallback                    | Optional exact prompt sent to Seedance.       |
