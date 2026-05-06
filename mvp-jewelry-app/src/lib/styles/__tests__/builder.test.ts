@@ -24,6 +24,13 @@ function rawPromptsFor(styleId: string) {
   }));
 }
 
+function naturalPromptsFor(styleId: string) {
+  return buildVariants({ ...baseInput, styleId }, { promptMode: "natural_language" }).map(variant => ({
+    variant: variant.variant,
+    prompt: variant.prompt
+  }));
+}
+
 describe("buildVariants", () => {
   it("builds DEJA with CC Matinee Idol and model-specific bubble settings", () => {
     const variants = promptFor("deja");
@@ -86,5 +93,39 @@ describe("buildVariants", () => {
       "Carnivalee Freakshow"
     ]);
     expect(variants.map(variant => variant.prompt.text_bubble_outline.enabled)).toEqual([false, false]);
+  });
+
+  it("builds GATTI with the natural-language template and injected snippets", () => {
+    const variants = naturalPromptsFor("gatti");
+
+    expect(variants).toHaveLength(2);
+    for (const variant of variants) {
+      expect(variant.prompt).toContain('changing the main text to "Alyssa"');
+      expect(variant.prompt).toContain("Add a butterfly emblem above the lettering");
+      expect(variant.prompt).toContain("Use a two tone Rose Gold and White Gold color scheme");
+      expect(variant.prompt).toContain("Use a vertical 9:16 composition");
+      expect(() => JSON.parse(variant.prompt)).toThrow();
+    }
+  });
+
+  it("builds JAIDA with the natural-language template and injected snippets", () => {
+    const variants = buildVariants({
+      ...baseInput,
+      styleId: "jaida",
+      text: "Xavier",
+      primaryMetal: "yellow_gold",
+      secondaryMetal: "white_gold",
+      emblem: "moneybag"
+    }, { promptMode: "natural_language" });
+
+    expect(variants).toHaveLength(2);
+    for (const variant of variants) {
+      expect(variant.prompt).toContain('new custom text "Xavier"');
+      expect(variant.prompt).toContain("Use the font Great Vibes");
+      expect(variant.prompt).toContain("Add a moneybag emblem above the lettering");
+      expect(variant.prompt).toContain("Use a two tone Yellow Gold and White Gold color scheme");
+      expect(variant.prompt).toContain("vertical 9:16 composition");
+      expect(() => JSON.parse(variant.prompt)).toThrow();
+    }
   });
 });

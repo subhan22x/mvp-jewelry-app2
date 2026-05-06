@@ -11,6 +11,8 @@ export type StyleConfig = {
   id: string;
   label: string;
   templateKey: string;        // filename without extension
+  naturalLanguageTemplateKey?: string; // filename without extension
+  naturalLanguageSnippetsKey?: string; // filename without extension
   emblemsAllowed: Emblem[];
   defaults: (Required<VariantConfig> & { view: string }) & { font?: string; schemeType?: string };
   variantMatrix: [VariantConfig, VariantConfig];
