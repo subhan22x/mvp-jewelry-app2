@@ -8,7 +8,7 @@ This file captures the current style/prompting context for the jewelry image gen
 
 - `src/lib/styles/_types.ts`: TypeScript shape for styles, variants, customer input, and built prompts.
 - `src/lib/styles/builder.ts`: Reads a style, merges variant settings, applies text/caps/color/emblem variables, and renders the prompt template.
-- `src/lib/styles/registry.ts`: Finds `style.yml` and the matching `.jsonp` template for a style id.
+- `src/lib/styles/registry.ts`: Finds `style.yml` and the matching `.jsonp` or `.prompt` template for a style id.
 - `src/lib/styles/utils.ts`: Performs simple `{{PLACEHOLDER}}` replacement.
 - `src/lib/styles/connector.ts`: Sends rendered prompts and attachments to the selected image provider, saves generated files, and applies a generation timeout.
 - `src/lib/providers/index.ts`: Maps variant number to the actual model.
@@ -21,6 +21,8 @@ Each style lives in `src/lib/styles/<styleId>/` and normally has:
 
 - `style.yml`: Human-editable config for defaults, variant matrix, allowed emblems, and reference assets.
 - `<templateKey>.jsonp`: Prompt template loaded by `templateKey` from the YAML.
+- Optional `<naturalLanguageTemplateKey>.prompt`: Natural-language prompt template.
+- Optional `<naturalLanguageSnippetsKey>.yml`: Natural-language snippet library for text/emblem/color injection.
 
 Current style folders:
 
@@ -275,7 +277,7 @@ Current behavior:
 - Clicking `get a quote` writes a `QuoteRequest` row and shows the banner: `your Design has been sent! We will reach back soon through email or test`.
 - Access is gated by `VIDEO_ACCESS_CODE`. The current local access code is `ID8`.
 - The Wavespeed API key is read from `WAVESPEED_API_KEY`.
-- The Seedance endpoint is `bytedance/seedance-2.0/image-to-video`.
+- The Seedance endpoint is `bytedance/seedance-2.0-fast/image-to-video`.
 - Default duration is `7` seconds via `VIDEO_DURATION_SECONDS`.
 - Default resolution is `720p` via `VIDEO_RESOLUTION`; supported values are `480p`, `720p`, and `1080p`.
 - Audio defaults off unless `VIDEO_GENERATE_AUDIO=true`.
@@ -295,6 +297,40 @@ Relevant files:
 - Quote route: `app/api/quote-requests/route.ts`.
 - Provider client: `src/lib/video/wavespeed.ts`.
 - Prisma model: `VideoGeneration`.
+
+## Prompt Mode
+
+Name pendant prompts now support two backend-selected prompt modes:
+
+- `json`: the default structured prompt system using each style's `templateKey`, such as `block_baguette_v1.jsonp`.
+- `natural_language`: a parallel prose prompt system. It is style-by-style, so unsupported styles safely fall back to their JSON template.
+
+The active mode is stored in Prisma as an `AppSetting` row:
+
+- `key`: `name_prompt_mode`
+- `value`: `json` or `natural_language`
+
+The owner dashboard at `/owner` exposes a Prompt System control for switching this setting. Customer-facing pages do not choose prompt mode; `/api/requests` reads the setting at generation time.
+
+Current natural-language style support:
+
+- `gatti`
+- `jaida`
+
+Natural-language files:
+
+- Template: `src/lib/styles/gatti/gatti-natural-language.prompt`
+- Snippets: `src/lib/styles/gatti/gatti-natural-language-snippets.yml`
+- Template: `src/lib/styles/jaida/jaida-natural-language.prompt`
+- Snippets: `src/lib/styles/jaida/jaida-natural-language-snippets.yml`
+
+The template contains semantic placeholders:
+
+- `{{TEXT_SNIPPET}}`
+- `{{EMBLEM_SNIPPET}}`
+- `{{COLOR_SCHEME_SNIPPET}}`
+
+The snippet file stores reusable prose for emblems and color schemes. The builder injects selected customer variables into those snippets during the API call, then stores the final rendered prompt in `Result.prompt`.
 
 ## Quote Requests
 

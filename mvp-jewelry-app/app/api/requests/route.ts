@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/server/db/client';
 import { buildVariants } from '@/lib/styles/builder';
 import { generateImage } from '@/lib/styles/connector';
+import { getNamePromptMode } from '@/src/lib/prompt-mode';
 
 const Body = z.object({
   userId: z.string(),
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
       }
     });
 
+    const promptMode = await getNamePromptMode();
     const variants = buildVariants({
       userId: body.userId,
       styleId: body.styleId,
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
       primaryMetal: body.primaryMetal,
       secondaryMetal: body.secondaryMetal ?? null,
       emblem: body.emblem
-    });
+    }, { promptMode });
 
     const attemptRows = await Promise.all(variants.map((v) => {
       const startedAt = new Date();

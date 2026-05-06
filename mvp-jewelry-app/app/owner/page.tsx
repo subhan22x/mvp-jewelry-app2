@@ -2,7 +2,9 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
 import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
+import { getNamePromptMode } from "@/src/lib/prompt-mode";
 import OwnerLoginForm from "./OwnerLoginForm";
+import PromptModeForm from "./PromptModeForm";
 import SendQuoteForm from "./SendQuoteForm";
 
 export const dynamic = "force-dynamic";
@@ -91,7 +93,7 @@ function resultMatches(row: ResultRow, query: string, filter: string) {
 }
 
 async function getOwnerData() {
-  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests, results] = await Promise.all([
+  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests, results, promptMode] = await Promise.all([
     prisma.quoteRequest.count(),
     prisma.result.count(),
     prisma.quoteRequest.count({ where: { status: "pending" } }),
@@ -118,13 +120,15 @@ async function getOwnerData() {
           }
         }
       }
-    })
+    }),
+    getNamePromptMode()
   ]);
 
   return {
     metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes },
     quoteRequests,
-    results
+    results,
+    promptMode
   };
 }
 
@@ -320,6 +324,8 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           <MetricCard label="Pending Quotes" value={data.metrics.pendingQuotes} accent />
           <MetricCard label="Sent Quotes" value={data.metrics.sentQuotes} />
         </section>
+
+        <PromptModeForm initialMode={data.promptMode} />
 
         <section className="flex min-w-0 flex-col gap-4">
           <form className="relative flex h-12 w-full min-w-0 items-center rounded-xl border border-white/10 bg-black/45 px-4 shadow-inner transition focus-within:border-white/30">

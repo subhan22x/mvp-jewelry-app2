@@ -25,7 +25,13 @@ export function getStyle(styleId: string): StyleConfig {
 }
 
 export function getTemplatePath(styleId: string, templateKey: string): string {
-  const matches = fg.sync(`**/${styleId}/${templateKey}.jsonp`, { cwd: STYLES_DIR, onlyFiles: true, absolute: true });
-  if (!matches.length) throw new Error(`Template not found: ${styleId}/${templateKey}.jsonp`);
+  const matches = fg.sync(`**/${styleId}/${templateKey}.{jsonp,prompt}`, { cwd: STYLES_DIR, onlyFiles: true, absolute: true });
+  if (!matches.length) throw new Error(`Template not found: ${styleId}/${templateKey}.jsonp or .prompt`);
+  return matches[0];
+}
+
+export function getSnippetPath(styleId: string, snippetsKey: string): string {
+  const matches = fg.sync(`**/${styleId}/${snippetsKey}.yml`, { cwd: STYLES_DIR, onlyFiles: true, absolute: true });
+  if (!matches.length) throw new Error(`Snippet file not found: ${styleId}/${snippetsKey}.yml`);
   return matches[0];
 }

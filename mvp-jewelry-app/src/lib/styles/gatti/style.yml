@@ -1,6 +1,8 @@
 id: gatti
 label: Gatti
 templateKey: block_baguette_v1
+naturalLanguageTemplateKey: gatti-natural-language
+naturalLanguageSnippetsKey: gatti-natural-language-snippets
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
 defaults:

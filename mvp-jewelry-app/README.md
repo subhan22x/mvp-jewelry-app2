@@ -62,6 +62,7 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - Visit `/owner` and enter the access code.
 - Quote requests show first with large design thumbnails and a `Send Quote` action.
 - Other generations show below/alongside as compact cards.
+- The Prompt System control switches new name generations between `json` and `natural_language` prompt modes.
 - `Send Quote` currently saves price, note, and `status: sent` only; email delivery is intentionally not wired yet.
 
 ## Render deployment
@@ -86,6 +87,7 @@ GOOGLE_API_KEY=...
 WAVESPEED_API_KEY=...
 VIDEO_ACCESS_CODE=ID8
 OWNER_ACCESS_CODE=ID8
+NAME_PROMPT_MODE=json
 VIDEO_DURATION_SECONDS=7
 APP_BASE_URL=https://your-render-service.onrender.com
 ```
@@ -104,6 +106,7 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for Seedance video generation. |
 | `VIDEO_ACCESS_CODE`    | (required for videos)                | Internal code required before video generation. |
 | `OWNER_ACCESS_CODE`    | (required for `/owner`)              | Store-owner dashboard access code.             |
+| `NAME_PROMPT_MODE`     | `json`                               | Fallback prompt mode for name generations: `json` or `natural_language`. `/owner` can override it in Prisma. |
 | `VIDEO_DURATION_SECONDS` | `7`                                | Seedance video duration, clamped from 4-15 seconds. |
 | `VIDEO_RESOLUTION`     | `720p`                               | Seedance output resolution: `480p`, `720p`, or `1080p`. |
 | `VIDEO_PROMPT`         | built-in fallback                    | Optional exact prompt sent to Seedance.       |
