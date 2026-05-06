@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/server/db/client';
 
+function corsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders() });
+}
+
 const Body = z.object({
   requestId: z.string().optional(),
   name:      z.string().min(1).max(100),
@@ -18,8 +30,8 @@ export async function POST(req: Request) {
       name: lead.name,
       phone: lead.phone,
       email: lead.email
-    }, { status: 201 });
+    }, { status: 201, headers: corsHeaders() });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400 });
+    return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400, headers: corsHeaders() });
   }
 }

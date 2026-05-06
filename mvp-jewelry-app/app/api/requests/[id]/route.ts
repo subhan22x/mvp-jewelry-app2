@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/server/db/client';
 
+function corsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders() });
+}
+
 const EXPECTED_GENERATION_COUNT = 2;
 
 const toSeconds = (durationMs: number | null) =>
@@ -11,7 +23,7 @@ export async function GET(_: Request, { params }: { params: { id: string }}) {
     where: { id: params.id },
     include: { Results: { orderBy: { variant: 'asc' } } }
   });
-  if (!reqRow) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  if (!reqRow) return NextResponse.json({ error: 'not_found' }, { status: 404, headers: corsHeaders() });
   const productType = reqRow.productType ?? 'name';
   const expectedGenerationCount = productType === 'picture' ? 1 : EXPECTED_GENERATION_COUNT;
   const attempts = reqRow.Results.map(r => ({
@@ -47,5 +59,5 @@ export async function GET(_: Request, { params }: { params: { id: string }}) {
       failed: failedCount
     },
     done
-  });
+  }, { headers: corsHeaders() });
 }

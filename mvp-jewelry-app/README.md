@@ -111,6 +111,7 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | `npm run prisma:migrate`  | Run migrations (`prisma migrate dev`)                 |
 | `npm run db:seed`         | Seed the `demo` user                                  |
 | `npm run styles`          | Manage `data/pendant-styles.json` via script          |
+| `npm run build:widget`   | Build the embeddable pendant widget to `public/embed/` |
 
 ## User flow (Name pendant)
 
@@ -197,3 +198,76 @@ waitUntil(Promise.all(...));
 ## Further reading
 
 - `CLAUDE.md` — architecture, style/prompt conventions, prompt-engineering rules, what not to do.
+
+## Embeddable Widget
+
+A framework-free, lightweight pendant builder widget that can be embedded on any website (Shopify, Wix, Webflow, WordPress, or plain HTML).
+
+### Architecture
+
+- **Source:** TypeScript in `src/widget/`
+- **Output:** Plain JS bundle in `public/embed/pendant-builder.js`
+- **UI:** Web Component (`<pendant-builder>`) with Shadow DOM scoped CSS
+- **Backend:** The existing Next.js API routes serve as the widget's backend
+- **No dependencies:** No React, Next.js, or Tailwind inside the widget runtime
+
+### Quick Start
+
+```bash
+# Build the widget
+npm run build:widget
+
+# Preview it (requires dev server running)
+npm run dev
+# Then open http://localhost:3000/embed-preview
+```
+
+### Embed Snippet
+
+```html
+<script src="https://YOUR_DOMAIN.com/embed/pendant-builder.js"></script>
+
+<pendant-builder
+  store-id="demo"
+  api-base="https://YOUR_DOMAIN.com"
+  mode="pendants">
+</pendant-builder>
+```
+
+### Imperative Mount
+
+```html
+<div id="pendant-builder"></div>
+<script src="https://YOUR_DOMAIN.com/embed/pendant-builder.js"></script>
+<script>
+  PendantBuilder.mount("#pendant-builder", {
+    storeId: "demo",
+    apiBase: "https://YOUR_DOMAIN.com",
+    mode: "pendants"
+  });
+</script>
+```
+
+### Configuration
+
+| Attribute   | JS Option    | Default               | Description                          |
+| ----------- | ------------ | --------------------- | ------------------------------------ |
+| `store-id`  | `storeId`    | `"demo"`              | Tenant/store identifier              |
+| `api-base`  | `apiBase`    | current origin        | Backend API base URL                 |
+| `mode`      | `mode`       | `"pendants"`          | Start screen: `"pendants"`, `"name"`, or `"picture"` |
+| `theme`     | `theme`      | `"warm-brown"`        | Visual theme                         |
+
+### WordPress / Shopify / Wix Notes
+
+- Add the `<script>` tag in your site's custom code/header injection area
+- Place `<pendant-builder ...>` wherever you want the builder to appear
+- The widget auto-fits width: 100% of its container; wrap it in a responsive container
+
+### Production Notes
+
+- Serve `public/embed/pendant-builder.js` from your app domain or a CDN
+- Configure CORS headers on the API routes (already set to `*` for MVP; tighten for production)
+- Tenant config should eventually be keyed by `store-id` (currently hardcoded to `demo`)
+- Never expose API keys in the widget — all calls go through the Next.js backend
+- Add domain allowlist per store in production
+

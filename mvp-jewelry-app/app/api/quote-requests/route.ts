@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
 
+function corsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders() });
+}
+
 const Body = z.object({
   requestId: z.string().min(1),
   videoId: z.string().min(1).optional(),
@@ -33,7 +45,7 @@ export async function POST(req: Request) {
     });
 
     if (!request) {
-      return NextResponse.json({ error: "Request not found." }, { status: 404 });
+      return NextResponse.json({ error: "Request not found." }, { status: 404, headers: corsHeaders() });
     }
 
     const latestLead = await prisma.lead.findFirst({
@@ -44,7 +56,7 @@ export async function POST(req: Request) {
     if (!contact.name || !contact.phone || !contact.email) {
       return NextResponse.json({
         error: "Customer contact information is required before requesting a quote."
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders() });
     }
 
     const betterResult = request.Results.find(result => result.variant === 1 && result.status === "succeeded" && result.imageUrl)
@@ -77,9 +89,9 @@ export async function POST(req: Request) {
       }
     });
 
-    return NextResponse.json({ quoteRequestId: quoteRequest.id }, { status: 201 });
+    return NextResponse.json({ quoteRequestId: quoteRequest.id }, { status: 201, headers: corsHeaders() });
   } catch (err) {
     const message = err instanceof Error ? err.message : "bad_request";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: 400, headers: corsHeaders() });
   }
 }

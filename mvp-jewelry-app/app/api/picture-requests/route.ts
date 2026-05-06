@@ -8,6 +8,18 @@ import { prisma } from '@/server/db/client';
 import { composePicturePendant, preparePictureComposite } from '@/lib/picture-styles/compositor';
 import { saveGeneratedImage } from '@/lib/styles/connector';
 
+function corsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders() });
+}
+
 const MAX_UPLOAD_BYTES = Number(process.env.PICTURE_UPLOAD_MAX_BYTES ?? 10 * 1024 * 1024);
 
 const Fields = z.object({
@@ -17,7 +29,7 @@ const Fields = z.object({
 });
 
 function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
+  return NextResponse.json({ error: message }, { status, headers: corsHeaders() });
 }
 
 function getGenerationErrorMessage(err: unknown): string {
@@ -155,7 +167,7 @@ export async function POST(req: Request) {
       }
     })();
 
-    return NextResponse.json({ requestId: request.id }, { status: 201 });
+    return NextResponse.json({ requestId: request.id }, { status: 201, headers: corsHeaders() });
   } catch (err: any) {
     await removeTempDir(tempDir);
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? 'Invalid picture pendant request.' : err.message ?? 'bad_request';

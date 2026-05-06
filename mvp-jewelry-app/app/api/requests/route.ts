@@ -4,6 +4,18 @@ import { prisma } from '@/server/db/client';
 import { buildVariants } from '@/lib/styles/builder';
 import { generateImage } from '@/lib/styles/connector';
 
+function corsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders() });
+}
+
 const Body = z.object({
   userId: z.string(),
   styleId: z.string(),
@@ -110,8 +122,8 @@ export async function POST(req: Request) {
       }
     }));
 
-    return NextResponse.json({ requestId: request.id }, { status: 201 });
+    return NextResponse.json({ requestId: request.id }, { status: 201, headers: corsHeaders() });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400 });
+    return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400, headers: corsHeaders() });
   }
 }
