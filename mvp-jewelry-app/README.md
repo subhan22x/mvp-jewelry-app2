@@ -9,6 +9,8 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 - **Working flow:** Name pendant only.
 - **Disabled placeholders on home:** Logo, Picture Pendants, Custom Design, Get Inspired, Draw Your Design.
 - **Single-tenant:** all requests are scoped to a hardcoded `demo` user.
+- **SaaS direction:** see `SAAS_PRODUCT_MAP.md` for the planned multi-account SaaS architecture, subscription billing, CRM, and onboarding roadmap.
+- **Data model review:** see `docs/data-model.md` for current and target ER diagrams.
 
 ## Prerequisites
 
@@ -61,8 +63,14 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - Set `OWNER_ACCESS_CODE` in `.env.local` or Render.
 - Visit `/owner` and enter the access code.
 - Quote requests show first with large design thumbnails and a `Send Quote` action.
-- Other generations show below/alongside as compact cards.
-- The Prompt System control switches new name generations between `json` and `natural_language` prompt modes.
+- The `Generate Video` section shows name pendant drafts as compact cards.
+- Each draft image has its own `Generate Video` button. The admin can generate more than one video from the same pendant/image, and the button shows when it has been pressed before.
+- Because Wavespeed video generation uses paid provider processing, the button opens an `Are you sure?` confirmation before starting a job.
+- Owner video jobs are created with owner dashboard access; the older customer-facing video flow still uses `VIDEO_ACCESS_CODE`.
+- `/owner/videos` lists all pendant video jobs, including pending, completed, and failed attempts.
+- `/owner/videos/[videoJobId]` shows the selected source image, loading/progress state, final video player, download action, and share/copy action.
+- Completed Wavespeed videos are downloaded into `GENERATED_IMAGE_DIR`, served from `/generated/:file`, and stored in `VideoGeneration.videoUrl`. The original Wavespeed URL is retained in `VideoGeneration.remoteVideoUrl`.
+- The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
 - `Send Quote` currently saves price, note, and `status: sent` only; email delivery is intentionally not wired yet.
 
 ## Render deployment
@@ -102,9 +110,9 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | ---------------------- | ------------------------------------ | --------------------------------------------- |
 | `GEMINI_API_KEY`       | (required)                           | Gemini auth. `IMAGE_API_KEY` is a fallback.   |
 | `GEMINI_MODEL_ID`      | `gemini-3.1-flash-image-preview`     | Model used by the connector.                  |
-| `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images are written.           |
+| `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images and downloaded videos are written. |
 | `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for Seedance video generation. |
-| `VIDEO_ACCESS_CODE`    | (required for videos)                | Internal code required before video generation. |
+| `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
 | `OWNER_ACCESS_CODE`    | (required for `/owner`)              | Store-owner dashboard access code.             |
 | `NAME_PROMPT_MODE`     | `json`                               | Fallback prompt mode for name generations: `json` or `natural_language`. `/owner` can override it in Prisma. |
 | `VIDEO_DURATION_SECONDS` | `7`                                | Seedance video duration, clamped from 4-15 seconds. |
@@ -167,9 +175,15 @@ app/
   page.tsx                   # home screen with style entry cards
   name/page.tsx              # the 4-step name pendant flow (steps 0–2 + results)
   name/__tests__/            # Vitest unit tests for the name builder
+  owner/page.tsx             # owner dashboard: quote requests + Generate Video section
+  owner/account/page.tsx     # owner account settings, including Prompt System
+  owner/videos/page.tsx      # all pendant video jobs
+  owner/videos/[videoJobId]/page.tsx # video job status/player/download/share page
   api/requests/route.ts      # POST /api/requests — creates a Request and fires 2 async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
   api/quote-requests/route.ts # POST — persists the customer quote/admin handoff snapshot
+  api/owner/video-jobs/route.ts # POST — owner starts a Wavespeed video job for one Result image
+  api/owner/video-jobs/[id]/route.ts # GET — owner polls video job status
 
 data/
   pendant-styles.json        # style list shown in the UI
@@ -193,14 +207,14 @@ prisma/
 public/
   pendants/                  # style thumbnails (also used as Gemini reference inputs)
   emblems/                   # emblem assets
-  generated/                 # generated images output (dev only)
+  generated/                 # generated images and downloaded videos output (dev only)
 ```
 
 The folders `lib/styles/` and `server/db/client.ts` are currently re-export shims pointing at `src/`. See `CLAUDE.md` for why and when they get removed.
 
 ## Production notes
 
-**Generated images** — `public/generated/` is local-only. Vercel/Netlify filesystems are ephemeral; production deployments need object storage (R2, S3, Supabase, Cloudinary) wired into `connector.ts`.
+**Generated media** — `public/generated/` is local-only. Vercel/Netlify filesystems are ephemeral; production deployments need object storage (R2, S3, Supabase, Cloudinary) wired into image saving and video download storage. Render uses `GENERATED_IMAGE_DIR=/var/data/generated` with a persistent disk for the MVP.
 
 **Background tasks on Vercel** — the POST route fires generation tasks with `void Promise.all(...)` so it can return immediately. In a Vercel Lambda, the function may terminate after the response is sent before all tasks complete. Use `waitUntil` from `@vercel/functions` to keep the Lambda alive:
 

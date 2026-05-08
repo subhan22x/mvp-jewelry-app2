@@ -2,9 +2,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
 import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-import { getNamePromptMode } from "@/src/lib/prompt-mode";
 import OwnerLoginForm from "./OwnerLoginForm";
-import PromptModeForm from "./PromptModeForm";
+import GenerateVideoButton from "./GenerateVideoButton";
 import SendQuoteForm from "./SendQuoteForm";
 
 export const dynamic = "force-dynamic";
@@ -89,11 +88,12 @@ function resultMatches(row: ResultRow, query: string, filter: string) {
   if (filter === "picture" && row.request.productType !== "picture") return false;
   if (filter === "pending" && row.status !== "pending") return false;
   if (filter === "sent") return false;
+  if (row.request.productType !== "name") return false;
   return true;
 }
 
 async function getOwnerData() {
-  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests, results, promptMode] = await Promise.all([
+  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests, results] = await Promise.all([
     prisma.quoteRequest.count(),
     prisma.result.count(),
     prisma.quoteRequest.count({ where: { status: "pending" } }),
@@ -116,19 +116,25 @@ async function getOwnerData() {
             primaryMetal: true,
             secondaryMetal: true,
             emblem: true,
-            createdAt: true
+            createdAt: true,
+            Videos: {
+              select: {
+                id: true,
+                sourceResultId: true,
+                status: true
+              },
+              orderBy: { createdAt: "desc" }
+            }
           }
         }
       }
-    }),
-    getNamePromptMode()
+    })
   ]);
 
   return {
     metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes },
     quoteRequests,
-    results,
-    promptMode
+    results
   };
 }
 
@@ -213,8 +219,12 @@ function QuoteCard({ quote }: { quote: QuoteRow }) {
 }
 
 function GenerationCard({ row }: { row: ResultRow }) {
+  const videoJobsForImage = row.request.Videos.filter(video => video.sourceResultId === row.id);
+  const completedCount = videoJobsForImage.filter(video => video.status === "succeeded").length;
+
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-white/5 bg-[#17191F] p-3 transition hover:bg-white/[0.02] sm:gap-4">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-white/5 bg-[#17191F] p-3 transition hover:bg-white/[0.02]">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
       <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black">
         {row.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -244,6 +254,13 @@ function GenerationCard({ row }: { row: ResultRow }) {
       ) : (
         <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1d2027] text-[#8c909f]">-</span>
       )}
+      </div>
+      <GenerateVideoButton
+        resultId={row.id}
+        attemptCount={videoJobsForImage.length}
+        completedCount={completedCount}
+        disabled={!row.imageUrl || row.status !== "succeeded"}
+      />
     </div>
   );
 }
@@ -270,11 +287,8 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
   const query = (searchParams.q ?? "").trim().toLowerCase();
   const filter = (searchParams.filter ?? "all").toLowerCase();
   const data = await getOwnerData();
-  const quoteRequestIds = new Set(data.quoteRequests.map(quote => quote.requestId).filter(Boolean));
-  const quoteResultIds = new Set(data.quoteRequests.map(quote => quote.resultId).filter(Boolean));
   const visibleQuotes = data.quoteRequests.filter(quote => quoteMatches(quote, query, filter));
   const visibleResults = data.results
-    .filter(row => !quoteResultIds.has(row.id) && !quoteRequestIds.has(row.requestId))
     .filter(row => resultMatches(row, query, filter));
 
   const currentQuery = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
@@ -298,17 +312,21 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           <p className="mt-1 text-sm text-[#c2c6d6]">Global Manager</p>
           <span className="mt-3 inline-block rounded border border-[#dec47e]/20 bg-[#56450a]/50 px-2 py-1 text-[11px] text-[#dec47e]">Premium Tier</span>
         </div>
-        {["Quotes", "Customers", "Account"].map((item, index) => (
-          <a
-            key={item}
-            href="#"
+        {[
+          { label: "Quotes", href: "/owner" },
+          { label: "Customers", href: "#" },
+          { label: "Account", href: "/owner/account" }
+        ].map((item, index) => (
+          <Link
+            key={item.label}
+            href={item.href}
             className={`mx-2 flex items-center gap-3 rounded-lg px-4 py-3 transition ${
               index === 0 ? "translate-x-1 bg-[#56450a] text-[#dec47e]" : "text-[#c2c6d6] hover:bg-white/5"
             }`}
           >
             <span aria-hidden>{index === 0 ? "*" : "o"}</span>
-            <span className="text-sm font-medium">{item}</span>
-          </a>
+            <span className="text-sm font-medium">{item.label}</span>
+          </Link>
         ))}
       </aside>
 
@@ -324,8 +342,6 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           <MetricCard label="Pending Quotes" value={data.metrics.pendingQuotes} accent />
           <MetricCard label="Sent Quotes" value={data.metrics.sentQuotes} />
         </section>
-
-        <PromptModeForm initialMode={data.promptMode} />
 
         <section className="flex min-w-0 flex-col gap-4">
           <form className="relative flex h-12 w-full min-w-0 items-center rounded-xl border border-white/10 bg-black/45 px-4 shadow-inner transition focus-within:border-white/30">
@@ -370,16 +386,19 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           <details open className="group min-w-0">
             <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#272a31] p-4 transition hover:bg-[#363941]">
               <div className="min-w-0">
-                <h2 className="text-sm font-medium text-[#e1e2ec]">Other Generations</h2>
-                <p className="mt-1 text-sm text-[#8c909f]">Designs without quote requests</p>
+                <h2 className="text-sm font-medium text-[#e1e2ec]">Generate Video</h2>
+                <p className="mt-1 text-sm text-[#8c909f]">Name pendant drafts ready for video</p>
               </div>
+              <Link href="/owner/videos" className="flex-shrink-0 rounded-full border border-white/10 px-3 py-1 text-xs text-[#c2c6d6] hover:bg-white/10">
+                All videos
+              </Link>
               <span className="flex-shrink-0 text-[#8c909f] transition group-open:rotate-180" aria-hidden>v</span>
             </summary>
             <div className="mt-3 flex min-w-0 flex-col gap-2">
               {visibleResults.map(row => <GenerationCard key={row.id} row={row} />)}
               {visibleResults.length === 0 && (
                 <div className="rounded-xl border border-white/5 bg-[#17191F] p-6 text-center text-sm text-[#8c909f]">
-                  No other generations match the current filters.
+                  No name pendant generations match the current filters.
                 </div>
               )}
             </div>

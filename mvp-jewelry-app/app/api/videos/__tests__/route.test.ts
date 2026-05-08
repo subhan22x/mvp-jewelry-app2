@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   videoFindUnique: vi.fn(),
   videoUpdate: vi.fn(),
   generateSeedanceVideo: vi.fn(),
-  buildJewelryVideoPrompt: vi.fn()
+  buildJewelryVideoPrompt: vi.fn(),
+  saveRemoteVideoLocally: vi.fn()
 }));
 
 vi.mock("@/server/db/client", () => ({
@@ -25,6 +26,10 @@ vi.mock("@/server/db/client", () => ({
 vi.mock("@/lib/video/wavespeed", () => ({
   buildJewelryVideoPrompt: mocks.buildJewelryVideoPrompt,
   generateSeedanceVideo: mocks.generateSeedanceVideo
+}));
+
+vi.mock("@/src/lib/video/storage", () => ({
+  saveRemoteVideoLocally: mocks.saveRemoteVideoLocally
 }));
 
 const requestBody = {
@@ -65,6 +70,7 @@ describe("/api/videos", () => {
       startedAt: new Date("2026-05-05T12:00:00.000Z")
     });
     mocks.videoUpdate.mockResolvedValue({});
+    mocks.saveRemoteVideoLocally.mockResolvedValue("/generated/video-test.mp4");
   });
 
   afterEach(() => {
@@ -110,7 +116,8 @@ describe("/api/videos", () => {
     expect(mocks.videoUpdate).toHaveBeenCalledWith({
       where: { id: "video-test" },
       data: expect.objectContaining({
-        videoUrl: "https://cdn.example.com/video.mp4",
+        videoUrl: "/generated/video-test.mp4",
+        remoteVideoUrl: "https://cdn.example.com/video.mp4",
         providerJobId: "wavespeed-job",
         status: "succeeded"
       })
@@ -189,7 +196,8 @@ describe("/api/videos/[id]", () => {
       requestId: "req-test",
       sourceResultId: "result-1",
       sourceImageUrl: "https://pendant.example.com/generated/req-test-v1.png",
-      videoUrl: "https://cdn.example.com/video.mp4",
+      videoUrl: "/generated/video-test.mp4",
+      remoteVideoUrl: "https://cdn.example.com/video.mp4",
       modelId: "bytedance/seedance-2.0-fast/image-to-video",
       providerJobId: "wavespeed-job",
       status: "succeeded",
@@ -207,7 +215,8 @@ describe("/api/videos/[id]", () => {
       id: "video-test",
       requestId: "req-test",
       sourceResultId: "result-1",
-      videoUrl: "https://cdn.example.com/video.mp4",
+      videoUrl: "/generated/video-test.mp4",
+      remoteVideoUrl: "https://cdn.example.com/video.mp4",
       status: "succeeded",
       durationMs: 7250,
       durationSeconds: 7.25,

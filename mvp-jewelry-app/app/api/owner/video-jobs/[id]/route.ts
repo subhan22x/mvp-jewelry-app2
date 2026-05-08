@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
+import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
 
 function toSeconds(durationMs: number | null) {
   return typeof durationMs === "number" ? Number((durationMs / 1000).toFixed(2)) : null;
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  if (!isOwnerRequestAuthenticated(req)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const video = await prisma.videoGeneration.findUnique({
     where: { id: params.id },
     include: {
