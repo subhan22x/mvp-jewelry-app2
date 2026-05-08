@@ -390,11 +390,16 @@ Future admin dashboard should merge this practicality with the brand warmth:
 Current polished owner dashboard:
 
 - Route: `/owner`.
-- Purpose: store-owner quote and generation monitoring, separate from the customer ideation flow.
+- Purpose: store-owner quote monitoring plus admin-initiated pendant video generation, separate from the customer ideation flow.
 - Access: simple `OWNER_ACCESS_CODE` gate.
-- Quote requests appear above other generations on mobile.
-- Desktop uses an admin sidebar with quote requests and other generations side by side.
+- Quote requests appear above the `Generate Video` section on mobile.
+- Desktop uses an admin sidebar with quote requests and video-ready name pendant drafts side by side.
 - `Send Quote` saves price/note/status for now; email sending is future scope.
+- `Generate Video` cards show one name pendant result image per action. The button remains available after prior attempts and displays that it has been pressed before.
+- Because video generation uses paid Wavespeed processing, the button opens an inline confirmation banner before starting a job.
+- `/owner/videos` is the all-jobs video index for pending, succeeded, and failed jobs.
+- `/owner/videos/[videoJobId]` is the job detail/status page with source image, loading state, video player, download, and share/copy actions.
+- `/owner/account` holds owner-level settings such as the Prompt System mode switcher.
 
 ## Figma Make Design Prompt Snippet
 

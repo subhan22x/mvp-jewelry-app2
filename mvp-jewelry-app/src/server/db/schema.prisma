@@ -66,6 +66,7 @@ model VideoGeneration {
   sourceImageUrl String
   prompt         String
   videoUrl       String?
+  remoteVideoUrl String?
   modelId        String?
   providerJobId  String?
   status         String   @default("pending") // pending | succeeded | failed

@@ -247,7 +247,8 @@ Generated outputs are stored in two places:
 - Images are written to `public/generated/`.
 - Generation metadata is stored in Prisma, including prompt text and fields such as model id, status, error, start/completion time, and duration.
 - Requests include `productType`, so internal review can distinguish `name` and `picture` generations.
-- Video generations are stored in Prisma in `VideoGeneration`. They reference the parent request, the source high-quality result, the public source image URL sent to Wavespeed, the exact video prompt, Wavespeed job id, video URL, model id, status, error, and duration.
+- Video generations are stored in Prisma in `VideoGeneration`. They reference the parent request, the selected source result, the public source image URL sent to Wavespeed, the exact video prompt, Wavespeed job id, local video URL, original remote Wavespeed URL, model id, status, error, and duration.
+- Completed videos are downloaded into `GENERATED_IMAGE_DIR` and served from `/generated/:file`, matching generated image serving.
 - Quote handoffs are stored in Prisma in `QuoteRequest`. A quote request snapshots the designed image URL, optional generated video URL, generation timestamp, product/style/text/metals/emblem/diamond choices, and customer name/phone/email.
 
 The internal review page is available at:
@@ -256,7 +257,7 @@ The internal review page is available at:
 
 That page is meant for analyzing generated images alongside prompts. It shows images in a grid and prompts in collapsible small-font panels.
 
-It also shows recent quote requests so the designed image, generated video link, customer contact, and design choices are visible before a dedicated admin dashboard exists.
+It also shows recent quote requests so the designed image, generated video link, customer contact, and design choices are visible outside the polished owner dashboard when raw debugging is useful.
 
 Prisma Studio is useful for raw database inspection when it is running at:
 
@@ -275,13 +276,25 @@ Current behavior:
 - Video generation always uses the better model image, `variant: 1`, regardless of which draft tile is selected.
 - After a video succeeds, the customer-facing action is `get a quote`, not `open video`.
 - Clicking `get a quote` writes a `QuoteRequest` row and shows the banner: `your Design has been sent! We will reach back soon through email or test`.
-- Access is gated by `VIDEO_ACCESS_CODE`. The current local access code is `ID8`.
+- Customer-facing video access is gated by `VIDEO_ACCESS_CODE`. The current local access code is `ID8`.
 - The Wavespeed API key is read from `WAVESPEED_API_KEY`.
 - The Seedance endpoint is `bytedance/seedance-2.0-fast/image-to-video`.
 - Default duration is `7` seconds via `VIDEO_DURATION_SECONDS`.
 - Default resolution is `720p` via `VIDEO_RESOLUTION`; supported values are `480p`, `720p`, and `1080p`.
 - Audio defaults off unless `VIDEO_GENERATE_AUDIO=true`.
 - The video prompt is read from `VIDEO_PROMPT` when configured. Until the final prompt is supplied, the code falls back to a conservative jewelry product-video prompt.
+- The completed video file is downloaded locally into `GENERATED_IMAGE_DIR`; `VideoGeneration.videoUrl` stores that local `/generated/...` URL and `remoteVideoUrl` stores the original Wavespeed-hosted URL.
+
+Owner/admin behavior:
+
+- `/owner` has a `Generate Video` section for name pendant result images.
+- Each image has a `Generate Video` button, so the owner chooses which generated draft to animate.
+- The owner can generate multiple videos from the same pendant/image. The button remains available and shows how many jobs were previously started for that image.
+- Clicking the button first shows an `Are you sure?` banner because Wavespeed generation uses paid provider processing. The API call starts only after confirmation.
+- Owner video creation uses the owner session from `OWNER_ACCESS_CODE`; no `VIDEO_ACCESS_CODE` prompt is shown in admin.
+- `/owner/videos` lists all video jobs, including pending, succeeded, and failed attempts.
+- `/owner/videos/[videoJobId]` shows the selected source image, loading bar/scaffold while pending, final video player, download action, and share/copy action.
+- Failed jobs remain visible in the videos list, and the original generation remains available for another attempt from `/owner`.
 
 Important Wavespeed URL requirement:
 
@@ -294,8 +307,15 @@ Relevant files:
 - UI: `app/name/page.tsx`.
 - Submit route: `app/api/videos/route.ts`.
 - Poll route: `app/api/videos/[id]/route.ts`.
+- Owner dashboard UI: `app/owner/page.tsx`.
+- Owner video list: `app/owner/videos/page.tsx`.
+- Owner video job page: `app/owner/videos/[videoJobId]/page.tsx`.
+- Owner video submit route: `app/api/owner/video-jobs/route.ts`.
+- Owner video poll route: `app/api/owner/video-jobs/[id]/route.ts`.
 - Quote route: `app/api/quote-requests/route.ts`.
 - Provider client: `src/lib/video/wavespeed.ts`.
+- Public URL helper: `src/lib/video/public-url.ts`.
+- Local video storage helper: `src/lib/video/storage.ts`.
 - Prisma model: `VideoGeneration`.
 
 ## Prompt Mode
@@ -310,7 +330,7 @@ The active mode is stored in Prisma as an `AppSetting` row:
 - `key`: `name_prompt_mode`
 - `value`: `json` or `natural_language`
 
-The owner dashboard at `/owner` exposes a Prompt System control for switching this setting. Customer-facing pages do not choose prompt mode; `/api/requests` reads the setting at generation time.
+The owner account page at `/owner/account` exposes a Prompt System control for switching this setting. Customer-facing pages do not choose prompt mode; `/api/requests` reads the setting at generation time.
 
 Current natural-language style support:
 
