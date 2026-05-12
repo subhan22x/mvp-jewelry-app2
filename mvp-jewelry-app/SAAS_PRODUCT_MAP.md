@@ -28,10 +28,13 @@ Generated images, videos, prompts, and system behavior are owned/controlled by t
 
 Customer-facing account storefront:
 
+- Public store owner profile page for Instagram/TikTok bio links.
 - Branded name pendant builder.
 - Store logo at the top.
 - Account-specific color theme.
 - Anonymous generation flow.
+- Quote intake for customer-uploaded inspiration/product photos.
+- Product collections and product grid.
 - Quote/contact form creates a customer record for that account.
 - Optional future payment/deposit flow after a quote.
 
@@ -147,16 +150,52 @@ These items should happen before putting real stores through Stripe.
 15. Add account branding settings: store name, logo upload, and theme selection.
 16. Create at least 5 predefined themes.
 17. Apply account theme/logo to customer-facing pages.
-18. Add subscription fields to `Account`.
-19. Add usage ledger tables for cost monitoring.
-20. Gate owner access and generation actions by active subscription status.
-21. Add Stripe customer/subscription fields to `Account`.
-22. Add Stripe checkout or billing portal scaffold.
-23. Add Stripe webhook route and persist subscription status from webhooks.
-24. Move generated media to object storage or a production-safe storage adapter.
-25. Add email/SMS provider abstraction for quote follow-up.
-26. Add consent fields for email/SMS contact.
-27. Add basic SaaS admin monitoring for accounts, usage, costs, and failed jobs.
+18. Add public store owner profile page at `/s/:accountSlug`.
+19. Add onboarding fields for profile photo, cover photo, display name, Instagram handle, phone number, services, collections, and products.
+20. Add admin profile/catalog forms for profile basics, service buttons, collections, and products.
+21. Add subscription fields to `Account`.
+22. Add usage ledger tables for cost monitoring.
+23. Gate owner access and generation actions by active subscription status.
+24. Add Stripe customer/subscription fields to `Account`.
+25. Add Stripe checkout or billing portal scaffold.
+26. Add Stripe webhook route and persist subscription status from webhooks.
+27. Move generated media to Cloudflare R2 through a production-safe storage adapter.
+28. Add email/SMS provider abstraction for quote follow-up.
+29. Add consent fields for email/SMS contact.
+30. Add basic SaaS admin monitoring for accounts, usage, costs, and failed jobs.
+
+## Production Storage Decision
+
+Use Supabase/Postgres for relational application data and Cloudflare R2 for generated media.
+
+Supabase/Postgres should store:
+
+- accounts
+- users and memberships
+- customers
+- requests, results, and video metadata
+- quote requests
+- subscription state
+- messages, usage events, and audit logs
+
+Cloudflare R2 should store:
+
+- generated pendant images
+- generated videos
+- store logos
+- customer-uploaded picture pendant images
+- future exports or downloadable assets
+
+The database should store media metadata and references only:
+
+- `accountId`
+- public or signed URL
+- storage key
+- content type
+- byte size
+- owner type/id
+
+Do not store generated videos in Supabase Storage for the SaaS version. Supabase Storage can work for small tests, but videos will hit storage and bandwidth limits quickly. R2 is the preferred long-term object storage path.
 
 ### Tier 2: Real SaaS Hardening
 

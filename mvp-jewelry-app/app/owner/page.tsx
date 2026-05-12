@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
+import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
 import OwnerLoginForm from "./OwnerLoginForm";
-import GenerateVideoButton from "./GenerateVideoButton";
 import SendQuoteForm from "./SendQuoteForm";
+import OwnerFrame from "./OwnerFrame";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,6 @@ type SearchParams = {
 };
 
 type QuoteRow = Awaited<ReturnType<typeof getOwnerData>>["quoteRequests"][number];
-type ResultRow = Awaited<ReturnType<typeof getOwnerData>>["results"][number];
 
 function shortId(id: string) {
   return id.slice(0, 8);
@@ -44,6 +44,27 @@ function metalLabel(primary?: string | null, secondary?: string | null) {
   return secondary && secondary !== primary ? `${pretty(primary)} + ${pretty(secondary)}` : pretty(primary);
 }
 
+function sizeLabel(size?: string | null) {
+  const labels: Record<string, string> = {
+    "2_3_inches": "2 - 3 inches",
+    "3_4_5_inches": "3 - 4.5 inches",
+    "4_5_7_inches": "4.5 - 7 inches",
+    "7_10_inches": "7 - 10 inches"
+  };
+  return size ? labels[size] ?? size : "n/a";
+}
+
+function materialSpecLabel(value?: string | null) {
+  const labels: Record<string, string> = {
+    gold: "Gold",
+    silver: "Silver",
+    natural_diamonds: "Natural Diamonds",
+    lab_diamonds: "Lab Diamonds",
+    moissanite: "Moissanite"
+  };
+  return value ? labels[value] ?? value : "n/a";
+}
+
 function statusClass(status: string) {
   if (status === "sent") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
   if (status === "failed") return "border-red-300/30 bg-red-400/10 text-red-200";
@@ -60,6 +81,9 @@ function quoteMatches(quote: QuoteRow, query: string, filter: string) {
     quote.styleId,
     quote.primaryMetal,
     quote.secondaryMetal,
+    quote.size,
+    quote.metalType,
+    quote.stoneType,
     quote.productType
   ].join(" ").toLowerCase();
   if (query && !haystack.includes(query)) return false;
@@ -71,70 +95,23 @@ function quoteMatches(quote: QuoteRow, query: string, filter: string) {
   return true;
 }
 
-function resultMatches(row: ResultRow, query: string, filter: string) {
-  const haystack = [
-    row.id,
-    row.requestId,
-    row.request.text,
-    row.request.styleId,
-    row.request.productType,
-    row.request.primaryMetal,
-    row.request.secondaryMetal,
-    row.status
-  ].join(" ").toLowerCase();
-  if (query && !haystack.includes(query)) return false;
-  if (filter === "today" && !isToday(row.createdAt)) return false;
-  if (filter === "name" && row.request.productType !== "name") return false;
-  if (filter === "picture" && row.request.productType !== "picture") return false;
-  if (filter === "pending" && row.status !== "pending") return false;
-  if (filter === "sent") return false;
-  if (row.request.productType !== "name") return false;
-  return true;
-}
-
 async function getOwnerData() {
-  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests, results] = await Promise.all([
-    prisma.quoteRequest.count(),
-    prisma.result.count(),
-    prisma.quoteRequest.count({ where: { status: "pending" } }),
-    prisma.quoteRequest.count({ where: { status: "sent" } }),
+  const accountId = getDefaultAccountId();
+  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests] = await Promise.all([
+    prisma.quoteRequest.count({ where: { accountId } }),
+    prisma.result.count({ where: { accountId } }),
+    prisma.quoteRequest.count({ where: { accountId, status: "pending" } }),
+    prisma.quoteRequest.count({ where: { accountId, status: "sent" } }),
     prisma.quoteRequest.findMany({
+      where: { accountId },
       orderBy: [{ createdAt: "desc" }],
       take: 80
-    }),
-    prisma.result.findMany({
-      orderBy: [{ createdAt: "desc" }],
-      take: 160,
-      include: {
-        request: {
-          select: {
-            id: true,
-            text: true,
-            productType: true,
-            uploadFileName: true,
-            styleId: true,
-            primaryMetal: true,
-            secondaryMetal: true,
-            emblem: true,
-            createdAt: true,
-            Videos: {
-              select: {
-                id: true,
-                sourceResultId: true,
-                status: true
-              },
-              orderBy: { createdAt: "desc" }
-            }
-          }
-        }
-      }
     })
   ]);
 
   return {
     metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes },
-    quoteRequests,
-    results
+    quoteRequests
   };
 }
 
@@ -201,6 +178,18 @@ function QuoteCard({ quote }: { quote: QuoteRow }) {
               <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{metalLabel(quote.primaryMetal, quote.secondaryMetal)}</span>
             </div>
             <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Size</span>
+              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{sizeLabel(quote.size)}</span>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Type</span>
+              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(quote.metalType)}</span>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Stone Type</span>
+              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(quote.stoneType)}</span>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
               <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Diamond Tier</span>
               <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{quote.diamondQuality?.toUpperCase() ?? "n/a"}</span>
             </div>
@@ -215,53 +204,6 @@ function QuoteCard({ quote }: { quote: QuoteRow }) {
         />
       </div>
     </article>
-  );
-}
-
-function GenerationCard({ row }: { row: ResultRow }) {
-  const videoJobsForImage = row.request.Videos.filter(video => video.sourceResultId === row.id);
-  const completedCount = videoJobsForImage.filter(video => video.status === "succeeded").length;
-
-  return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-white/5 bg-[#17191F] p-3 transition hover:bg-white/[0.02]">
-      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black">
-        {row.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.imageUrl} alt={`${row.request.text} generation`} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-[10px] text-white/30">No image</div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h4 className="truncate text-[15px] font-semibold text-[#e1e2ec]">{row.request.productType === "picture" ? row.request.uploadFileName ?? row.request.text : row.request.text}</h4>
-          <span className={`flex-shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusClass(row.status)}`}>{row.status}</span>
-        </div>
-        <p className="mt-1 truncate text-[12px] text-[#8c909f]">
-          Style: {row.request.styleId} / Draft {row.variant} / {formatDate(row.createdAt)}
-        </p>
-      </div>
-      {row.imageUrl ? (
-        <a
-          href={row.imageUrl}
-          target="_blank"
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1d2027] text-[#e1e2ec] transition hover:bg-white/10"
-          aria-label="View generation"
-        >
-          &gt;
-        </a>
-      ) : (
-        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1d2027] text-[#8c909f]">-</span>
-      )}
-      </div>
-      <GenerateVideoButton
-        resultId={row.id}
-        attemptCount={videoJobsForImage.length}
-        completedCount={completedCount}
-        disabled={!row.imageUrl || row.status !== "succeeded"}
-      />
-    </div>
   );
 }
 
@@ -288,48 +230,12 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
   const filter = (searchParams.filter ?? "all").toLowerCase();
   const data = await getOwnerData();
   const visibleQuotes = data.quoteRequests.filter(quote => quoteMatches(quote, query, filter));
-  const visibleResults = data.results
-    .filter(row => resultMatches(row, query, filter));
 
   const currentQuery = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
   const chipHref = (nextFilter: string) => `/owner?filter=${nextFilter}${currentQuery}`;
 
   return (
-    <main className="min-h-dvh max-w-full overflow-x-hidden bg-[#101114] pb-28 pt-20 text-[#e1e2ec] antialiased selection:bg-[#f7bc5f] selection:text-[#101114] lg:pl-72">
-      <header className="fixed left-0 top-0 z-40 flex h-16 w-full max-w-full items-center justify-between gap-3 overflow-hidden border-b border-white/10 bg-[#101114] px-4 shadow-sm sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="text-[#f7bc5f]" aria-hidden>*</span>
-          <span className="truncate text-base font-bold tracking-tight text-[#f7bc5f] sm:text-lg">Jewelry Design Studio</span>
-        </div>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-[#17191F] text-xs font-bold text-[#D1B873]">
-          JS
-        </div>
-      </header>
-
-      <aside className="fixed left-0 top-0 z-30 hidden h-full w-72 flex-col border-r border-white/5 bg-[#17191F] px-2 py-6 pt-20 shadow-2xl lg:flex">
-        <div className="mb-8 px-4">
-          <h2 className="text-xl font-bold text-[#f7bc5f]">Luxe Jewelry Admin</h2>
-          <p className="mt-1 text-sm text-[#c2c6d6]">Global Manager</p>
-          <span className="mt-3 inline-block rounded border border-[#dec47e]/20 bg-[#56450a]/50 px-2 py-1 text-[11px] text-[#dec47e]">Premium Tier</span>
-        </div>
-        {[
-          { label: "Quotes", href: "/owner" },
-          { label: "Customers", href: "#" },
-          { label: "Account", href: "/owner/account" }
-        ].map((item, index) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`mx-2 flex items-center gap-3 rounded-lg px-4 py-3 transition ${
-              index === 0 ? "translate-x-1 bg-[#56450a] text-[#dec47e]" : "text-[#c2c6d6] hover:bg-white/5"
-            }`}
-          >
-            <span aria-hidden>{index === 0 ? "*" : "o"}</span>
-            <span className="text-sm font-medium">{item.label}</span>
-          </Link>
-        ))}
-      </aside>
-
+    <OwnerFrame active="Quotes">
       <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-8 px-4 md:px-6">
         <section className="min-w-0">
           <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Store Dashboard</h1>
@@ -364,7 +270,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           </div>
         </section>
 
-        <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <section className="grid min-w-0 gap-6">
           <details open className="group min-w-0">
             <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#272a31] p-4 transition hover:bg-[#363941]">
               <div className="min-w-0">
@@ -382,31 +288,10 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
               )}
             </div>
           </details>
-
-          <details open className="group min-w-0">
-            <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#272a31] p-4 transition hover:bg-[#363941]">
-              <div className="min-w-0">
-                <h2 className="text-sm font-medium text-[#e1e2ec]">Generate Video</h2>
-                <p className="mt-1 text-sm text-[#8c909f]">Name pendant drafts ready for video</p>
-              </div>
-              <Link href="/owner/videos" className="flex-shrink-0 rounded-full border border-white/10 px-3 py-1 text-xs text-[#c2c6d6] hover:bg-white/10">
-                All videos
-              </Link>
-              <span className="flex-shrink-0 text-[#8c909f] transition group-open:rotate-180" aria-hidden>v</span>
-            </summary>
-            <div className="mt-3 flex min-w-0 flex-col gap-2">
-              {visibleResults.map(row => <GenerationCard key={row.id} row={row} />)}
-              {visibleResults.length === 0 && (
-                <div className="rounded-xl border border-white/5 bg-[#17191F] p-6 text-center text-sm text-[#8c909f]">
-                  No name pendant generations match the current filters.
-                </div>
-              )}
-            </div>
-          </details>
         </section>
       </div>
 
       <BottomNav />
-    </main>
+    </OwnerFrame>
   );
 }

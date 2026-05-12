@@ -1,0 +1,279 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String              @id @default(cuid())
+  storeName    String
+  email        String?             @unique
+  name         String?
+  phone        String?
+  passwordHash String?
+  role         String              @default("store_owner") // saas_admin | store_owner
+  createdAt    DateTime            @default(now())
+  Requests     Request[]
+  Memberships  AccountMembership[]
+}
+
+model Account {
+  id                   String              @id @default(cuid())
+  name                 String
+  slug                 String              @unique
+  logoUrl              String?
+  themeKey             String              @default("classic_black_gold")
+  status               String              @default("active") // active | disabled | canceled
+  stripeCustomerId     String?             @unique
+  stripeSubscriptionId String?             @unique
+  subscriptionStatus   String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  Memberships          AccountMembership[]
+  Requests             Request[]
+  Results              Result[]
+  Leads                Lead[]
+  Videos               VideoGeneration[]
+  QuoteRequests        QuoteRequest[]
+  AppSettings          AppSetting[]
+  StoreProfile         StoreProfile?
+  StoreServices        StoreService[]
+  ProductCollections   ProductCollection[]
+  Products             Product[]
+}
+
+model AccountMembership {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   @default("owner") // owner
+  status    String   @default("active") // active | disabled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, userId])
+  @@index([userId])
+}
+
+model Request {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  accountId      String   @default("demo-account")
+  account        Account  @relation(fields: [accountId], references: [id])
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  productType    String   @default("name") // name | picture
+  styleId        String
+  text           String
+  twoTone        Boolean  @default(false)
+  primaryMetal   String
+  secondaryMetal String?
+  emblem         String   // none | crown | heart | spade | butterfly | moneybag
+  size           String?
+  metalType      String?
+  stoneType      String?
+  uploadFileName String?
+  Results        Result[]
+  Videos         VideoGeneration[]
+  QuoteRequests  QuoteRequest[]
+
+  @@index([accountId, createdAt])
+}
+
+model Result {
+  id            String    @id @default(cuid())
+  accountId     String    @default("demo-account")
+  account       Account   @relation(fields: [accountId], references: [id])
+  requestId     String
+  request       Request   @relation(fields: [requestId], references: [id])
+  variant       Int       // 1..2
+  prompt        String
+  imageUrl      String?
+  modelId       String?
+  status        String    @default("pending") // pending | succeeded | failed
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  durationMs    Int?
+  createdAt     DateTime  @default(now())
+  QuoteRequests QuoteRequest[]
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  accountId String   @default("demo-account")
+  account   Account  @relation(fields: [accountId], references: [id])
+  requestId String?
+  name      String
+  phone     String
+  email     String
+  createdAt DateTime @default(now())
+
+  @@index([accountId, createdAt])
+}
+
+model VideoGeneration {
+  id             String   @id @default(cuid())
+  accountId      String   @default("demo-account")
+  account        Account  @relation(fields: [accountId], references: [id])
+  requestId      String
+  request        Request  @relation(fields: [requestId], references: [id])
+  sourceResultId String?
+  sourceImageUrl String
+  prompt         String
+  videoUrl       String?
+  remoteVideoUrl String?
+  modelId        String?
+  providerJobId  String?
+  status         String   @default("pending") // pending | succeeded | failed
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+  QuoteRequests  QuoteRequest[]
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
+model QuoteRequest {
+  id               String           @id @default(cuid())
+  accountId        String           @default("demo-account")
+  account          Account          @relation(fields: [accountId], references: [id])
+  requestId        String?
+  request          Request?         @relation(fields: [requestId], references: [id])
+  resultId         String?
+  result           Result?          @relation(fields: [resultId], references: [id])
+  videoId          String?
+  video            VideoGeneration? @relation(fields: [videoId], references: [id])
+  designedImageUrl String?
+  videoUrl         String?
+  generatedAt      DateTime?
+  productType      String?
+  styleId          String?
+  text             String?
+  twoTone          Boolean?
+  primaryMetal     String?
+  secondaryMetal   String?
+  emblem           String?
+  size             String?
+  metalType        String?
+  stoneType        String?
+  diamondQuality   String?
+  customerName     String
+  customerPhone    String
+  customerEmail    String
+  status           String           @default("pending") // pending | priced | sent | closed
+  quotedPriceCents Int?
+  quoteNotes       String?
+  referenceImageUrlsJson String?
+  createdAt        DateTime         @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
+model AppSetting {
+  key       String   @id
+  accountId String   @default("demo-account")
+  account   Account  @relation(fields: [accountId], references: [id])
+  value     String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([accountId])
+}
+
+model StoreProfile {
+  id                  String   @id @default(cuid())
+  accountId           String   @unique
+  account             Account  @relation(fields: [accountId], references: [id])
+  displayName         String
+  headline            String?
+  bio                 String?
+  profileImageUrl     String?
+  coverImageUrl       String?
+  coverPreset         String?
+  coverOverlayOpacity Int      @default(27)
+  coverTextColor      String   @default("light") // light | dark
+  phone               String?
+  whatsappPhone       String?
+  instagramHandle     String?
+  city                String?
+  country             String?
+  yearStarted         String?
+  statusLabel         String?
+  verificationLabel   String?
+  isPublished         Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model StoreService {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
+  title       String
+  description String?
+  kind        String   @default("custom") // quote | design_custom | appointment | link
+  ctaLabel    String
+  href        String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([accountId, sortOrder])
+}
+
+model ProductCollection {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
+  title       String
+  slug        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Products    Product[]
+
+  @@unique([accountId, slug])
+  @@index([accountId, sortOrder])
+}
+
+model Product {
+  id           String             @id @default(cuid())
+  accountId    String
+  account      Account            @relation(fields: [accountId], references: [id])
+  collectionId String?
+  collection   ProductCollection? @relation(fields: [collectionId], references: [id])
+  name         String
+  slug         String
+  description  String?
+  imageUrl     String
+  priceLabel   String?
+  badgeLabel   String?
+  variantLabelsJson String?
+  href         String?
+  isFeatured   Boolean            @default(false)
+  isActive     Boolean            @default(true)
+  sortOrder    Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([accountId, slug])
+  @@index([accountId, sortOrder])
+  @@index([collectionId, sortOrder])
+}

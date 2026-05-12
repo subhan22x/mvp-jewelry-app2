@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     const latestLead = await prisma.lead.findFirst({
-      where: { requestId: request.id },
+      where: { accountId: request.accountId, requestId: request.id },
       orderBy: { createdAt: "desc" }
     });
     const contact = normalizeContact(body, latestLead);
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
 
     const quoteRequest = await prisma.quoteRequest.create({
       data: {
+        accountId: request.accountId,
         requestId: request.id,
         resultId: betterResult?.id ?? null,
         videoId: video?.id ?? null,
@@ -69,6 +70,9 @@ export async function POST(req: Request) {
         primaryMetal: request.primaryMetal,
         secondaryMetal: request.secondaryMetal,
         emblem: request.emblem,
+        size: request.size,
+        metalType: request.metalType,
+        stoneType: request.stoneType,
         diamondQuality: body.diamondQuality ?? null,
         customerName: contact.name,
         customerPhone: contact.phone,

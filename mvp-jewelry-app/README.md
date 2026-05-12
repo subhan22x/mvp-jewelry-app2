@@ -11,6 +11,8 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 - **Single-tenant:** all requests are scoped to a hardcoded `demo` user.
 - **SaaS direction:** see `SAAS_PRODUCT_MAP.md` for the planned multi-account SaaS architecture, subscription billing, CRM, and onboarding roadmap.
 - **Data model review:** see `docs/data-model.md` for current and target ER diagrams.
+- **Production storage direction:** Supabase/Postgres for relational data; Cloudflare R2 for generated images, videos, logos, and uploads.
+- **Supabase/R2 setup notes:** see `docs/supabase-r2-setup.md`.
 
 ## Prerequisites
 
@@ -38,6 +40,12 @@ GEMINI_API_KEY=your_key_here
 # OWNER_ACCESS_CODE=ID8
 # VIDEO_DURATION_SECONDS=7
 # APP_BASE_URL=https://your-public-app-url.example
+# Optional Cloudflare R2 media storage. If fully configured, generated media writes to R2.
+# R2_ACCOUNT_ID=...
+# R2_ACCESS_KEY_ID=...
+# R2_SECRET_ACCESS_KEY=...
+# R2_BUCKET_NAME=mvp-jewelry-media
+# R2_PUBLIC_BASE_URL=https://media.example.com
 ```
 
 Initialize the database (SQLite, on disk at `prisma/dev.db`):
@@ -102,7 +110,7 @@ APP_BASE_URL=https://your-render-service.onrender.com
 
 Generated files are served through `/generated/:file`, so `GENERATED_IMAGE_DIR` can point at Render's persistent disk instead of `public/generated`.
 
-For a larger production setup, migrate from SQLite to Postgres and move generated files to object storage such as S3/R2. The Render disk setup is intentionally the quick MVP path.
+For a larger production setup, migrate from SQLite to Postgres and move generated files to Cloudflare R2. The Render disk setup is intentionally the quick MVP path.
 
 ## Environment variables
 
@@ -110,7 +118,7 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | ---------------------- | ------------------------------------ | --------------------------------------------- |
 | `GEMINI_API_KEY`       | (required)                           | Gemini auth. `IMAGE_API_KEY` is a fallback.   |
 | `GEMINI_MODEL_ID`      | `gemini-3.1-flash-image-preview`     | Model used by the connector.                  |
-| `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images and downloaded videos are written. |
+| `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images and downloaded videos are written when R2 is not configured. |
 | `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for Seedance video generation. |
 | `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
 | `OWNER_ACCESS_CODE`    | (required for `/owner`)              | Store-owner dashboard access code.             |
@@ -119,6 +127,12 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | `VIDEO_RESOLUTION`     | `720p`                               | Seedance output resolution: `480p`, `720p`, or `1080p`. |
 | `VIDEO_PROMPT`         | built-in fallback                    | Optional exact prompt sent to Seedance.       |
 | `APP_BASE_URL`         | (required for videos)                | Public base URL used so Wavespeed can fetch generated images. |
+| `R2_ACCOUNT_ID`        | (optional)                           | Cloudflare account ID for R2 media storage. |
+| `R2_ACCESS_KEY_ID`     | (optional)                           | R2 access key ID. |
+| `R2_SECRET_ACCESS_KEY` | (optional)                           | R2 secret access key. |
+| `R2_BUCKET_NAME`       | (optional)                           | R2 bucket for generated media. |
+| `R2_ENDPOINT`          | derived from `R2_ACCOUNT_ID`         | Optional explicit R2 S3 endpoint. |
+| `R2_PUBLIC_BASE_URL`   | (required for R2)                    | Public base URL or custom domain for R2 objects. |
 
 ## npm scripts
 
@@ -134,6 +148,9 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | `npm run prisma:generate` | Generate Prisma client                                |
 | `npm run prisma:migrate`  | Run migrations (`prisma migrate dev`)                 |
 | `npm run db:seed`         | Seed the `demo` user                                  |
+| `npm run supabase:push`   | Push the Postgres schema to Supabase using `.env.local` |
+| `npm run supabase:migrate-metadata` | Copy SQLite metadata rows to Supabase/Postgres |
+| `npm run r2:migrate-generated` | Upload local generated media to R2 and rewrite matching SQLite/Supabase URLs |
 | `npm run styles`          | Manage `data/pendant-styles.json` via script          |
 
 ## User flow (Name pendant)
@@ -214,7 +231,7 @@ The folders `lib/styles/` and `server/db/client.ts` are currently re-export shim
 
 ## Production notes
 
-**Generated media** — `public/generated/` is local-only. Vercel/Netlify filesystems are ephemeral; production deployments need object storage (R2, S3, Supabase, Cloudinary) wired into image saving and video download storage. Render uses `GENERATED_IMAGE_DIR=/var/data/generated` with a persistent disk for the MVP.
+**Generated media** — `public/generated/` is local-only. Vercel/Netlify filesystems are ephemeral; production deployments should use Cloudflare R2 for generated images, videos, logos, and uploads. Render uses `GENERATED_IMAGE_DIR=/var/data/generated` with a persistent disk for the MVP.
 
 **Background tasks on Vercel** — the POST route fires generation tasks with `void Promise.all(...)` so it can return immediately. In a Vercel Lambda, the function may terminate after the response is sent before all tasks complete. Use `waitUntil` from `@vercel/functions` to keep the Lambda alive:
 

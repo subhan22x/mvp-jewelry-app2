@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/server/db/client";
+import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
 import OwnerLoginForm from "../../OwnerLoginForm";
 import VideoJobStatus from "../VideoJobStatus";
@@ -18,8 +19,9 @@ export default async function OwnerVideoJobPage({ params }: { params: { videoJob
     return <OwnerLoginForm />;
   }
 
-  const video = await prisma.videoGeneration.findUnique({
-    where: { id: params.videoJobId },
+  const accountId = getDefaultAccountId();
+  const video = await prisma.videoGeneration.findFirst({
+    where: { id: params.videoJobId, accountId },
     include: {
       request: {
         select: {

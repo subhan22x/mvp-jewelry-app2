@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
 
 const mocks = vi.hoisted(() => ({
+  quoteRequestFindFirst: vi.fn(),
   quoteRequestUpdate: vi.fn()
 }));
 
 vi.mock("@/server/db/client", () => ({
   prisma: {
     quoteRequest: {
+      findFirst: mocks.quoteRequestFindFirst,
       update: mocks.quoteRequestUpdate
     }
   }
@@ -27,6 +29,7 @@ describe("/api/quote-requests/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.OWNER_ACCESS_CODE = "ID8";
+    mocks.quoteRequestFindFirst.mockResolvedValue({ id: "quote-test" });
     mocks.quoteRequestUpdate.mockResolvedValue({
       id: "quote-test",
       quotedPriceCents: 125000,

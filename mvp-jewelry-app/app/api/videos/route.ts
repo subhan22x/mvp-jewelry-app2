@@ -48,6 +48,7 @@ export async function POST(req: Request) {
     const startedAt = new Date();
     const video = await prisma.videoGeneration.create({
       data: {
+        accountId: request.accountId,
         requestId: request.id,
         sourceResultId: betterResult.id,
         sourceImageUrl,

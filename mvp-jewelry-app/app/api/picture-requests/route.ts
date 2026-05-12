@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { prisma } from '@/server/db/client';
 import { composePicturePendant, preparePictureComposite } from '@/lib/picture-styles/compositor';
 import { saveGeneratedImage } from '@/lib/styles/connector';
+import { getDefaultAccountId } from '@/src/lib/account';
 
 const MAX_UPLOAD_BYTES = Number(process.env.PICTURE_UPLOAD_MAX_BYTES ?? 10 * 1024 * 1024);
 
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
       styleId: form.get('styleId'),
       primaryMetal: form.get('primaryMetal')
     });
+    const accountId = getDefaultAccountId();
 
     const imageValue = form.get('image');
     if (!imageValue || typeof imageValue === 'string') {
@@ -90,6 +92,7 @@ export async function POST(req: Request) {
 
     const request = await prisma.request.create({
       data: {
+        accountId,
         userId: parsed.userId,
         productType: 'picture',
         styleId: parsed.styleId,
@@ -105,6 +108,7 @@ export async function POST(req: Request) {
     const startedAt = new Date();
     const attempt = await prisma.result.create({
       data: {
+        accountId,
         requestId: request.id,
         variant: prepared.variant,
         prompt: prepared.prompt,
