@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import ThemedImageOption from "../components/ThemedImageOption";
 import EmblemPicker from "./components/EmblemPicker";
 import LeadCaptureModal from "./components/LeadCaptureModal";
 import { pendantStyles, emblems, type PendantStyle } from "@/lib/assets";
@@ -14,6 +15,9 @@ const STEP_LABELS: readonly string[] = ["Style", "Emblem", "Review", "Creating",
 const MAX_POLL_ATTEMPTS = 50;
 const MAX_VIDEO_POLL_ATTEMPTS = 80;
 type GoldComboKey = "YELLOW_WHITE" | "ROSE_WHITE" | "WHITE";
+type PendantSizeKey = "2_3_inches" | "3_4_5_inches" | "4_5_7_inches" | "7_10_inches";
+type MetalTypeKey = "gold" | "silver";
+type StoneTypeKey = "natural_diamonds" | "lab_diamonds" | "moissanite";
 
 type GenerationOption = { id: string; label: string; src: string; variant: number };
 type GenerationAttempt = {
@@ -43,6 +47,24 @@ const GOLD_COMBOS: ReadonlyArray<{ id: GoldComboKey; label: string; summary: str
   { id: "WHITE", label: "White Gold", summary: "White gold" }
 ];
 
+const PENDANT_SIZES: ReadonlyArray<{ id: PendantSizeKey; label: string }> = [
+  { id: "2_3_inches", label: "2 - 3 inches" },
+  { id: "3_4_5_inches", label: "3 - 4.5 inches" },
+  { id: "4_5_7_inches", label: "4.5 - 7 inches" },
+  { id: "7_10_inches", label: "7 - 10 inches" }
+];
+
+const METAL_TYPES: ReadonlyArray<{ id: MetalTypeKey; label: string }> = [
+  { id: "gold", label: "Gold" },
+  { id: "silver", label: "Silver" }
+];
+
+const STONE_TYPES: ReadonlyArray<{ id: StoneTypeKey; label: string }> = [
+  { id: "natural_diamonds", label: "Natural Diamonds" },
+  { id: "lab_diamonds", label: "Lab Diamonds" },
+  { id: "moissanite", label: "Moissanite" }
+];
+
 const MAX_NAME_LINES = 2;
 
 const buildPendantColumns = (styles: readonly PendantStyle[], perColumn = 2) =>
@@ -66,6 +88,9 @@ export default function NameBuilder() {
   const [emblemId, setEmblemId] = useState<string | null>(null);
   const [emblemWarning, setEmblemWarning] = useState<string | null>(null);
   const [goldCombo, setGoldCombo] = useState<GoldComboKey>("YELLOW_WHITE");
+  const [pendantSize, setPendantSize] = useState<PendantSizeKey>("2_3_inches");
+  const [metalType, setMetalType] = useState<MetalTypeKey>("gold");
+  const [stoneType, setStoneType] = useState<StoneTypeKey>("natural_diamonds");
   const [diamondQuality, setDiamondQuality] = useState<"vs" | "vvs">("vvs");
   const [selectedGenerationId, setSelectedGenerationId] = useState<string | null>(null);
   const [generations, setGenerations] = useState<GenerationOption[]>([]);
@@ -96,6 +121,9 @@ export default function NameBuilder() {
   const selectedEmblem = emblemId ? emblems.find(asset => asset.id === emblemId) ?? null : null;
   const emblemSummary = includeEmblem ? (selectedEmblem ? selectedEmblem.label : "None selected") : "Not included";
   const activeGoldCombo = GOLD_COMBOS.find(option => option.id === goldCombo) ?? GOLD_COMBOS[0];
+  const activePendantSize = PENDANT_SIZES.find(option => option.id === pendantSize) ?? PENDANT_SIZES[0];
+  const activeMetalType = METAL_TYPES.find(option => option.id === metalType) ?? METAL_TYPES[0];
+  const activeStoneType = STONE_TYPES.find(option => option.id === stoneType) ?? STONE_TYPES[0];
   const canAddLine = lines.length < MAX_NAME_LINES;
   const hasPrimaryName = lines[0]?.trim().length > 0;
   const highQualityGeneration = generations.find(generation => generation.variant === 1) ?? null;
@@ -154,7 +182,7 @@ export default function NameBuilder() {
   const handleBack = () => {
     if ((step === 4 || step === 5) && !confirmDiscardGenerations()) return;
     if (step === 0) {
-      router.push("/");
+      router.push("/pendants");
       return;
     }
     if (step === 4 || step === 5) {
@@ -188,8 +216,8 @@ export default function NameBuilder() {
   const showFooterNext = step <= 1;
 
   const uppercaseButtonClass = uppercaseApplied
-    ? "inline-flex items-center gap-2 rounded-2xl border border-[#C9943B] bg-[#C9943B]/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-black transition hover:border-[#F1B45A] hover:bg-[#F1B45A] hover:text-black"
-    : "inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-black/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-white/70 transition hover:border-white/40 hover:text-white";
+    ? "inline-flex items-center gap-2 rounded-2xl border border-[color:var(--theme-border-strong)] bg-[var(--theme-accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-[var(--theme-accent-contrast)] transition hover:border-[color:var(--theme-border-hover)] hover:bg-[var(--theme-border-hover)]"
+    : "inline-flex items-center gap-2 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-[var(--theme-text-soft)] transition hover:border-[color:var(--theme-border-hover)] hover:text-[var(--theme-text)]";
 
   const handleAcceptDesign = async () => {
     if (isGenerating) return;
@@ -206,7 +234,10 @@ export default function NameBuilder() {
       twoTone: metals.twoTone,
       primaryMetal: metals.primary,
       secondaryMetal: metals.twoTone ? metals.secondary : null,
-      emblem: emblemValue
+      emblem: emblemValue,
+      size: pendantSize,
+      metalType,
+      stoneType
     };
 
     setGenerationError(null);
@@ -402,22 +433,22 @@ export default function NameBuilder() {
 
   return (
     <>
-    <main className="min-h-dvh px-4 py-4 text-white md:px-8">
+    <main className="min-h-dvh px-4 py-4 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6 md:px-12">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
           <button
             type="button"
             onClick={handleBack}
-            className="mb-6 flex w-fit items-center gap-2 rounded-full border border-white/20 bg-black/35 px-4 py-2 text-sm uppercase tracking-wide transition hover:border-white/45"
+            className="mb-6 flex w-fit items-center gap-2 rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] px-4 py-2 text-sm uppercase tracking-wide transition hover:border-[color:var(--theme-border-hover)]"
           >
             back
           </button>
 
           <header>
-            <p className="text-xs uppercase tracking-[0.35em] text-white/70">{STEP_LABELS[step]}</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-[2.25rem]">Dream it first</h1>
+            <p className="text-xs uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">{STEP_LABELS[step]}</p>
+            <h1 className="mt-3 text-[2.15rem] font-semibold tracking-tight text-[var(--theme-heading)] md:text-[2.5rem]">Dream it first</h1>
             <p
-              className="mt-1 text-2xl italic text-white/90"
+              className="-mt-1 text-[1.7rem] italic text-[var(--theme-script)]"
               style={{ fontFamily: "var(--font-nostalgic)" }}
             >
               we&apos;ll build it.
@@ -428,7 +459,7 @@ export default function NameBuilder() {
             {step === 0 && (
               <div className="space-y-7">
                 <div>
-                  <label className="text-sm font-medium tracking-wide text-white/70">Text on Pendant</label>
+                  <label className="text-sm font-medium tracking-wide text-[var(--theme-text-soft)]">Text on Pendant</label>
                   <div className="mt-3 space-y-3">
                     {lines.map((value, index) => (
                       <div key={index} className="flex items-center gap-3">
@@ -436,14 +467,14 @@ export default function NameBuilder() {
                           value={value}
                           onChange={event => updateLine(event.target.value, index)}
                           placeholder={index === 0 ? "text on pendant..." : "add another line"}
-                          className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-4 py-3 text-base outline-none transition focus:border-white/40"
+                          className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-4 py-3 text-base outline-none transition focus:border-[color:var(--theme-border-hover)]"
                         />
                         <div className="flex items-center gap-2">
                           {lines.length > 1 && index > 0 && (
                             <button
                               type="button"
                               onClick={() => removeLine(index)}
-                              className="h-11 w-11 rounded-2xl border border-white/15 bg-black/60 text-2xl font-semibold leading-none text-white/80 transition hover:border-white/40"
+                              className="h-11 w-11 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-2xl font-semibold leading-none text-[var(--theme-text-soft)] transition hover:border-[color:var(--theme-border-hover)]"
                               aria-label="Remove name line"
                             >
                               -
@@ -453,7 +484,7 @@ export default function NameBuilder() {
                             <button
                               type="button"
                               onClick={addLine}
-                              className="h-11 w-11 rounded-2xl border border-white/15 bg-black/60 text-2xl font-semibold leading-none text-white/80 transition hover:border-white/40"
+                              className="h-11 w-11 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-2xl font-semibold leading-none text-[var(--theme-text-soft)] transition hover:border-[color:var(--theme-border-hover)]"
                               aria-label="Add another line"
                             >
                               +
@@ -479,33 +510,21 @@ export default function NameBuilder() {
                 <div>
                   {/* Style selector cards; add art or adjust layout here. */}
                   <h2 className="text-lg font-semibold">Choose Style</h2>
-                  <p className="mt-1 text-sm text-white/60">Swipe through to explore different pendant looks.</p>
-                  <div className="mt-4 -mx-0.5 overflow-x-auto pb-2">
-                    <div className="flex snap-x snap-mandatory gap-1.5 px-0">
+                  <p className="mt-1 text-sm text-[var(--theme-text-soft)]">Swipe through to explore different pendant looks.</p>
+                  <div className="mt-4 -mx-4 overflow-x-auto px-4 pb-5 pt-1">
+                    <div className="flex snap-x snap-mandatory gap-4">
                       {pendantColumns.map((column, columnIndex) => (
                         <div key={columnIndex} className="grid min-w-[192px] grid-rows-2 gap-3 snap-start">
                           {column.map(style => {
                             const isActive = style.id === styleId;
-                            const stateClass = isActive
-                              ? "border-[4px] border-[#C5934F] shadow-[0_18px_36px_rgba(113,69,31,0.45)] hover:border-[#E3A86A]"
-                              : "border border-[#71451F] hover:border-[#986035]";
                             return (
-                              <button
+                              <ThemedImageOption
                                 key={style.id}
                                 onClick={() => setStyleId(style.id)}
-                                type="button"
-                                className={`group relative h-[184px] w-[184px] overflow-hidden rounded-[30px] bg-black/40 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${stateClass}`}
-                                aria-pressed={isActive}
-                              >
-                                <Image
-                                  src={style.src}
-                                  alt={`${style.label} pendant style`}
-                                  fill
-                                  sizes="(max-width: 640px) 210px, 260px"
-                                  className="object-cover object-center transition duration-500 group-hover:scale-105"
-                                />
-                                <span className="pointer-events-none absolute inset-0 rounded-[30px] border border-[#71451F]/60 bg-gradient-to-b from-transparent via-transparent to-black/35" aria-hidden />
-                              </button>
+                                selected={isActive}
+                                src={style.src}
+                                label={`${style.label} pendant style`}
+                              />
                             );
                           })}
                           {column.length === 1 && (
@@ -525,7 +544,7 @@ export default function NameBuilder() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold">Emblem</h2>
-                    <p className="text-sm text-white/60">Add a symbol on top of the pendant where the chain loops through.</p>
+                    <p className="text-sm text-[var(--theme-text-soft)]">Add a symbol on top of the pendant where the chain loops through.</p>
                   </div>
                   <button
                     type="button"
@@ -533,7 +552,7 @@ export default function NameBuilder() {
                       setIncludeEmblem(value => !value);
                       setEmblemWarning(null);
                     }}
-                    className={`relative h-7 w-12 rounded-full border border-white/15 transition ${includeEmblem ? "bg-blue-500/80" : "bg-black/50"}`}
+                    className={`relative h-7 w-12 rounded-full border-2 border-[color:var(--theme-border)] transition ${includeEmblem ? "bg-[var(--theme-accent)]" : "bg-[var(--theme-surface)]"}`}
                     aria-pressed={includeEmblem}
                     aria-label="Toggle emblem"
                   >
@@ -552,8 +571,8 @@ export default function NameBuilder() {
                   disabled={!includeEmblem}
                 />
 
-                <div>
-                  <h2 className="text-lg font-semibold text-center">Select Color Combo</h2>
+                <div className="pt-5 sm:pt-6">
+                  <h2 className="text-left text-lg font-semibold">Select Color Combo</h2>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {GOLD_COMBOS.map(option => {
                       const isActive = goldCombo === option.id;
@@ -563,7 +582,27 @@ export default function NameBuilder() {
                           type="button"
                           onClick={() => setGoldCombo(option.id)}
                           aria-pressed={isActive}
-                          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-blue-400 bg-blue-500/20 text-white" : "border-[#71451F] bg-black/45 text-white/80 hover:border-[#986035]"}`}
+                          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-soft)] hover:border-[color:var(--theme-border-hover)]"}`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <h2 className="text-left text-lg font-semibold">Size</h2>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {PENDANT_SIZES.map(option => {
+                      const isActive = pendantSize === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setPendantSize(option.id)}
+                          aria-pressed={isActive}
+                          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-soft)] hover:border-[color:var(--theme-border-hover)]"}`}
                         >
                           {option.label}
                         </button>
@@ -578,7 +617,48 @@ export default function NameBuilder() {
               <div className="space-y-8">
                 {/* Final confirmation screen details. */}
                 <div>
-                  <h2 className="text-lg font-semibold">Diamond Quality</h2>
+                  <h2 className="text-xl font-semibold">Metal Type</h2>
+                  <p className="mt-1 text-sm text-[var(--theme-text-soft)]">This does not affect the color of your pendant.</p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {METAL_TYPES.map(option => {
+                      const isActive = metalType === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setMetalType(option.id)}
+                          aria-pressed={isActive}
+                          className={`min-w-[92px] rounded-2xl border px-4 py-2 text-base font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] hover:border-[color:var(--theme-border-hover)]"}`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-semibold">Stone Type</h2>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {STONE_TYPES.map(option => {
+                      const isActive = stoneType === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setStoneType(option.id)}
+                          aria-pressed={isActive}
+                          className={`rounded-2xl border px-4 py-2 text-base font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] hover:border-[color:var(--theme-border-hover)]"}`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-semibold">Diamond Quality</h2>
                   <div className="mt-4 flex gap-3">
                     {(["vs", "vvs"] as const).map(option => {
                       const isActive = diamondQuality === option;
@@ -588,7 +668,7 @@ export default function NameBuilder() {
                           type="button"
                           onClick={() => setDiamondQuality(option)}
                           aria-pressed={isActive}
-                          className={`min-w-[72px] rounded-2xl border border-white/15 px-4 py-2 text-lg uppercase transition hover:border-white/35 ${isActive ? "border-[3px] border-blue-400 bg-blue-500/15" : "bg-black/45"}`}
+                          className={`min-w-[72px] rounded-2xl border px-4 py-2 text-lg uppercase transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] hover:border-[color:var(--theme-border-hover)]"}`}
                         >
                           {option}
                         </button>
@@ -598,9 +678,9 @@ export default function NameBuilder() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm uppercase tracking-[0.35em] text-white/60">Drafting your imagination...</h3>
-                  <div className="mt-4 rounded-3xl border border-[#71451F]/60 bg-black/50 p-4">
-                    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-black/70">
+                  <h3 className="text-sm uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">Drafting your imagination...</h3>
+                  <div className="mt-4 rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] p-4">
+                    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[var(--theme-surface-strong)]">
                       {activeStyle && (
                         <Image
                           src={activeStyle.src}
@@ -612,26 +692,38 @@ export default function NameBuilder() {
                         />
                       )}
                     </div>
-                    <dl className="mt-4 space-y-2 text-sm text-white/60">
+                    <dl className="mt-4 space-y-2 text-sm text-[var(--theme-text-soft)]">
                       <div className="flex justify-between">
                         <dt>Name</dt>
-                        <dd className="font-medium text-white/90">{lines.filter(Boolean).join(" ") || "Your idea"}</dd>
+                        <dd className="font-medium text-[var(--theme-text)]">{lines.filter(Boolean).join(" ") || "Your idea"}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt>Style</dt>
-                        <dd className="font-medium text-white/90">{activeStyle?.label}</dd>
+                        <dd className="font-medium text-[var(--theme-text)]">{activeStyle?.label}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt>Gold</dt>
-                        <dd className="font-medium text-white/90">{activeGoldCombo.summary}</dd>
+                        <dd className="font-medium text-[var(--theme-text)]">{activeGoldCombo.summary}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Size</dt>
+                        <dd className="font-medium text-[var(--theme-text)]">{activePendantSize.label}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Metal Type</dt>
+                        <dd className="font-medium text-[var(--theme-text)]">{activeMetalType.label}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Stone Type</dt>
+                        <dd className="font-medium text-[var(--theme-text)]">{activeStoneType.label}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt>Emblem</dt>
-                        <dd className="font-medium text-white/90">{emblemSummary}</dd>
+                        <dd className="font-medium text-[var(--theme-text)]">{emblemSummary}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt>Diamond</dt>
-                        <dd className="font-medium text-white/90">{diamondQuality.toUpperCase()}</dd>
+                        <dd className="font-medium text-[var(--theme-text)]">{diamondQuality.toUpperCase()}</dd>
                       </div>
                     </dl>
                   </div>
@@ -644,7 +736,7 @@ export default function NameBuilder() {
                     <button
                       type="button"
                       onClick={() => setStep(0)}
-                      className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
+                      className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-5 py-3 text-base font-medium transition hover:border-[color:var(--theme-border-hover)]"
                     >
                       edit
                     </button>
@@ -652,7 +744,7 @@ export default function NameBuilder() {
                       type="button"
                       onClick={handleAcceptDesign}
                       disabled={isGenerating}
-                      className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${isGenerating ? 'cursor-wait border border-white/15 bg-black/45 text-white/50' : 'bg-blue-500 text-white hover:bg-blue-400'}`}
+                      className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${isGenerating ? 'cursor-wait border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-muted)]' : 'bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]'}`}
                     >
                       {isGenerating ? 'submitting...' : 'accept'}
                     </button>
@@ -663,17 +755,17 @@ export default function NameBuilder() {
 
             {step === 4 && (
               <div className="space-y-8">
-                <div className="rounded-3xl border border-[#71451F]/60 bg-black/35 px-6 py-6">
+                <div className="rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] px-6 py-6">
                   <h2 className="text-lg font-semibold text-center sm:text-left">
                     {isGenerating ? "Drafting your designs…" : "Choose your favourite"}
                   </h2>
-                  <p className="mt-2 text-sm text-white/60 text-center sm:text-left">
+                  <p className="mt-2 text-sm text-[var(--theme-text-soft)] text-center sm:text-left">
                     {isGenerating
                       ? "Designs appear as they're generated — pick your favourite when ready."
                       : "Select the draft that matches your vision best. We'll refine the winner for production."}
                   </p>
                   {isGenerating && (
-                    <p className="mt-1 text-xs text-white/35 text-center sm:text-left">
+                    <p className="mt-1 text-xs text-[var(--theme-text-muted)] text-center sm:text-left">
                       {generations.length} of 2 generated
                     </p>
                   )}
@@ -704,7 +796,7 @@ export default function NameBuilder() {
                           <button
                             type="button"
                             onClick={() => setSelectedGenerationId(option.id)}
-                            className={`group relative block w-full overflow-hidden rounded-[32px] border ${isSelected ? "border-[3px] border-blue-400 shadow-[0_0_35px_rgba(59,130,246,0.45)]" : "border-white/15"} bg-black/35 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400`}
+                            className={`group relative block w-full overflow-hidden rounded-[32px] ${isSelected ? "border-[3px] border-[color:var(--theme-selected-border)] shadow-[0_0_35px_var(--theme-selected-glow)]" : "border-2 border-[color:var(--theme-border)]"} bg-[var(--theme-surface-muted)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-selected-border)]`}
                             aria-pressed={isSelected}
                             aria-label={option.label}
                           >
@@ -714,7 +806,7 @@ export default function NameBuilder() {
                               alt={option.label}
                               className="block h-auto w-full transition duration-500 group-hover:scale-105"
                             />
-                            <span className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/12" aria-hidden />
+                            <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-transparent via-transparent to-black/20" aria-hidden />
                           </button>
                           <button
                             type="button"
@@ -734,7 +826,7 @@ export default function NameBuilder() {
                   <button
                     type="button"
                     onClick={handleHomeFromResults}
-                    className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
+                    className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-5 py-3 text-base font-medium transition hover:border-[color:var(--theme-border-hover)]"
                   >
                     home
                   </button>
@@ -760,17 +852,17 @@ export default function NameBuilder() {
 
             {step === 5 && (
               <div className="space-y-8">
-                <div className="rounded-3xl border border-[#71451F]/60 bg-black/35 px-6 py-6">
+                <div className="rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] px-6 py-6">
                   <h2 className="text-lg font-semibold text-center sm:text-left">
                     {isVideoGenerating ? "Generating your video…" : "Your video"}
                   </h2>
-                  <p className="mt-2 text-sm text-white/60 text-center sm:text-left">
+                  <p className="mt-2 text-sm text-[var(--theme-text-soft)] text-center sm:text-left">
                     {isVideoGenerating
                       ? "Seedance is animating the higher-quality draft. This usually takes a little longer than images."
                       : "Preview the generated pendant video below."}
                   </p>
 
-                  <div className="mt-6 overflow-hidden rounded-[32px] border border-white/15 bg-black/50">
+                  <div className="mt-6 overflow-hidden rounded-[32px] border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)]">
                     {videoStatus?.videoUrl ? (
                       <video
                         src={videoStatus.videoUrl}
@@ -786,7 +878,7 @@ export default function NameBuilder() {
                   </div>
 
                   {videoStatus?.durationSeconds && (
-                    <p className="mt-3 text-xs text-white/45">
+                    <p className="mt-3 text-xs text-[var(--theme-text-muted)]">
                       Generated in {videoStatus.durationSeconds.toFixed(2)} seconds.
                     </p>
                   )}
@@ -801,7 +893,7 @@ export default function NameBuilder() {
                     <button
                       type="button"
                       onClick={handleHomeFromResults}
-                      className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-medium transition hover:border-white/35"
+                      className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-5 py-3 text-base font-medium transition hover:border-[color:var(--theme-border-hover)]"
                     >
                       home
                     </button>
@@ -814,8 +906,8 @@ export default function NameBuilder() {
                           quoteStatus === "submitted"
                             ? "cursor-default bg-emerald-600"
                             : quoteStatus === "submitting"
-                              ? "cursor-wait bg-blue-500/70"
-                              : "bg-blue-500 hover:bg-blue-400"
+                              ? "cursor-wait bg-[var(--theme-accent)]/70"
+                              : "bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]"
                         }`}
                       >
                         {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "get a quote"}
@@ -824,7 +916,7 @@ export default function NameBuilder() {
                       <button
                         type="button"
                         disabled
-                        className="flex-1 cursor-wait rounded-2xl border border-white/15 bg-black/45 px-5 py-3 text-base font-semibold text-white/50"
+                        className="flex-1 cursor-wait rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-5 py-3 text-base font-semibold text-[var(--theme-text-muted)]"
                       >
                         {isVideoGenerating ? "generating..." : "no video yet"}
                       </button>
@@ -854,7 +946,7 @@ export default function NameBuilder() {
               {([0, 1, 2, 4, 5] as const).map(idx => (
                 <span
                   key={idx}
-                  className={`h-2.5 w-2.5 rounded-full transition ${idx === step ? "bg-blue-400" : "bg-white/25"}`}
+                  className={`h-2.5 w-2.5 rounded-full transition ${idx === step ? "bg-[var(--theme-accent)]" : "bg-white/25"}`}
                 />
               ))}
             </div>
@@ -865,7 +957,7 @@ export default function NameBuilder() {
                 onClick={handleNext}
                 disabled={isNextDisabled}
                 aria-disabled={isNextDisabled}
-                className={`rounded-full border px-4 py-2 text-sm uppercase tracking-wide transition ${isNextDisabled ? "cursor-not-allowed border-white/20 bg-white/5 text-white/40" : "border-blue-500 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30"}`}
+                className={`rounded-full border px-4 py-2 text-sm uppercase tracking-wide transition ${isNextDisabled ? "cursor-not-allowed border-white/20 bg-white/5 text-white/40" : "border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)] hover:bg-[var(--theme-accent)] hover:text-[var(--theme-accent-contrast)]"}`}
               >
                 next
               </button>

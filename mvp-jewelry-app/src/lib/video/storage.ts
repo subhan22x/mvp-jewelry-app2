@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isR2Configured, uploadToR2 } from "@/src/lib/storage/r2";
 
 const GENERATED_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), "public", "generated");
 
@@ -29,11 +30,20 @@ export async function saveRemoteVideoLocally(remoteVideoUrl: string, videoId: st
   }
 
   const contentType = response.headers.get("content-type");
+  const resolvedContentType = contentType ?? "video/mp4";
   const ext = extensionFromContentType(contentType) ?? extensionFromUrl(remoteVideoUrl) ?? ".mp4";
   const fileName = `${videoId}${ext}`;
-  const filePath = path.join(GENERATED_DIR, fileName);
   const buffer = Buffer.from(await response.arrayBuffer());
 
+  if (isR2Configured()) {
+    return uploadToR2({
+      key: `generated/${fileName}`,
+      body: buffer,
+      contentType: resolvedContentType
+    });
+  }
+
+  const filePath = path.join(GENERATED_DIR, fileName);
   await fs.mkdir(GENERATED_DIR, { recursive: true });
   await fs.writeFile(filePath, buffer);
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
+import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
 import OwnerLoginForm from "../OwnerLoginForm";
 
@@ -28,7 +29,9 @@ export default async function OwnerVideosPage() {
     return <OwnerLoginForm />;
   }
 
+  const accountId = getDefaultAccountId();
   const videos = await prisma.videoGeneration.findMany({
+    where: { accountId },
     orderBy: [{ createdAt: "desc" }],
     take: 120,
     include: {

@@ -38,6 +38,9 @@ export async function GET(_: Request, { params }: { params: { id: string }}) {
     uploadFileName: reqRow.uploadFileName,
     metals: { twoTone: reqRow.twoTone, primary: reqRow.primaryMetal, secondary: reqRow.secondaryMetal },
     emblem: reqRow.emblem,
+    size: reqRow.size,
+    metalType: reqRow.metalType,
+    stoneType: reqRow.stoneType,
     results,
     attempts,
     generation: {

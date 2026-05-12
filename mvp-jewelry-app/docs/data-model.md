@@ -460,6 +460,92 @@ erDiagram
   }
 ```
 
+## Store Owner Profile Extension
+
+The public store profile is account-owned and should be shown at `/s/:accountSlug`.
+
+Additional relationships:
+
+```mermaid
+erDiagram
+  ACCOUNT ||--o| STORE_PROFILE : publishes
+  ACCOUNT ||--o{ STORE_SERVICE : offers
+  ACCOUNT ||--o{ PRODUCT_COLLECTION : groups
+  ACCOUNT ||--o{ PRODUCT : lists
+  PRODUCT_COLLECTION ||--o{ PRODUCT : contains
+
+  STORE_PROFILE {
+    string id PK
+    string accountId FK
+    string displayName
+    string headline
+    string bio
+    string profileImageUrl
+    string coverImageUrl
+    string coverPreset
+    int coverOverlayOpacity
+    string coverTextColor
+    string phone
+    string whatsappPhone
+    string instagramHandle
+    string city
+    string country
+    string yearStarted
+    string statusLabel
+    string verificationLabel
+    boolean isPublished
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  STORE_SERVICE {
+    string id PK
+    string accountId FK
+    string title
+    string description
+    string kind
+    string ctaLabel
+    string href
+    int sortOrder
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  PRODUCT_COLLECTION {
+    string id PK
+    string accountId FK
+    string title
+    string slug
+    string description
+    int sortOrder
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  PRODUCT {
+    string id PK
+    string accountId FK
+    string collectionId FK
+    string name
+    string slug
+    string description
+    string imageUrl
+    string priceLabel
+    string badgeLabel
+    string variantLabelsJson
+    string href
+    boolean isFeatured
+    boolean isActive
+    int sortOrder
+    datetime createdAt
+    datetime updatedAt
+  }
+```
+
+Onboarding should collect the profile fields first, then service buttons, then collections/products. The store owner can publish only after the required profile fields and at least one service are present.
+
 ## Target Ownership Rules
 
 SaaS admin:
@@ -519,8 +605,18 @@ Target:
 - Store all generated images, videos, uploaded logos, and future uploads as `MEDIA_ASSET` rows.
 - `MEDIA_ASSET.accountId` enforces ownership.
 - `url` is the public or signed URL the app displays.
-- `storageKey` is the object-storage key for deletion/reprocessing.
+- `provider` should be `r2` for the planned SaaS media store.
+- `storageKey` is the Cloudflare R2 object key for deletion/reprocessing.
 - `ownerType` and `ownerId` attach media to `Result`, `VideoGeneration`, `Account`, etc.
+
+Planned R2 key shape:
+
+```text
+accounts/{accountId}/logos/{mediaAssetId}.{ext}
+accounts/{accountId}/requests/{requestId}/results/{resultId}.{ext}
+accounts/{accountId}/requests/{requestId}/videos/{videoGenerationId}.{ext}
+accounts/{accountId}/uploads/{mediaAssetId}.{ext}
+```
 
 ## Request And Quote Lifecycle
 

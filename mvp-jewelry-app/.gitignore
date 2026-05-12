@@ -9,3 +9,5 @@ build/
 dev.db
 public/generated/*
 !public/generated/.gitkeep
+
+test-results/

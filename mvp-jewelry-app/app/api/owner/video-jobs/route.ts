@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
+import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
 import { assertPublicImageUrl, toPublicImageUrl } from "@/src/lib/video/public-url";
 import { saveRemoteVideoLocally } from "@/src/lib/video/storage";
@@ -21,12 +22,14 @@ export async function POST(req: Request) {
 
   try {
     const body = Body.parse(await req.json());
+    const accountId = getDefaultAccountId();
     const result = await prisma.result.findUnique({
       where: { id: body.resultId },
       include: { request: true }
     });
 
     if (!result) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
+    if (result.accountId !== accountId) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
     if (result.status !== "succeeded" || !result.imageUrl) {
       return NextResponse.json({ error: "This generation image is not ready for video generation." }, { status: 400 });
     }
@@ -40,6 +43,7 @@ export async function POST(req: Request) {
     const startedAt = new Date();
     const video = await prisma.videoGeneration.create({
       data: {
+        accountId: result.accountId,
         requestId: result.requestId,
         sourceResultId: result.id,
         sourceImageUrl,

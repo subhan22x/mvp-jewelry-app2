@@ -16,7 +16,7 @@ export default function EmblemPicker({ selected, onSelect, disabled = false }: P
 
   return (
     <div className={`${disabled ? "pointer-events-none opacity-40" : ""} overflow-visible`}>
-      <div className="flex justify-center gap-2 sm:gap-4 overflow-visible">
+      <div className="flex justify-center gap-1.5 overflow-visible sm:gap-3">
         {topRow.map(asset => (
           <EmblemDiamond
             key={asset.id}
@@ -28,8 +28,8 @@ export default function EmblemPicker({ selected, onSelect, disabled = false }: P
           />
         ))}
       </div>
-      <div className="mt-2 flex justify-center gap-2 overflow-visible sm:mt-3 sm:gap-4">
-        <div className="mr-9 sm:mr-12" />
+      <div className="mt-1.5 flex justify-center gap-1.5 overflow-visible sm:mt-2 sm:gap-3">
+        <div className="mr-6 sm:mr-8" />
         {bottomRow.map(asset => (
           <EmblemDiamond
             key={asset.id}
@@ -40,7 +40,7 @@ export default function EmblemPicker({ selected, onSelect, disabled = false }: P
             onSelect={onSelect}
           />
         ))}
-        <div className="ml-9 sm:ml-12" />
+        <div className="ml-6 sm:ml-8" />
       </div>
     </div>
   );
@@ -54,8 +54,28 @@ type EmblemDiamondProps = {
   onSelect: (id: string | null) => void;
 };
 
+const diamondButtonClass =
+  "group relative flex h-[101px] w-[101px] flex-none items-center justify-center rounded-[27px] p-3 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:h-28 sm:w-28 sm:rounded-[30px]";
+
+const diamondSurfaceClass =
+  "absolute inset-2 box-border rotate-45 rounded-[20px] border-2 bg-gradient-to-b from-black/80 via-black/85 to-black/60 shadow-[0_16px_28px_rgba(0,0,0,0.55)] transition sm:rounded-[22px]";
+
+const activeDiamondSurfaceClass =
+  "border-[color:var(--theme-selected-border)] shadow-[0_0_18px_var(--theme-selected-glow),0_20px_34px_var(--theme-selected-glow)]";
+
+const inactiveDiamondSurfaceClass = "border-transparent";
+
+const emblemArtOffset: Record<string, { x: string; y: string }> = {
+  butterfly: { x: "3%", y: "1%" },
+  crown: { x: "4%", y: "-5%" },
+  heart: { x: "2%", y: "5.5%" },
+  moneybag: { x: "-7.5%", y: "5%" },
+  spade: { x: "-7.5%", y: "2.5%" }
+};
+
 function EmblemDiamond({ assetId, label, src, active, onSelect }: EmblemDiamondProps) {
-  // Single emblem tile: update sizes, shadows, or outline treatment here.
+  const artOffset = emblemArtOffset[assetId] ?? { x: "0%", y: "0%" };
+
   const handleClick = () => {
     onSelect(active ? null : assetId);
   };
@@ -66,18 +86,23 @@ function EmblemDiamond({ assetId, label, src, active, onSelect }: EmblemDiamondP
       title={label}
       aria-pressed={active}
       onClick={handleClick}
-      className={`group relative flex h-36 w-36 flex-none items-center justify-center rounded-[38px] p-4 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:h-40 sm:w-40`}
+      className={diamondButtonClass}
     >
-      <span className="absolute inset-0 flex items-center justify-center p-2">
-        <span
-          className={`inline-flex h-full w-full rotate-45 items-center justify-center rounded-[28px] bg-gradient-to-b from-black/80 via-black/85 to-black/60 shadow-[0_22px_40px_rgba(0,0,0,0.55)] transition ${active ? "shadow-[0_26px_48px_rgba(59,130,246,0.45)]" : ""}`}
-        />
-        {active && (
-          <span className="absolute inset-[0.35rem] rotate-45 rounded-[24px] border-[2.5px] border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.45)]" aria-hidden />
-        )}
-      </span>
-      <span className="relative flex h-[94%] w-[94%] items-center justify-center">
-        <Image src={src} alt={label} fill sizes="(max-width: 480px) 260px, 280px" className="object-contain" />
+      <span
+        className={`${diamondSurfaceClass} ${active ? activeDiamondSurfaceClass : inactiveDiamondSurfaceClass}`}
+        aria-hidden
+      />
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="relative h-[75%] w-[75%]">
+          <Image
+            src={src}
+            alt={label}
+            fill
+            sizes="(max-width: 480px) 145px, 160px"
+            className="object-contain object-center"
+            style={{ transform: `translate(${artOffset.x}, ${artOffset.y})` }}
+          />
+        </span>
       </span>
     </button>
   );

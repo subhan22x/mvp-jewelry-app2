@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime';
 import { resolveGenerationConfig } from '../providers';
+import { isR2Configured, uploadToR2 } from '../storage/r2';
 
 export type GenerateArgs = {
   prompt: string;
@@ -30,10 +31,19 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 }
 
 export async function saveGeneratedImage({ buffer, mimeType, requestId, variant }: { buffer: Buffer; mimeType: string; requestId: string; variant: number }) {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
-
   const extension = mime.getExtension(mimeType) ?? 'png';
   const fileName = `${requestId}-v${variant}.${extension}`;
+
+  if (isR2Configured()) {
+    return uploadToR2({
+      key: `generated/${fileName}`,
+      body: buffer,
+      contentType: mimeType
+    });
+  }
+
+  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+
   const filePath = path.join(OUTPUT_DIR, fileName);
   await fs.writeFile(filePath, buffer);
 

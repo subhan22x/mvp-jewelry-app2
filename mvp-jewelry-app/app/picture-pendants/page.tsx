@@ -3,6 +3,7 @@
 import { DragEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import ThemedImageOption from "../components/ThemedImageOption";
 import LeadCaptureModal from "../name/components/LeadCaptureModal";
 import { picturePendantStyles, type PicturePendantStyle } from "@/lib/assets";
 
@@ -258,7 +259,7 @@ export default function PicturePendantsBuilder() {
 
   return (
     <>
-      <main className="min-h-dvh px-4 py-4 text-white md:px-8">
+      <main className="min-h-dvh px-4 py-4 text-[var(--theme-text)] md:px-8">
         <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6 md:px-12">
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
             <button
@@ -285,19 +286,19 @@ export default function PicturePendantsBuilder() {
                 <div className="space-y-7">
                   <div>
                     <h2 className="text-lg font-semibold">Upload Image</h2>
-                    <p className="mt-1 text-sm text-white/60">Drag a photo here or select one from your device.</p>
+                    <p className="mt-1 text-sm text-[var(--theme-text-soft)]">Drag a photo here or select one from your device.</p>
                     <button
                       type="button"
                       onDragOver={event => event.preventDefault()}
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
-                      className="mt-4 flex min-h-[220px] w-full flex-col items-center justify-center overflow-hidden rounded-[32px] border border-dashed border-[#C5934F]/70 bg-black/40 p-4 text-center transition hover:border-[#E3A86A]"
+                      className="mt-4 flex min-h-[220px] w-full flex-col items-center justify-center overflow-hidden rounded-[32px] border border-dashed border-[color:var(--theme-border-strong)] bg-[var(--theme-surface-muted)] p-4 text-center transition hover:border-[color:var(--theme-border-hover)]"
                     >
                       {previewUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={previewUrl} alt="Uploaded picture preview" className="max-h-[300px] max-w-full rounded-2xl object-contain" />
                       ) : (
-                        <span className="text-sm text-white/65">
+                        <span className="text-sm text-[var(--theme-text-soft)]">
                           Drop your picture here, or click to select an image.
                         </span>
                       )}
@@ -311,7 +312,7 @@ export default function PicturePendantsBuilder() {
                       onChange={event => setSelectedFile(event.target.files?.[0])}
                     />
                     {imageFile && (
-                      <p className="mt-2 text-xs text-white/50">{imageFile.name}</p>
+                      <p className="mt-2 text-xs text-[var(--theme-text-muted)]">{imageFile.name}</p>
                     )}
                     {uploadError && (
                       <div className="mt-3 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
@@ -322,10 +323,10 @@ export default function PicturePendantsBuilder() {
 
                   <div>
                     <h2 className="text-lg font-semibold">Choose Picture Style</h2>
-                    <p className="mt-1 text-sm text-white/60">Picture Pendant styles are separate from Name styles.</p>
+                    <p className="mt-1 text-sm text-[var(--theme-text-soft)]">Picture Pendant styles are separate from Name styles.</p>
 
                     {picturePendantStyles.length === 0 ? (
-                      <div className="mt-4 rounded-3xl border border-[#71451F]/60 bg-black/35 p-6 text-sm text-white/65">
+                      <div className="mt-4 rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] p-6 text-sm text-[var(--theme-text-soft)]">
                         Picture Pendant styles are not configured yet. Add explicit style assets and prompts to enable generation.
                       </div>
                     ) : (
@@ -337,33 +338,20 @@ export default function PicturePendantsBuilder() {
                                 const isAvailable = style.available === true;
                                 const isActive = isAvailable && style.id === styleId;
                                 return (
-                                  <button
+                                  <ThemedImageOption
                                     key={style.id}
-                                    type="button"
                                     onClick={() => { if (isAvailable) setStyleId(style.id); }}
                                     disabled={!isAvailable}
-                                    aria-pressed={isActive}
-                                    className={`group relative h-[184px] w-[184px] overflow-hidden rounded-[30px] bg-black/40 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${isActive ? "border-[4px] border-[#C5934F] shadow-[0_18px_36px_rgba(113,69,31,0.45)]" : "border border-[#71451F]"} ${isAvailable ? "hover:border-[#986035]" : "cursor-not-allowed opacity-45"}`}
-                                    aria-label={`${style.label} picture pendant style`}
-                                  >
-                                    {style.src ? (
-                                      <Image
-                                        src={style.src}
-                                        alt={`${style.label} picture pendant style`}
-                                        fill
-                                        sizes="(max-width: 640px) 210px, 260px"
-                                        className="object-cover object-center transition duration-500 group-hover:scale-105"
-                                      />
-                                    ) : (
-                                      <span className="flex h-full items-center justify-center px-4 text-sm text-white/50">{style.label}</span>
-                                    )}
-                                    <span className="pointer-events-none absolute inset-0 rounded-[30px] border border-[#71451F]/60 bg-gradient-to-b from-transparent via-transparent to-black/35" aria-hidden />
-                                    {!isAvailable && (
+                                    selected={isActive}
+                                    src={style.src}
+                                    label={`${style.label} picture pendant style`}
+                                    fallback={<span className="flex h-full items-center justify-center px-4 text-sm text-[var(--theme-text-muted)]">{style.label}</span>}
+                                    badge={!isAvailable && (
                                       <span className="absolute bottom-3 left-3 right-3 rounded-full bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white/70">
                                         prompt needed
                                       </span>
                                     )}
-                                  </button>
+                                  />
                                 );
                               })}
                               {column.length === 1 && (
@@ -391,7 +379,7 @@ export default function PicturePendantsBuilder() {
                             type="button"
                             onClick={() => setGoldColor(option.id)}
                             aria-pressed={isActive}
-                            className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-blue-400 bg-blue-500/20 text-white" : "border-[#71451F] bg-black/45 text-white/80 hover:border-[#986035]"}`}
+                            className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-soft)] hover:border-[color:var(--theme-border-hover)]"}`}
                           >
                             {option.label}
                           </button>
@@ -401,9 +389,9 @@ export default function PicturePendantsBuilder() {
                   </div>
 
                   <div>
-                    <h3 className="text-sm uppercase tracking-[0.35em] text-white/60">Review your picture pendant</h3>
-                    <div className="mt-4 rounded-3xl border border-[#71451F]/60 bg-black/50 p-4">
-                      <div className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl bg-black/70">
+                    <h3 className="text-sm uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">Review your picture pendant</h3>
+                    <div className="mt-4 rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] p-4">
+                      <div className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl bg-[var(--theme-surface-strong)]">
                         {previewUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={previewUrl} alt="Uploaded picture preview" className="h-full w-full object-contain" />

@@ -17,22 +17,22 @@ const categories: CategoryCard[] = [
 ];
 
 const cardClass =
-  "group relative flex aspect-square flex-col items-center justify-center rounded-[30px] border border-[#d1b873]/25 bg-black/90 p-5 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:border-[#d1b873]/70 hover:shadow-[0_0_28px_rgba(209,184,115,0.14)]";
+  "group relative flex aspect-square min-h-0 flex-col items-center justify-center overflow-hidden rounded-[20px] border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-strong)] p-3 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:border-[color:var(--theme-border-hover)] hover:shadow-[0_0_28px_var(--theme-selected-glow)] sm:rounded-[30px] sm:p-5";
 
 export default function Page() {
   return (
-    <main className="min-h-dvh px-4 py-8 text-white md:px-8">
+    <main className="min-h-dvh px-4 py-8 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-8 sm:px-6 md:px-12">
         <header className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.35em] text-white/70">001</p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight md:text-[2.75rem]">Dream it first</h1>
+          <p className="text-xs uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">001</p>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[var(--theme-heading)] md:text-[2.75rem]">Dream it first</h1>
           <p
-            className="mt-2 text-3xl italic text-white/90"
+            className="mt-2 text-3xl italic text-[var(--theme-script)]"
             style={{ fontFamily: "var(--font-nostalgic)" }}
           >
             we&apos;ll build it.
           </p>
-          <p className="mt-4 text-sm text-white/75">
+          <p className="mt-4 text-sm text-[var(--theme-text-soft)]">
             Choose your format and we'll help you design and customize it to your liking
           </p>
         </header>
@@ -41,21 +41,21 @@ export default function Page() {
           {categories.map(category => {
             const body = (
               <>
-                <div className="relative h-24 w-24 sm:h-32 sm:w-32">
+                <div className="relative h-16 w-16 sm:h-32 sm:w-32">
                   <Image
                     src={category.iconSrc}
                     alt=""
                     fill
-                    sizes="(max-width: 640px) 96px, 128px"
+                    sizes="(max-width: 640px) 64px, 128px"
                     className="object-contain"
                     priority={category.id === "pendant"}
                   />
                 </div>
-                <span className="mt-5 text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                <span className="mt-3 text-lg font-semibold tracking-tight text-[var(--theme-text)] sm:mt-5 sm:text-2xl">
                   {category.label}
                 </span>
                 {category.disabled ? (
-                  <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/30">
+                  <span className="mt-1 whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)] sm:text-[10px] sm:tracking-[0.24em]">
                     coming soon
                   </span>
                 ) : null}
@@ -80,7 +80,7 @@ export default function Page() {
           {[0, 1, 2, 3, 4].map(index => (
             <span
               key={index}
-              className={`h-4 w-4 rounded-full border-2 border-[#d1b873] ${index === 0 ? "bg-[#d1b873]" : "bg-transparent"}`}
+              className={`h-4 w-4 rounded-full border-2 border-[color:var(--theme-accent)] ${index === 0 ? "bg-[var(--theme-accent)]" : "bg-transparent"}`}
             />
           ))}
         </footer>

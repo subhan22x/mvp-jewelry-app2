@@ -1,0 +1,2 @@
+ALTER TABLE "Request" ADD COLUMN "size" TEXT;
+ALTER TABLE "QuoteRequest" ADD COLUMN "size" TEXT;

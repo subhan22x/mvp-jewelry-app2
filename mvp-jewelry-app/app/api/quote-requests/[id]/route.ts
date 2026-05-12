@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
+import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
 
 const Body = z.object({
@@ -16,6 +17,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   try {
     const body = Body.parse(await req.json());
+    const accountId = getDefaultAccountId();
+    const existing = await prisma.quoteRequest.findFirst({
+      where: { id: params.id, accountId },
+      select: { id: true }
+    });
+    if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
     const quoteRequest = await prisma.quoteRequest.update({
       where: { id: params.id },
       data: {

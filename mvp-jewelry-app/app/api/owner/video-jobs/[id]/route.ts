@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
+import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
 
 function toSeconds(durationMs: number | null) {
@@ -11,8 +12,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const video = await prisma.videoGeneration.findUnique({
-    where: { id: params.id },
+  const accountId = getDefaultAccountId();
+  const video = await prisma.videoGeneration.findFirst({
+    where: { id: params.id, accountId },
     include: {
       request: {
         select: {

@@ -245,10 +245,10 @@ describe("Step 0 — Name & Style", () => {
     expect(cards[1]).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("back on step 0 calls router.push to home", async () => {
+  it("back on step 0 calls router.push to pendants", async () => {
     const { user } = await setup();
     await tap(user, screen.getByRole("button", { name: /^back$/i }));
-    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(mockPush).toHaveBeenCalledWith("/pendants");
   });
 
   it("next advances to step 1", async () => {
