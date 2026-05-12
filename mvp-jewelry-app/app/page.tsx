@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cx, themeBorder, themeRadius, themeSurface } from "@/src/lib/theme/ui-classes";
 
 type CategoryCard = {
   id: string;
@@ -16,8 +17,13 @@ const categories: CategoryCard[] = [
   { id: "necklace", label: "Necklace", disabled: true, iconSrc: "/category-icons/necklace.png" }
 ];
 
-const cardClass =
-  "group relative flex aspect-square min-h-0 flex-col items-center justify-center overflow-hidden rounded-[20px] border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-strong)] p-3 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:border-[color:var(--theme-border-hover)] hover:shadow-[0_0_28px_var(--theme-selected-glow)] sm:rounded-[30px] sm:p-5";
+const cardClass = cx(
+  "group relative flex aspect-square min-h-0 flex-col items-center justify-center overflow-hidden p-3 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:shadow-[0_0_28px_var(--theme-selected-glow)] sm:p-5",
+  themeRadius.imageOptionMobile,
+  themeBorder.base,
+  themeBorder.hover,
+  themeSurface.strong
+);
 
 export default function Page() {
   return (

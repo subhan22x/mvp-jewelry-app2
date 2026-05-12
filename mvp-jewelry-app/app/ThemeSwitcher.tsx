@@ -1,34 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const themes = [
-  { key: "ice_blue", label: "Ice" },
-  { key: "graphite_orange", label: "Graphite" },
-  { key: "rose_luxe", label: "Rose" },
-  { key: "velvet_blue", label: "Navy" }
-];
-
-const storageKey = "caratlabs-preview-theme";
+import { DEFAULT_THEME_KEY, THEME_OPTIONS, THEME_STORAGE_KEY, type ThemeKey } from "@/src/lib/theme/themes";
 
 export default function ThemeSwitcher() {
-  const [theme, setTheme] = useState("graphite_orange");
+  const [theme, setTheme] = useState<ThemeKey>(DEFAULT_THEME_KEY);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey) ?? "graphite_orange";
-    setTheme(saved);
-    document.documentElement.dataset.theme = saved;
-  }, []);
-
-  const updateTheme = (nextTheme: string) => {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeKey | null;
+    const nextTheme = saved && THEME_OPTIONS.some(option => option.key === saved) ? saved : DEFAULT_THEME_KEY;
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
-    window.localStorage.setItem(storageKey, nextTheme);
+  }, []);
+
+  const updateTheme = (nextTheme: ThemeKey) => {
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
   };
 
   return (
     <div className="fixed bottom-3 left-1/2 z-[100] flex -translate-x-1/2 gap-1 rounded-full border border-[color:var(--theme-border)] bg-[var(--theme-surface-strong)] p-1 shadow-[0_18px_44px_rgba(0,0,0,0.38)] backdrop-blur">
-      {themes.map(option => (
+      {THEME_OPTIONS.map(option => (
         <button
           key={option.key}
           type="button"
