@@ -2,6 +2,7 @@
 import React from "react";
 import Image from "next/image";
 import { emblems } from "@/lib/assets";
+import { cx, themeFocusRing } from "@/src/lib/theme/ui-classes";
 
 type Props = {
   selected: string | null;
@@ -54,16 +55,16 @@ type EmblemDiamondProps = {
   onSelect: (id: string | null) => void;
 };
 
-const diamondButtonClass =
-  "group relative flex h-[101px] w-[101px] flex-none items-center justify-center rounded-[27px] p-3 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:h-28 sm:w-28 sm:rounded-[30px]";
-
-const diamondSurfaceClass =
-  "absolute inset-2 box-border rotate-45 rounded-[20px] border-2 bg-gradient-to-b from-black/80 via-black/85 to-black/60 shadow-[0_16px_28px_rgba(0,0,0,0.55)] transition sm:rounded-[22px]";
-
-const activeDiamondSurfaceClass =
-  "border-[color:var(--theme-selected-border)] shadow-[0_0_18px_var(--theme-selected-glow),0_20px_34px_var(--theme-selected-glow)]";
-
-const inactiveDiamondSurfaceClass = "border-transparent";
+const emblemDiamond = {
+  button:
+    "group relative flex h-[101px] w-[101px] flex-none items-center justify-center rounded-[27px] p-3 transition sm:h-28 sm:w-28 sm:rounded-[30px]",
+  surface:
+    "absolute inset-2 box-border rotate-45 rounded-[20px] border-2 bg-gradient-to-b from-black/80 via-black/85 to-black/60 shadow-[0_16px_28px_rgba(0,0,0,0.55)] transition sm:rounded-[22px]",
+  selected:
+    "border-[color:var(--theme-selected-border)] shadow-[0_0_18px_var(--theme-selected-glow),0_20px_34px_var(--theme-selected-glow)]",
+  unselected: "border-transparent",
+  imageFrame: "relative h-[75%] w-[75%]"
+} as const;
 
 const emblemArtOffset: Record<string, { x: string; y: string }> = {
   butterfly: { x: "3%", y: "1%" },
@@ -86,14 +87,14 @@ function EmblemDiamond({ assetId, label, src, active, onSelect }: EmblemDiamondP
       title={label}
       aria-pressed={active}
       onClick={handleClick}
-      className={diamondButtonClass}
+      className={cx(emblemDiamond.button, themeFocusRing)}
     >
       <span
-        className={`${diamondSurfaceClass} ${active ? activeDiamondSurfaceClass : inactiveDiamondSurfaceClass}`}
+        className={cx(emblemDiamond.surface, active ? emblemDiamond.selected : emblemDiamond.unselected)}
         aria-hidden
       />
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <span className="relative h-[75%] w-[75%]">
+        <span className={emblemDiamond.imageFrame}>
           <Image
             src={src}
             alt={label}

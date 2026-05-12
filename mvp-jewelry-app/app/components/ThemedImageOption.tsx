@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { imageOptionButtonClass, styleOptionFrameClass } from "@/src/lib/theme/ui-classes";
 
 type ThemedImageOptionProps = {
   label: string;
@@ -21,15 +22,11 @@ export default function ThemedImageOption({
   selected,
   disabled = false,
   onClick,
-  className = "h-[184px] w-[184px] rounded-[30px]",
+  className = styleOptionFrameClass,
   imageSizes = "(max-width: 640px) 210px, 260px",
   fallback,
   badge
 }: ThemedImageOptionProps) {
-  const stateClass = selected
-    ? "border-[3px] border-[color:var(--theme-selected-border)]"
-    : "border-2 border-[color:var(--theme-border)]";
-
   return (
     <div className={`relative flex-none ${className}`}>
       <button
@@ -38,7 +35,7 @@ export default function ThemedImageOption({
         disabled={disabled}
         aria-pressed={selected}
         aria-label={label}
-        className={`group relative h-full w-full box-border overflow-hidden rounded-[inherit] bg-[var(--theme-surface-muted)] transition hover:border-[color:var(--theme-border-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-selected-border)] ${stateClass} ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
+        className={imageOptionButtonClass({ selected, disabled })}
       >
         {src ? (
           <Image

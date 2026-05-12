@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ThemedImageOption from "../components/ThemedImageOption";
+import ThemedOptionButton from "../components/ThemedOptionButton";
 import EmblemPicker from "./components/EmblemPicker";
 import LeadCaptureModal from "./components/LeadCaptureModal";
 import { pendantStyles, emblems, type PendantStyle } from "@/lib/assets";
+import { cx, panelClass, styleOptionFrameClass, themeBorder, themeFocusRing, themeRadius, themeSurface } from "@/src/lib/theme/ui-classes";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -522,13 +524,14 @@ export default function NameBuilder() {
                                 key={style.id}
                                 onClick={() => setStyleId(style.id)}
                                 selected={isActive}
-                                src={style.src}
-                                label={`${style.label} pendant style`}
-                              />
+	                                src={style.src}
+	                                label={`${style.label} pendant style`}
+	                                className={styleOptionFrameClass}
+	                              />
                             );
                           })}
                           {column.length === 1 && (
-                            <div className="h-[184px] w-[184px] rounded-[30px] border border-transparent" aria-hidden />
+                            <div className={cx("h-[184px] w-[184px] border border-transparent", themeRadius.imageOption)} aria-hidden />
                           )}
                         </div>
                       ))}
@@ -577,15 +580,13 @@ export default function NameBuilder() {
                     {GOLD_COMBOS.map(option => {
                       const isActive = goldCombo === option.id;
                       return (
-                        <button
+                        <ThemedOptionButton
                           key={option.id}
-                          type="button"
+                          selected={isActive}
                           onClick={() => setGoldCombo(option.id)}
-                          aria-pressed={isActive}
-                          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-soft)] hover:border-[color:var(--theme-border-hover)]"}`}
                         >
                           {option.label}
-                        </button>
+                        </ThemedOptionButton>
                       );
                     })}
                   </div>
@@ -597,15 +598,13 @@ export default function NameBuilder() {
                     {PENDANT_SIZES.map(option => {
                       const isActive = pendantSize === option.id;
                       return (
-                        <button
+                        <ThemedOptionButton
                           key={option.id}
-                          type="button"
+                          selected={isActive}
                           onClick={() => setPendantSize(option.id)}
-                          aria-pressed={isActive}
-                          className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-soft)] hover:border-[color:var(--theme-border-hover)]"}`}
                         >
                           {option.label}
-                        </button>
+                        </ThemedOptionButton>
                       );
                     })}
                   </div>
@@ -623,15 +622,15 @@ export default function NameBuilder() {
                     {METAL_TYPES.map(option => {
                       const isActive = metalType === option.id;
                       return (
-                        <button
+                        <ThemedOptionButton
                           key={option.id}
-                          type="button"
+                          selected={isActive}
                           onClick={() => setMetalType(option.id)}
-                          aria-pressed={isActive}
-                          className={`min-w-[92px] rounded-2xl border px-4 py-2 text-base font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] hover:border-[color:var(--theme-border-hover)]"}`}
+                          size="sm"
+                          minWidthClass="min-w-[92px]"
                         >
                           {option.label}
-                        </button>
+                        </ThemedOptionButton>
                       );
                     })}
                   </div>
@@ -643,15 +642,14 @@ export default function NameBuilder() {
                     {STONE_TYPES.map(option => {
                       const isActive = stoneType === option.id;
                       return (
-                        <button
+                        <ThemedOptionButton
                           key={option.id}
-                          type="button"
+                          selected={isActive}
                           onClick={() => setStoneType(option.id)}
-                          aria-pressed={isActive}
-                          className={`rounded-2xl border px-4 py-2 text-base font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] hover:border-[color:var(--theme-border-hover)]"}`}
+                          size="sm"
                         >
                           {option.label}
-                        </button>
+                        </ThemedOptionButton>
                       );
                     })}
                   </div>
@@ -663,15 +661,16 @@ export default function NameBuilder() {
                     {(["vs", "vvs"] as const).map(option => {
                       const isActive = diamondQuality === option;
                       return (
-                        <button
+                        <ThemedOptionButton
                           key={option}
-                          type="button"
+                          selected={isActive}
                           onClick={() => setDiamondQuality(option)}
-                          aria-pressed={isActive}
-                          className={`min-w-[72px] rounded-2xl border px-4 py-2 text-lg uppercase transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] hover:border-[color:var(--theme-border-hover)]"}`}
+                          size="lg"
+                          minWidthClass="min-w-[72px]"
+                          uppercase
                         >
                           {option}
-                        </button>
+                        </ThemedOptionButton>
                       );
                     })}
                   </div>
@@ -679,7 +678,7 @@ export default function NameBuilder() {
 
                 <div>
                   <h3 className="text-sm uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">Drafting your imagination...</h3>
-                  <div className="mt-4 rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] p-4">
+                  <div className={panelClass("mt-4 p-4")}>
                     <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[var(--theme-surface-strong)]">
                       {activeStyle && (
                         <Image
@@ -783,7 +782,7 @@ export default function NameBuilder() {
                             key={variantNum}
                             className="relative min-h-[220px] rounded-[32px] border border-white/12 bg-gradient-to-br from-white/5 via-white/10 to-white/5 sm:min-h-[260px]"
                           >
-                            <div className="absolute inset-0 animate-pulse rounded-[30px] bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
+                            <div className={cx("absolute inset-0 animate-pulse bg-gradient-to-br from-slate-800 via-slate-900 to-black", themeRadius.imageOption)} />
                             <div className="absolute inset-0 flex items-end justify-center pb-4">
                               <span className="text-xs uppercase tracking-widest text-white/25">Draft {variantNum}</span>
                             </div>
@@ -796,7 +795,15 @@ export default function NameBuilder() {
                           <button
                             type="button"
                             onClick={() => setSelectedGenerationId(option.id)}
-                            className={`group relative block w-full overflow-hidden rounded-[32px] ${isSelected ? "border-[3px] border-[color:var(--theme-selected-border)] shadow-[0_0_35px_var(--theme-selected-glow)]" : "border-2 border-[color:var(--theme-border)]"} bg-[var(--theme-surface-muted)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-selected-border)]`}
+                            className={cx(
+                              "group relative block w-full overflow-hidden transition",
+                              themeRadius.resultCard,
+                              themeSurface.muted,
+                              themeFocusRing,
+                              isSelected
+                                ? cx(themeBorder.selected, "shadow-[0_0_35px_var(--theme-selected-glow)]")
+                                : themeBorder.base
+                            )}
                             aria-pressed={isSelected}
                             aria-label={option.label}
                           >
@@ -944,10 +951,11 @@ export default function NameBuilder() {
             <div className="flex items-center justify-center gap-2">
               {/* Show 4 dots for the 4 visible steps (0,1,2,4) — step 3 is transient */}
               {([0, 1, 2, 4, 5] as const).map(idx => (
-                <span
-                  key={idx}
-                  className={`h-2.5 w-2.5 rounded-full transition ${idx === step ? "bg-[var(--theme-accent)]" : "bg-white/25"}`}
-                />
+	                <span
+	                  key={idx}
+	                  data-active={idx === step ? "true" : "false"}
+	                  className={`h-2.5 w-2.5 rounded-full transition ${idx === step ? "bg-[var(--theme-accent)]" : "bg-white/25"}`}
+	                />
               ))}
             </div>
 

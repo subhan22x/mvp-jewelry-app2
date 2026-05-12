@@ -752,7 +752,7 @@ describe("Step indicator dots", () => {
     const { user } = await setup();
     const activeDotIndex = () => {
       const dots = Array.from(document.querySelectorAll("footer span.rounded-full"));
-      return dots.findIndex(d => d.classList.contains("bg-blue-400"));
+      return dots.findIndex(d => d.getAttribute("data-active") === "true");
     };
     expect(activeDotIndex()).toBe(0);
     await toStep1(user);

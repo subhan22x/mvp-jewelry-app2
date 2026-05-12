@@ -4,8 +4,10 @@ import { DragEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ThemedImageOption from "../components/ThemedImageOption";
+import ThemedOptionButton from "../components/ThemedOptionButton";
 import LeadCaptureModal from "../name/components/LeadCaptureModal";
 import { picturePendantStyles, type PicturePendantStyle } from "@/lib/assets";
+import { cx, panelClass, styleOptionFrameClass, themeRadius } from "@/src/lib/theme/ui-classes";
 
 type Step = 0 | 1 | 2;
 type GoldColor = "yellow_gold" | "white_gold" | "rose_gold";
@@ -342,10 +344,11 @@ export default function PicturePendantsBuilder() {
                                     key={style.id}
                                     onClick={() => { if (isAvailable) setStyleId(style.id); }}
                                     disabled={!isAvailable}
-                                    selected={isActive}
-                                    src={style.src}
-                                    label={`${style.label} picture pendant style`}
-                                    fallback={<span className="flex h-full items-center justify-center px-4 text-sm text-[var(--theme-text-muted)]">{style.label}</span>}
+	                                    selected={isActive}
+	                                    src={style.src}
+	                                    label={`${style.label} picture pendant style`}
+	                                    className={styleOptionFrameClass}
+	                                    fallback={<span className="flex h-full items-center justify-center px-4 text-sm text-[var(--theme-text-muted)]">{style.label}</span>}
                                     badge={!isAvailable && (
                                       <span className="absolute bottom-3 left-3 right-3 rounded-full bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white/70">
                                         prompt needed
@@ -355,7 +358,7 @@ export default function PicturePendantsBuilder() {
                                 );
                               })}
                               {column.length === 1 && (
-                                <div className="h-[184px] w-[184px] rounded-[30px] border border-transparent" aria-hidden />
+                                <div className={cx("h-[184px] w-[184px] border border-transparent", themeRadius.imageOption)} aria-hidden />
                               )}
                             </div>
                           ))}
@@ -374,15 +377,13 @@ export default function PicturePendantsBuilder() {
                       {GOLD_COLORS.map(option => {
                         const isActive = goldColor === option.id;
                         return (
-                          <button
+                          <ThemedOptionButton
                             key={option.id}
-                            type="button"
+                            selected={isActive}
                             onClick={() => setGoldColor(option.id)}
-                            aria-pressed={isActive}
-                            className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-[3px] border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)]" : "border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-soft)] hover:border-[color:var(--theme-border-hover)]"}`}
                           >
                             {option.label}
-                          </button>
+                          </ThemedOptionButton>
                         );
                       })}
                     </div>
@@ -390,7 +391,7 @@ export default function PicturePendantsBuilder() {
 
                   <div>
                     <h3 className="text-sm uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">Review your picture pendant</h3>
-                    <div className="mt-4 rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] p-4">
+                    <div className={panelClass("mt-4 p-4")}>
                       <div className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl bg-[var(--theme-surface-strong)]">
                         {previewUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -481,7 +482,7 @@ export default function PicturePendantsBuilder() {
                         </div>
                       ) : (
                         <div className="relative min-h-[260px] rounded-[32px] border border-white/12 bg-gradient-to-br from-white/5 via-white/10 to-white/5">
-                          <div className="absolute inset-0 animate-pulse rounded-[30px] bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
+                          <div className={cx("absolute inset-0 animate-pulse bg-gradient-to-br from-slate-800 via-slate-900 to-black", themeRadius.imageOption)} />
                           <div className="absolute inset-0 flex items-end justify-center pb-4">
                             <span className="text-xs uppercase tracking-widest text-white/25">Picture pendant draft</span>
                           </div>

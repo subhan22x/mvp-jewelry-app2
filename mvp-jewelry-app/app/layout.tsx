@@ -2,6 +2,7 @@ import "./globals.css";
 import { Figtree } from "next/font/google";
 import localFont from "next/font/local";
 import ThemeSwitcher from "./ThemeSwitcher";
+import ThemeStyles from "./ThemeStyles";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 const nostalgic = localFont({
@@ -14,6 +15,9 @@ export const metadata = { title: "Pendant MVP", description: "Custom pendant ide
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${figtree.variable} ${nostalgic.variable}`}>
+      <head>
+        <ThemeStyles />
+      </head>
       <body className="min-h-dvh">
         {children}
         <ThemeSwitcher />

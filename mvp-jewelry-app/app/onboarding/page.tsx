@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { DEFAULT_THEME_KEY, THEME_OPTIONS } from "@/src/lib/theme/themes";
 
 const totalSteps = 6;
 const accent = "#D3A84F";
@@ -17,13 +18,6 @@ const serviceOptions = [
   { kind: "appointment", title: "Book Appointment", ctaLabel: "Book Appt", description: "Placeholder for calls or in-store visits.", defaultOn: false },
   { kind: "repair", title: "Repair", ctaLabel: "Repair", description: "Placeholder for jewelry restoration.", defaultOn: false },
   { kind: "reviews", title: "Client Reviews", ctaLabel: "Reviews", description: "Placeholder for testimonials.", defaultOn: false }
-];
-
-const themeOptions = [
-  { key: "ice_blue", title: "Ice Blue", description: "Clean and polished", colors: ["#101923", "#9DD7FF"] },
-  { key: "rose_luxe", title: "Rose Luxe", description: "Soft and premium", colors: ["#231617", "#D9A08F"] },
-  { key: "graphite_orange", title: "Graphite Orange", description: "Sharp and modern", colors: ["#181818", "#E28B33"] },
-  { key: "velvet_blue", title: "Red Navy", description: "Bold and nocturnal", colors: ["#BF092F", "#112442"] }
 ];
 
 const coverPresets = [
@@ -78,7 +72,7 @@ export default function OnboardingPage() {
   const [headline, setHeadline] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
-  const [themeKey, setThemeKey] = useState("ice_blue");
+  const [themeKey, setThemeKey] = useState(DEFAULT_THEME_KEY);
   const [products, setProducts] = useState<ProductDraft[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -225,7 +219,7 @@ export default function OnboardingPage() {
             </div>
             <Input label="CaratLabs URL" value={slug} onChange={setSlug} placeholder="icekinglondon" hint={`Preview: /s/${slug || "yourname"}`} />
             <div className="grid grid-cols-2 gap-3">
-              {themeOptions.map(theme => (
+              {THEME_OPTIONS.map(theme => (
                 <button
                   key={theme.key}
                   onClick={() => setThemeKey(theme.key)}
