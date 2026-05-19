@@ -128,4 +128,58 @@ describe("buildVariants", () => {
       expect(() => JSON.parse(variant.prompt)).toThrow();
     }
   });
+
+  it("builds plain pendant prompts with selected color, metal, and karat", () => {
+    const variants = buildVariants({
+      userId: "demo",
+      pendantFinish: "plain",
+      styleId: "plain_style_1",
+      text: "Aurora",
+      plainColor: "rose_gold",
+      plainMetal: "gold",
+      plainKarat: "18k",
+      plainChain: "box"
+    });
+
+    expect(variants).toHaveLength(2);
+    for (const variant of variants) {
+      expect(variant.prompt).toContain('Change the text to "Aurora"');
+      expect(variant.prompt).toContain("using the attached reference image plain_style_1.png");
+      expect(variant.prompt).toContain("The color should be metallic Rose Gold");
+      expect(variant.prompt).toContain("Material selection: Solid Gold");
+      expect(variant.prompt).toContain("Karat selection: 18K");
+      expect(variant.prompt).toContain("Chain style selection: Box chain");
+      expect(variant.prompt).toContain("no diamonds, no stones, no pave setting");
+    }
+    expect(variants[0].attachments).toContain(`${process.cwd()}/public/plain-pendants/plain_style_1.png`);
+    expect(variants[0].prompt).toContain("vertical 9:16 composition");
+  });
+
+  it("builds Cloister Black plain prompts for style 6", () => {
+    const variants = buildVariants({
+      userId: "demo",
+      pendantFinish: "plain",
+      styleId: "plain_style_6",
+      text: "Rox",
+      plainColor: "silver",
+      plainMetal: "silver",
+      plainChain: "rope"
+    });
+
+    expect(variants[0].prompt).toContain("Use Cloister Black font");
+    expect(variants[0].prompt).not.toContain("Commercial Script CE font");
+    expect(variants[0].attachments).toContain(`${process.cwd()}/public/plain-pendants/plain_style_6.png`);
+  });
+
+  it("rejects plain solid-gold prompts without karat", () => {
+    expect(() => buildVariants({
+      userId: "demo",
+      pendantFinish: "plain",
+      styleId: "plain_style_1",
+      text: "Aurora",
+      plainColor: "gold",
+      plainMetal: "gold",
+      plainChain: "rope"
+    })).toThrow(/plainKarat/);
+  });
 });

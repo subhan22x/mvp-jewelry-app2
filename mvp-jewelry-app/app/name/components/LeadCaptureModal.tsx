@@ -1,8 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { PhoneInput } from 'react-international-phone';
+import dynamic from 'next/dynamic';
 import 'react-international-phone/style.css';
+
+const PhoneInput = dynamic(
+  () => import('react-international-phone').then(m => m.PhoneInput),
+  { ssr: false }
+);
 
 type Props = {
   requestId: string | null;

@@ -4,17 +4,36 @@ import { z } from 'zod';
 import YAML from 'yaml';
 import { getSnippetPath, getStyle, getTemplatePath } from './registry';
 import { renderTemplate } from './utils';
-import type { BuiltVariant, CustomerInput, Emblem } from './_types';
+import type { BuiltVariant, CustomerInput, Emblem, PlainChain, PlainColor, PlainKarat, PlainMetal } from './_types';
 import type { PromptMode } from '../prompt-mode';
 
 const InputSchema = z.object({
   userId: z.string().min(1),
   styleId: z.string().min(1),
   text: z.string().min(1),
-  twoTone: z.boolean(),
-  primaryMetal: z.enum(['rose_gold','white_gold','yellow_gold']),
+  pendantFinish: z.enum(['icedout', 'plain']).default('icedout'),
+  twoTone: z.boolean().optional(),
+  primaryMetal: z.enum(['rose_gold','white_gold','yellow_gold']).optional(),
   secondaryMetal: z.enum(['rose_gold','white_gold','yellow_gold']).nullish(),
-  emblem: z.enum(['none','crown','heart','spade','butterfly','moneybag']),
+  emblem: z.enum(['none','crown','heart','spade','butterfly','moneybag']).optional(),
+  plainColor: z.enum(['gold', 'silver', 'rose_gold']).optional(),
+  plainMetal: z.enum(['gold_plated', 'silver', 'gold']).optional(),
+  plainKarat: z.enum(['10k', '14k', '18k']).nullish(),
+  plainChain: z.enum(['rope', 'box', 'snake', 'cable', 'station', 'bar_link_tube_station', 'figaro_oval_link']).optional()
+}).superRefine((data, ctx) => {
+  if (data.pendantFinish === 'plain') {
+    if (!data.plainColor) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['plainColor'], message: 'plainColor is required for plain pendants.' });
+    if (!data.plainMetal) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['plainMetal'], message: 'plainMetal is required for plain pendants.' });
+    if (!data.plainChain) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['plainChain'], message: 'plainChain is required for plain pendants.' });
+    if (data.plainMetal === 'gold' && !data.plainKarat) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['plainKarat'], message: 'plainKarat is required when plainMetal is gold.' });
+    }
+    return;
+  }
+
+  if (typeof data.twoTone !== 'boolean') ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['twoTone'], message: 'twoTone is required for icedout pendants.' });
+  if (!data.primaryMetal) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['primaryMetal'], message: 'primaryMetal is required for icedout pendants.' });
+  if (!data.emblem) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['emblem'], message: 'emblem is required for icedout pendants.' });
 });
 
 function splitLines(raw: string): string[] {
@@ -55,6 +74,41 @@ function addVariantCompositionGuidance(prompt: string, variant: number) {
 
 function metalLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function plainColorLabel(value: PlainColor) {
+  const labels: Record<PlainColor, string> = {
+    gold: 'Yellow Gold',
+    silver: 'Silver',
+    rose_gold: 'Rose Gold'
+  };
+  return labels[value];
+}
+
+function plainMetalLabel(value: PlainMetal) {
+  const labels: Record<PlainMetal, string> = {
+    gold_plated: 'Gold Plated',
+    silver: 'Silver',
+    gold: 'Solid Gold'
+  };
+  return labels[value];
+}
+
+function plainKaratLabel(value: PlainKarat | null | undefined) {
+  return value ? value.toUpperCase() : 'Not applicable';
+}
+
+function plainChainLabel(value: PlainChain) {
+  const labels: Record<PlainChain, string> = {
+    rope: 'Rope chain',
+    box: 'Box chain',
+    snake: 'Snake chain',
+    cable: 'Cable chain',
+    station: 'Station chain',
+    bar_link_tube_station: 'Bar link chain / tube station chain',
+    figaro_oval_link: 'Figaro style / oval link chain'
+  };
+  return labels[value];
 }
 
 function loadNaturalLanguageSnippets(styleId: string, snippetsKey: string) {
@@ -101,6 +155,47 @@ function buildNaturalLanguagePrompt({
 export function buildVariants(input: CustomerInput, options: { promptMode?: PromptMode } = {}): BuiltVariant[] {
   const data = InputSchema.parse(input);
   const style = getStyle(data.styleId);
+  const lines = splitLines(data.text);
+
+  if (data.pendantFinish === 'plain') {
+    const templatePath = getTemplatePath(style.id, style.templateKey);
+    const raw = fs.readFileSync(templatePath, 'utf8');
+    const plainColor = data.plainColor!;
+    const plainMetal = data.plainMetal!;
+    const plainChain = data.plainChain!;
+    const attachments: string[] = [];
+    if (style.assets?.pendantRef) {
+      attachments.push(path.join(process.cwd(), style.assets.pendantRef));
+    }
+    const uniqueAttachments = Array.from(new Set(attachments));
+
+    return [1, 2].map((variant) => {
+      const v = style.variantMatrix[variant - 1];
+      const finalLines = v.forceAllCaps ?? style.defaults.forceAllCaps
+        ? lines.map(line => line.toUpperCase())
+        : lines;
+      const prompt = renderTemplate(raw, {
+        TEXT: finalLines.join(' '),
+        LINES_ARRAY: JSON.stringify(finalLines),
+        PLAIN_STYLE: style.label,
+        PLAIN_FONT: style.defaults.font ?? style.label,
+        PLAIN_REFERENCE: style.assets?.pendantRef ? path.basename(style.assets.pendantRef) : 'attached plain pendant reference',
+        PLAIN_COLOR: plainColor,
+        PLAIN_COLOR_LABEL: plainColorLabel(plainColor),
+        PLAIN_METAL: plainMetal,
+        PLAIN_METAL_LABEL: plainMetalLabel(plainMetal),
+        PLAIN_KARAT: data.plainKarat ?? 'none',
+        PLAIN_KARAT_LABEL: plainKaratLabel(data.plainKarat),
+        PLAIN_CHAIN: plainChain,
+        PLAIN_CHAIN_LABEL: plainChainLabel(plainChain),
+        VIEW: style.defaults.view,
+        DEVIATION: v.deviationStrength ?? style.defaults.deviationStrength
+      });
+
+      return { variant: variant as 1|2, prompt: addVariantCompositionGuidance(prompt, variant), attachments: uniqueAttachments };
+    });
+  }
+
   const useNaturalLanguage = options.promptMode === 'natural_language'
     && Boolean(style.naturalLanguageTemplateKey)
     && Boolean(style.naturalLanguageSnippetsKey);
@@ -110,7 +205,6 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
     ? loadNaturalLanguageSnippets(style.id, style.naturalLanguageSnippetsKey!)
     : null;
 
-  const lines = splitLines(data.text);
   const baseFont = style.defaults.font ?? 'inherit_source_style';
 
   const attachments: string[] = [];
@@ -120,8 +214,12 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
   if (style.assets?.bailRef) {
     attachments.push(path.join(process.cwd(), style.assets.bailRef));
   }
-  if (data.emblem !== 'none') {
-    const emblemRef = style.assets?.emblemRefs?.[data.emblem];
+  const emblem = data.emblem ?? 'none';
+  const primaryMetal = data.primaryMetal!;
+  const twoTone = data.twoTone ?? false;
+
+  if (emblem !== 'none') {
+    const emblemRef = style.assets?.emblemRefs?.[emblem];
     if (emblemRef) attachments.push(path.join(process.cwd(), emblemRef));
   }
 
@@ -136,21 +234,21 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
     };
 
     const finalLines = merged.caps ? lines.map(line => line.toUpperCase()) : lines;
-    const schemeType = data.twoTone ? 'two_tone' : 'single_tone';
-    const secondary = data.twoTone ? (data.secondaryMetal ?? data.primaryMetal) : data.primaryMetal;
+    const schemeType = twoTone ? 'two_tone' : 'single_tone';
+    const secondary = twoTone ? (data.secondaryMetal ?? primaryMetal) : primaryMetal;
     const capsPolicy = merged.caps ? 'forced_all_caps' : 'as_typed';
     const colorScheme = schemeType === 'two_tone'
-      ? `${schemeType} ${data.primaryMetal} + ${secondary}`
-      : `${schemeType} ${data.primaryMetal}`;
+      ? `${schemeType} ${primaryMetal} + ${secondary}`
+      : `${schemeType} ${primaryMetal}`;
 
     const prompt = naturalLanguageSnippets
       ? buildNaturalLanguagePrompt({
           raw,
           snippets: naturalLanguageSnippets,
           text: finalLines.join(' '),
-          emblem: data.emblem,
-          twoTone: data.twoTone,
-          primaryMetal: data.primaryMetal,
+          emblem,
+          twoTone,
+          primaryMetal,
           secondaryMetal: secondary
         })
       : renderTemplate(raw, {
@@ -160,9 +258,9 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
           PENDANT_REF: style.assets?.pendantRef ? path.basename(style.assets.pendantRef) : 'attached pendant reference',
           BAIL_REF: style.assets?.bailRef ? path.basename(style.assets.bailRef) : 'use pendant reference for bail style',
           FONT: baseFont,
-          EMBLEM: data.emblem,
+          EMBLEM: emblem,
           SCHEME_TYPE: schemeType,
-          PRIMARY_METAL: data.primaryMetal,
+          PRIMARY_METAL: primaryMetal,
           SECONDARY_METAL: secondary,
           COLOR_SCHEME: colorScheme,
           CAPS_POLICY: capsPolicy,

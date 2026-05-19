@@ -68,7 +68,6 @@ export default function SendQuoteForm({ quoteId, status, quotedPriceCents, quote
             : "bg-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:bg-blue-400"
         }`}
       >
-        <span aria-hidden>{success ? "ok" : "send"}</span>
         {success ? "Quote sent" : "Send Quote"}
       </button>
 

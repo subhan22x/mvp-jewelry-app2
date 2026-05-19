@@ -382,11 +382,21 @@ export default async function InternalGenerationsPage({
                     <a href={`mailto:${quote.customerEmail}`} className="text-blue-300 hover:text-blue-200">{quote.customerEmail}</a>
                   </div>
                   <div className="text-zinc-300">
-                    {quote.productType ?? "unknown"} / {quote.styleId ?? "style n/a"} / {quote.primaryMetal ?? "metal n/a"}
-                    {quote.secondaryMetal ? ` + ${quote.secondaryMetal}` : ""} / {quote.emblem ?? "emblem n/a"} / {quote.diamondQuality ?? "diamond n/a"}
-                    {quote.size ? ` / ${quote.size}` : ""}
-                    {quote.metalType ? ` / ${quote.metalType}` : ""}
-                    {quote.stoneType ? ` / ${quote.stoneType}` : ""}
+                    {quote.pendantFinish === "plain" ? (
+                      <>
+                        {quote.productType ?? "unknown"} / plain / {quote.styleId ?? "style n/a"} / {quote.plainColor ?? "color n/a"} / {quote.plainMetal ?? "metal n/a"}
+                        {quote.plainKarat ? ` / ${quote.plainKarat}` : ""}
+                        {quote.plainChain ? ` / ${quote.plainChain}` : ""}
+                      </>
+                    ) : (
+                      <>
+                        {quote.productType ?? "unknown"} / {quote.styleId ?? "style n/a"} / {quote.primaryMetal ?? "metal n/a"}
+                        {quote.secondaryMetal ? ` + ${quote.secondaryMetal}` : ""} / {quote.emblem ?? "emblem n/a"} / {quote.diamondQuality ?? "diamond n/a"}
+                        {quote.size ? ` / ${quote.size}` : ""}
+                        {quote.metalType ? ` / ${quote.metalType}` : ""}
+                        {quote.stoneType ? ` / ${quote.stoneType}` : ""}
+                      </>
+                    )}
                   </div>
                   {quote.text && (
                     <pre className="max-h-20 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] leading-snug text-zinc-100">{quote.text}</pre>

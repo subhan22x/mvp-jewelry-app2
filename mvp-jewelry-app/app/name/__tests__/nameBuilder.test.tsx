@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { vi, beforeEach, describe, it, expect } from "vitest";
-import NameBuilder from "../page";
+import NameBuilder from "../NameBuilder";
 
 const mockPush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
@@ -110,9 +110,9 @@ function mockVideoPostError(message = "Invalid access code.") {
   });
 }
 
-async function setup() {
+async function setup(props?: React.ComponentProps<typeof NameBuilder>) {
   const user = userEvent.setup();
-  await act(async () => { render(<NameBuilder />); });
+  await act(async () => { render(<NameBuilder {...props} />); });
   return { user };
 }
 
@@ -133,6 +133,11 @@ async function toStep1(user: ReturnType<typeof userEvent.setup>, name = "Aurora"
 async function toStep2(user: ReturnType<typeof userEvent.setup>) {
   await toStep1(user);
   await tap(user, screen.getByRole("button", { name: /crown/i }));
+  await tap(user, screen.getByRole("button", { name: /^next$/i }));
+}
+
+async function toPlainStep1(user: ReturnType<typeof userEvent.setup>, name = "Aurora") {
+  await type(user, screen.getByPlaceholderText(/text on pendant/i), name);
   await tap(user, screen.getByRole("button", { name: /^next$/i }));
 }
 
@@ -232,9 +237,18 @@ describe("Step 0 — Name & Style", () => {
 
   it("first style card is selected by default", async () => {
     await setup();
+    expect(screen.queryByRole("button", { name: /^plain$/i })).not.toBeInTheDocument();
     const cards = screen.getAllByRole("button", { name: /pendant style/i });
     expect(cards[0]).toHaveAttribute("aria-pressed", "true");
     expect(cards.slice(1).every(c => c.getAttribute("aria-pressed") === "false")).toBe(true);
+  });
+
+  it("plain mode shows markdown-backed nameplate style buttons", async () => {
+    await setup({ mode: "plain" });
+    expect(screen.getByRole("button", { name: /^amour$/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^hayley$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^wesley$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pendant style/i })).not.toBeInTheDocument();
   });
 
   it("clicking another style card selects it and deselects the previous", async () => {
@@ -367,6 +381,31 @@ describe("Step 1 — Emblem & Gold", () => {
     expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
     expect(screen.queryByText(/please select an emblem before continuing/i)).not.toBeInTheDocument();
   });
+
+  it("plain flow skips emblem and shows color, metal, and conditional karat", async () => {
+    const { user } = await setup({ mode: "plain" });
+    await toPlainStep1(user);
+
+    expect(screen.queryByRole("heading", { name: /^emblem$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^color$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^gold plated$/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("heading", { name: /^karat$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^chain style$/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^chain$/i)).toHaveValue("rope");
+
+    await tap(user, screen.getByRole("button", { name: /^rose gold$/i }));
+    await tap(user, screen.getAllByRole("button", { name: /^gold$/i }).at(-1)!);
+    expect(screen.getByRole("heading", { name: /^karat$/i })).toBeInTheDocument();
+    await tap(user, screen.getByRole("button", { name: /^18k$/i }));
+    await act(async () => { await user.selectOptions(screen.getByLabelText(/^chain$/i), "snake"); });
+    await tap(user, screen.getByRole("button", { name: /^next$/i }));
+
+    expect(screen.getAllByText("Amour").length).toBeGreaterThan(0);
+    expect(screen.getByText("Rose Gold")).toBeInTheDocument();
+    expect(screen.getByText("18K")).toBeInTheDocument();
+    expect(screen.getByText("Snake chain")).toBeInTheDocument();
+    expect(screen.queryByText("Diamond Quality")).not.toBeInTheDocument();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -433,6 +472,31 @@ describe("Step 2 — Review", () => {
       "/api/requests",
       expect.objectContaining({ method: "POST" })
     );
+  });
+
+  it("plain accept sends plain fields to /api/requests", async () => {
+    const { user } = await setup({ mode: "plain" });
+    await toPlainStep1(user);
+    await tap(user, screen.getAllByRole("button", { name: /^silver$/i })[0]);
+    await tap(user, screen.getAllByRole("button", { name: /^gold$/i }).at(-1)!);
+    await tap(user, screen.getByRole("button", { name: /^10k$/i }));
+    await act(async () => { await user.selectOptions(screen.getByLabelText(/^chain$/i), "figaro_oval_link"); });
+    await tap(user, screen.getByRole("button", { name: /^next$/i }));
+    mockPostSuccess();
+    mockGetSuccess();
+    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await submitLeadForm(user);
+
+    const postCall = mockFetch.mock.calls.find(([url, init]) => url === "/api/requests" && init?.method === "POST");
+    expect(postCall).toBeTruthy();
+    expect(JSON.parse(postCall![1].body)).toEqual(expect.objectContaining({
+      pendantFinish: "plain",
+      styleId: "plain_style_1",
+      plainColor: "silver",
+      plainMetal: "gold",
+      plainKarat: "10k",
+      plainChain: "figaro_oval_link"
+    }));
   });
 
   it("shows error in step 2 when POST fails", async () => {
@@ -742,24 +806,28 @@ describe("Step 4 — Progressive loading & Results", () => {
 });
 
 // ---------------------------------------------------------------------------
-describe("Step indicator dots", () => {
-  it("shows 5 dots (skips the transient step 3)", async () => {
+describe("Design progress bar", () => {
+  it("shows the 4 customer-facing progress steps", async () => {
     await setup();
-    expect(document.querySelectorAll("footer span.rounded-full")).toHaveLength(5);
+    expect(document.querySelectorAll("[data-design-progress-step]")).toHaveLength(4);
+    expect(screen.getByText("Style")).toBeInTheDocument();
+    expect(screen.getByText("Customize")).toBeInTheDocument();
+    expect(screen.getByText("Review")).toBeInTheDocument();
+    expect(screen.getByText("Quote")).toBeInTheDocument();
   });
 
-  it("updates the active dot as the user navigates", async () => {
+  it("updates the active progress step as the user navigates", async () => {
     const { user } = await setup();
-    const activeDotIndex = () => {
-      const dots = Array.from(document.querySelectorAll("footer span.rounded-full"));
-      return dots.findIndex(d => d.getAttribute("data-active") === "true");
+    const activeProgressIndex = () => {
+      const steps = Array.from(document.querySelectorAll("[data-design-progress-step]"));
+      return steps.findIndex(step => step.getAttribute("data-active") === "true");
     };
-    expect(activeDotIndex()).toBe(0);
+    expect(activeProgressIndex()).toBe(0);
     await toStep1(user);
-    expect(activeDotIndex()).toBe(1);
+    expect(activeProgressIndex()).toBe(1);
     await tap(user, screen.getByRole("button", { name: /crown/i }));
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
-    expect(activeDotIndex()).toBe(2);
+    expect(activeProgressIndex()).toBe(2);
   });
 
   it("footer next button only shows on steps 0 and 1", async () => {

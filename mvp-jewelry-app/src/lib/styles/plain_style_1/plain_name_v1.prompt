@@ -1,0 +1,13 @@
+Create an ultra-realistic product photo of a plain custom nameplate pendant using the attached reference image {{PLAIN_REFERENCE}} for the overall style.
+
+Change the text to "{{TEXT}}".
+Use a similar incursive font.
+The chain should connect to the pendant.
+The color should be metallic {{PLAIN_COLOR_LABEL}}.
+Material selection: {{PLAIN_METAL_LABEL}}.
+Karat selection: {{PLAIN_KARAT_LABEL}}.
+Chain style selection: {{PLAIN_CHAIN_LABEL}}.
+
+If the text includes letters like y, j, q, or anything that goes below the baseline, make the heart sit a bit lower so the text stays readable even if it merges with the heart emblem.
+
+Keep the pendant plain polished metal with no diamonds, no stones, no pave setting, and no iced-out texture. Preserve the reference pendant's construction and keep the full pendant centered and readable.

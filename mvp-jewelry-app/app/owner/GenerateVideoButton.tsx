@@ -8,19 +8,20 @@ type Props = {
   attemptCount: number;
   completedCount: number;
   disabled?: boolean;
+  labelOverride?: string;
 };
 
-export default function GenerateVideoButton({ resultId, attemptCount, completedCount, disabled = false }: Props) {
+export default function GenerateVideoButton({ resultId, attemptCount, completedCount, disabled = false, labelOverride }: Props) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasAttempts = attemptCount > 0;
-  const label = completedCount > 0
+  const label = labelOverride ?? (completedCount > 0
     ? "Generate another video"
     : hasAttempts
       ? "Generate again"
-      : "Generate Video";
+      : "Generate Video");
 
   async function startVideoGeneration() {
     setSubmitting(true);

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import DesignProgressBar from "./components/DesignProgressBar";
 import { cx, themeBorder, themeRadius, themeSurface } from "@/src/lib/theme/ui-classes";
 
 type CategoryCard = {
@@ -29,6 +30,10 @@ export default function Page() {
   return (
     <main className="min-h-dvh px-4 py-8 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-8 sm:px-6 md:px-12">
+        <div className="mb-8 flex min-h-10 items-center justify-center">
+          <DesignProgressBar current={0} />
+        </div>
+
         <header className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">001</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-[var(--theme-heading)] md:text-[2.75rem]">Dream it first</h1>
@@ -82,14 +87,7 @@ export default function Page() {
           })}
         </section>
 
-        <footer className="mt-auto flex items-center justify-center gap-7 pt-12">
-          {[0, 1, 2, 3, 4].map(index => (
-            <span
-              key={index}
-              className={`h-4 w-4 rounded-full border-2 border-[color:var(--theme-accent)] ${index === 0 ? "bg-[var(--theme-accent)]" : "bg-transparent"}`}
-            />
-          ))}
-        </footer>
+        <div className="mt-auto pt-12" aria-hidden />
       </div>
     </main>
   );
