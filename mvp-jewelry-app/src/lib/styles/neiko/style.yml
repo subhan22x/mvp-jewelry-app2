@@ -1,6 +1,8 @@
 id: neiko
 label: Neiko
 templateKey: block_baguette_v1
+naturalLanguageTemplateKey: neiko-natural-language
+naturalLanguageSnippetsKey: neiko-natural-language-snippets
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
 defaults:

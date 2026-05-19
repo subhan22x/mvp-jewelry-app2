@@ -43,6 +43,10 @@ model Account {
   StoreServices        StoreService[]
   ProductCollections   ProductCollection[]
   Products             Product[]
+  VvsStudioShoots           VvsStudioShoot[]
+  VvsStudioUploads          VvsStudioUpload[]
+  VvsStudioImageGenerations VvsStudioImageGeneration[]
+  VvsStudioVideoGenerations VvsStudioVideoGeneration[]
 }
 
 model AccountMembership {
@@ -68,6 +72,7 @@ model Request {
   userId         String
   user           User     @relation(fields: [userId], references: [id])
   productType    String   @default("name") // name | picture
+  pendantFinish  String   @default("icedout") // icedout | plain
   styleId        String
   text           String
   twoTone        Boolean  @default(false)
@@ -77,6 +82,10 @@ model Request {
   size           String?
   metalType      String?
   stoneType      String?
+  plainColor     String?
+  plainMetal     String?
+  plainKarat     String?
+  plainChain     String?
   uploadFileName String?
   Results        Result[]
   Videos         VideoGeneration[]
@@ -159,6 +168,7 @@ model QuoteRequest {
   videoUrl         String?
   generatedAt      DateTime?
   productType      String?
+  pendantFinish    String?
   styleId          String?
   text             String?
   twoTone          Boolean?
@@ -168,6 +178,10 @@ model QuoteRequest {
   size             String?
   metalType        String?
   stoneType        String?
+  plainColor       String?
+  plainMetal       String?
+  plainKarat       String?
+  plainChain       String?
   diamondQuality   String?
   customerName     String
   customerPhone    String
@@ -275,4 +289,119 @@ model Product {
   @@unique([accountId, slug])
   @@index([accountId, sortOrder])
   @@index([collectionId, sortOrder])
+}
+
+// ── VVS Studio ───────────────────────────────────────────────────
+
+model VvsStudioShoot {
+  id              String   @id @default(cuid())
+  accountId       String
+  account         Account  @relation(fields: [accountId], references: [id])
+
+  createdByUserId String?
+
+  pieceType       String?
+  visualStyle     String?
+  mood            String?
+  aspectRatio     String?
+
+  metalType       String?
+  goldColor       String?
+  diamondWeight   String?
+  engravingText   String?
+  priceLabel      String?
+  stoneSetting    String?
+
+  status          String   @default("draft")
+  error           String?
+  imageFinalizedAt DateTime?
+  completedAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  Uploads          VvsStudioUpload[]
+  ImageGenerations VvsStudioImageGeneration[]
+  VideoGenerations VvsStudioVideoGeneration[]
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
+model VvsStudioUpload {
+  id                    String         @id @default(cuid())
+  accountId             String
+  account               Account        @relation(fields: [accountId], references: [id])
+  shootId               String
+  shoot                 VvsStudioShoot @relation(fields: [shootId], references: [id])
+
+  angle                 String
+  storageKey            String
+  imageUrl              String
+  originalContentType   String?
+  normalizedContentType String         @default("image/jpeg")
+  fileSize              Int?
+  width                 Int?
+  height                Int?
+  originalFileNameHash  String?
+
+  createdAt             DateTime       @default(now())
+
+  @@unique([shootId, angle])
+  @@index([accountId, createdAt])
+  @@index([shootId])
+}
+
+model VvsStudioImageGeneration {
+  id            String         @id @default(cuid())
+  accountId     String
+  account       Account        @relation(fields: [accountId], references: [id])
+  shootId       String
+  shoot         VvsStudioShoot @relation(fields: [shootId], references: [id])
+
+  variant       Int            @default(1)
+  status        String         @default("pending")
+  prompt        String
+  promptVersion String?
+  provider      String
+  modelId       String?
+  providerJobId String?
+  imageUrl      String?
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  durationMs    Int?
+  createdAt     DateTime       @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+  @@index([shootId, createdAt])
+}
+
+model VvsStudioVideoGeneration {
+  id                      String         @id @default(cuid())
+  accountId               String
+  account                 Account        @relation(fields: [accountId], references: [id])
+  shootId                 String
+  shoot                   VvsStudioShoot @relation(fields: [shootId], references: [id])
+  sourceImageGenerationId String?
+  sourceImageUrl          String
+
+  status        String  @default("pending")
+  prompt        String
+  promptVersion String?
+  provider      String  @default("wavespeed")
+  modelId       String?
+  providerJobId String?
+  videoUrl      String?
+  remoteVideoUrl String?
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  durationMs    Int?
+  createdAt     DateTime @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+  @@index([shootId, createdAt])
 }

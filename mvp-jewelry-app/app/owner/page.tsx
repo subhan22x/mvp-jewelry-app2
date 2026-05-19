@@ -5,6 +5,7 @@ import { getDefaultAccountId } from "@/src/lib/account";
 import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
 import OwnerLoginForm from "./OwnerLoginForm";
 import SendQuoteForm from "./SendQuoteForm";
+import GenerateVideoButton from "./GenerateVideoButton";
 import OwnerFrame from "./OwnerFrame";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,7 @@ type SearchParams = {
   filter?: string;
 };
 
-type QuoteRow = Awaited<ReturnType<typeof getOwnerData>>["quoteRequests"][number];
-
-function shortId(id: string) {
-  return id.slice(0, 8);
-}
+type GenerationRow = Awaited<ReturnType<typeof getOwnerData>>["generations"][number];
 
 function formatDate(value: Date | null) {
   if (!value) return "n/a";
@@ -58,9 +55,21 @@ function materialSpecLabel(value?: string | null) {
   const labels: Record<string, string> = {
     gold: "Gold",
     silver: "Silver",
+    rose_gold: "Rose Gold",
+    gold_plated: "Gold Plated",
+    "10k": "10K",
+    "14k": "14K",
+    "18k": "18K",
     natural_diamonds: "Natural Diamonds",
     lab_diamonds: "Lab Diamonds",
-    moissanite: "Moissanite"
+    moissanite: "Moissanite",
+    rope: "Rope chain",
+    box: "Box chain",
+    snake: "Snake chain",
+    cable: "Cable chain",
+    station: "Station chain",
+    bar_link_tube_station: "Bar link chain / tube station chain",
+    figaro_oval_link: "Figaro style / oval link chain"
   };
   return value ? labels[value] ?? value : "n/a";
 }
@@ -72,46 +81,90 @@ function statusClass(status: string) {
   return "border-[#f7bc5f]/40 bg-[#1D120C]/90 text-[#f7bc5f]";
 }
 
-function quoteMatches(quote: QuoteRow, query: string, filter: string) {
+function generationMatches(row: GenerationRow, query: string, filter: string) {
+  const quote = row.QuoteRequests[0] ?? null;
+  const request = row.request;
   const haystack = [
-    quote.id,
-    quote.customerName,
-    quote.customerEmail,
-    quote.text,
-    quote.styleId,
-    quote.primaryMetal,
-    quote.secondaryMetal,
-    quote.size,
-    quote.metalType,
-    quote.stoneType,
-    quote.productType
+    row.id,
+    row.status,
+    request.text,
+    request.styleId,
+    request.pendantFinish,
+    request.primaryMetal,
+    request.secondaryMetal,
+    request.size,
+    request.metalType,
+    request.stoneType,
+    request.plainColor,
+    request.plainMetal,
+    request.plainKarat,
+    request.plainChain,
+    request.productType,
+    request.uploadFileName,
+    quote?.customerName,
+    quote?.customerEmail,
+    quote?.status
   ].join(" ").toLowerCase();
+
   if (query && !haystack.includes(query)) return false;
-  if (filter === "pending" && quote.status !== "pending") return false;
-  if (filter === "sent" && quote.status !== "sent") return false;
-  if (filter === "today" && !isToday(quote.createdAt)) return false;
-  if (filter === "name" && quote.productType !== "name") return false;
-  if (filter === "picture" && quote.productType !== "picture") return false;
+  if (filter === "pending" && quote?.status !== "pending") return false;
+  if (filter === "sent" && quote?.status !== "sent") return false;
+  if (filter === "today" && !isToday(row.createdAt)) return false;
+  if (filter === "name" && request.productType !== "name") return false;
+  if (filter === "picture" && request.productType !== "picture") return false;
   return true;
 }
 
 async function getOwnerData() {
   const accountId = getDefaultAccountId();
-  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, quoteRequests] = await Promise.all([
+  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, generations] = await Promise.all([
     prisma.quoteRequest.count({ where: { accountId } }),
     prisma.result.count({ where: { accountId } }),
     prisma.quoteRequest.count({ where: { accountId, status: "pending" } }),
     prisma.quoteRequest.count({ where: { accountId, status: "sent" } }),
-    prisma.quoteRequest.findMany({
+    prisma.result.findMany({
       where: { accountId },
       orderBy: [{ createdAt: "desc" }],
-      take: 80
+      take: 120,
+      include: {
+        QuoteRequests: {
+          orderBy: { createdAt: "desc" },
+          take: 1
+        },
+        request: {
+          select: {
+            id: true,
+            productType: true,
+            pendantFinish: true,
+            styleId: true,
+            text: true,
+            primaryMetal: true,
+            secondaryMetal: true,
+            size: true,
+            metalType: true,
+            stoneType: true,
+            plainColor: true,
+            plainMetal: true,
+            plainKarat: true,
+            plainChain: true,
+            uploadFileName: true,
+            Videos: {
+              select: {
+                id: true,
+                sourceResultId: true,
+                status: true
+              },
+              orderBy: { createdAt: "desc" }
+            }
+          }
+        }
+      }
     })
   ]);
 
   return {
     metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes },
-    quoteRequests
+    generations
   };
 }
 
@@ -140,83 +193,138 @@ function MetricCard({ label, value, accent = false }: { label: string; value: nu
   );
 }
 
-function QuoteCard({ quote }: { quote: QuoteRow }) {
+function generationTypeLabel(row: GenerationRow) {
+  if (row.request.productType === "picture") return "Picture pendant";
+  return row.request.pendantFinish === "plain" ? "Nameplate" : "Icedout name pendant";
+}
+
+function generationTitle(row: GenerationRow) {
+  if (row.request.productType === "picture") return row.request.uploadFileName || row.request.text || "Picture pendant";
+  return row.request.text || "Name pendant";
+}
+
+function GenerationCard({ row }: { row: GenerationRow }) {
+  const quote = row.QuoteRequests[0] ?? null;
+  const videosForImage = row.request.Videos.filter(video => video.sourceResultId === row.id);
+  const completedVideos = videosForImage.filter(video => video.status === "succeeded").length;
+  const canGenerateVideo = row.request.productType === "name";
+
   return (
     <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#D1B873]/30 bg-[#17191F] shadow-[0_8px_30px_rgba(0,0,0,0.4)] md:flex-row">
       <div className="relative h-64 w-full bg-black md:h-auto md:w-2/5">
-        {quote.designedImageUrl ? (
+        {row.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={quote.designedImageUrl} alt={`${quote.customerName} generated pendant`} className="h-full w-full object-cover opacity-85 transition duration-500 group-hover:opacity-100" />
+          <img src={row.imageUrl} alt={`${generationTitle(row)} generated pendant`} className="h-full w-full object-cover opacity-85 transition duration-500 group-hover:opacity-100" />
         ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/35">No designed image saved</div>
+          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/35">No generated image saved</div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:bg-gradient-to-r" />
-        <div className={`absolute left-4 top-4 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium backdrop-blur ${statusClass(quote.status)}`}>
+        <div className={`absolute left-4 top-4 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium backdrop-blur ${statusClass(row.status)}`}>
           <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-          {quote.status}
+          {row.status}
         </div>
       </div>
 
       <div className="-mt-8 flex min-w-0 flex-1 flex-col justify-between bg-gradient-to-t from-[#17191F] via-[#17191F] to-transparent p-5 md:mt-0 md:bg-none">
         <div>
           <div className="flex min-w-0 items-baseline justify-between gap-3">
-            <h3 className="min-w-0 break-words text-[22px] font-bold text-[#e1e2ec]">{quote.customerName}</h3>
-            <span className="flex-shrink-0 text-[11px] text-[#8c909f]">{formatDate(quote.createdAt)}</span>
+            <div className="min-w-0">
+              <h3 className="min-w-0 break-words text-[22px] font-bold text-[#e1e2ec]">{generationTitle(row)}</h3>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#f7bc5f]">{generationTypeLabel(row)} / Draft {row.variant}</p>
+            </div>
+            <span className="flex-shrink-0 text-[11px] text-[#8c909f]">{formatDate(row.createdAt)}</span>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-4 border-t border-white/5 pb-2 pt-4 sm:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Text</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{quote.text || "n/a"}</span>
+              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{row.request.text || "n/a"}</span>
             </div>
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Style</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{quote.styleId ?? "n/a"}</span>
+              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{row.request.styleId ?? "n/a"}</span>
             </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Colors</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{metalLabel(quote.primaryMetal, quote.secondaryMetal)}</span>
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Size</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{sizeLabel(quote.size)}</span>
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Type</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(quote.metalType)}</span>
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Stone Type</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(quote.stoneType)}</span>
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Diamond Tier</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{quote.diamondQuality?.toUpperCase() ?? "n/a"}</span>
-            </div>
+            {quote && (
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Customer</span>
+                <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{quote.customerName}</span>
+              </div>
+            )}
+            {row.request.pendantFinish === "plain" ? (
+              <>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Finish</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">Plain</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Color</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainColor)}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainMetal)}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Karat</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainKarat)}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Chain</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainChain)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Colors</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{metalLabel(row.request.primaryMetal, row.request.secondaryMetal)}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Size</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{sizeLabel(row.request.size)}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Type</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.metalType)}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Stone Type</span>
+                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.stoneType)}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <SendQuoteForm
-          quoteId={quote.id}
-          status={quote.status}
-          quotedPriceCents={quote.quotedPriceCents}
-          quoteNotes={quote.quoteNotes}
-        />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {quote ? (
+            <SendQuoteForm
+              quoteId={quote.id}
+              status={quote.status}
+              quotedPriceCents={quote.quotedPriceCents}
+              quoteNotes={quote.quoteNotes}
+            />
+          ) : (
+            <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">
+              No customer quote request for this draft yet.
+            </div>
+          )}
+          {canGenerateVideo ? (
+            <GenerateVideoButton
+              resultId={row.id}
+              attemptCount={videosForImage.length}
+              completedCount={completedVideos}
+              disabled={!row.imageUrl || row.status !== "succeeded"}
+              labelOverride="Quick video generate"
+            />
+          ) : (
+            <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">
+              Video generation is available for name pendants only.
+            </div>
+          )}
+        </div>
       </div>
     </article>
-  );
-}
-
-function BottomNav() {
-  return (
-    <nav className="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-xl border-t border-white/10 bg-black/90 px-4 py-3 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl lg:hidden">
-      {["Dashboard", "Quotes", "Generations", "Settings"].map((item, index) => (
-        <a key={item} href="#" className={`flex flex-col items-center justify-center text-xs ${index === 0 ? "scale-110 text-[#f7bc5f]" : "text-[#8c909f] hover:text-[#adc6ff]"}`}>
-          <span className="text-lg" aria-hidden>{index === 0 ? "*" : "o"}</span>
-          <span className="sr-only">{item}</span>
-        </a>
-      ))}
-    </nav>
   );
 }
 
@@ -229,7 +337,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
   const query = (searchParams.q ?? "").trim().toLowerCase();
   const filter = (searchParams.filter ?? "all").toLowerCase();
   const data = await getOwnerData();
-  const visibleQuotes = data.quoteRequests.filter(quote => quoteMatches(quote, query, filter));
+  const visibleGenerations = data.generations.filter(row => generationMatches(row, query, filter));
 
   const currentQuery = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
   const chipHref = (nextFilter: string) => `/owner?filter=${nextFilter}${currentQuery}`;
@@ -239,7 +347,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
       <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-8 px-4 md:px-6">
         <section className="min-w-0">
           <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Store Dashboard</h1>
-          <p className="mt-2 text-[15px] text-[#c2c6d6]">Review designs and send customer quotes</p>
+          <p className="mt-2 text-[15px] text-[#c2c6d6]">Review generations, send quotes, and create quick videos</p>
         </section>
 
         <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-4">
@@ -274,24 +382,22 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           <details open className="group min-w-0">
             <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#272a31] p-4 transition hover:bg-[#363941]">
               <div className="min-w-0">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-[#8c909f]">Quote Requests</h2>
-                <p className="mt-1 text-sm text-[#c2c6d6]">Customers waiting for pricing</p>
+                <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-[#8c909f]">Generations</h2>
+                <p className="mt-1 text-sm text-[#c2c6d6]">Newest generated drafts first</p>
               </div>
               <span className="flex-shrink-0 text-[#f7bc5f] transition group-open:rotate-180" aria-hidden>v</span>
             </summary>
             <div className="mt-4 flex min-w-0 flex-col gap-5">
-              {visibleQuotes.map(quote => <QuoteCard key={quote.id} quote={quote} />)}
-              {visibleQuotes.length === 0 && (
+              {visibleGenerations.map(row => <GenerationCard key={row.id} row={row} />)}
+              {visibleGenerations.length === 0 && (
                 <div className="rounded-xl border border-white/5 bg-[#17191F] p-6 text-center text-sm text-[#8c909f] sm:p-8">
-                  No quote requests match the current filters.
+                  No generations match the current filters.
                 </div>
               )}
             </div>
           </details>
         </section>
       </div>
-
-      <BottomNav />
     </OwnerFrame>
   );
 }

@@ -1,4 +1,5 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Readable } from "node:stream";
 
 type R2Config = {
   bucketName: string;
@@ -85,4 +86,37 @@ export async function uploadToR2({
   );
 
   return r2PublicUrl(key);
+}
+
+async function streamToBuffer(body: unknown): Promise<Buffer> {
+  if (body instanceof Uint8Array) return Buffer.from(body);
+  if (body instanceof Readable) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+  if (body && typeof body === "object" && "transformToByteArray" in body) {
+    const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+    return Buffer.from(bytes);
+  }
+  throw new Error("Unsupported R2 response body.");
+}
+
+export async function readFromR2(key: string) {
+  const config = getR2Config();
+  if (!config) throw new Error("R2 is not configured.");
+
+  const response = await getClient(config).send(
+    new GetObjectCommand({
+      Bucket: config.bucketName,
+      Key: key.replace(/^\/+/, "")
+    })
+  );
+
+  return {
+    buffer: await streamToBuffer(response.Body),
+    contentType: response.ContentType ?? "application/octet-stream"
+  };
 }

@@ -124,6 +124,112 @@ describe("/api/requests", () => {
       });
     });
   });
+
+  it("accepts plain pendant requests and calls the prompt builder with plain fields", async () => {
+    const { POST } = await import("../route");
+
+    const plainBody = {
+      userId: "demo",
+      pendantFinish: "plain",
+      styleId: "plain_style_1",
+      text: "Aurora",
+      plainColor: "rose_gold",
+      plainMetal: "gold",
+      plainKarat: "14k",
+      plainChain: "snake"
+    };
+
+    const response = await POST(new Request("http://test.local/api/requests", {
+      method: "POST",
+      body: JSON.stringify(plainBody)
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.requestCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        pendantFinish: "plain",
+        styleId: "plain_style_1",
+        primaryMetal: "rose_gold",
+        emblem: "none",
+        plainColor: "rose_gold",
+        plainMetal: "gold",
+        plainKarat: "14k",
+        plainChain: "snake",
+        metalType: null,
+        stoneType: null
+      })
+    });
+    expect(mocks.buildVariants).toHaveBeenCalledWith(expect.objectContaining(plainBody), expect.any(Object));
+  });
+
+  it("rejects solid-gold plain pendant requests without karat", async () => {
+    const { POST } = await import("../route");
+
+    const response = await POST(new Request("http://test.local/api/requests", {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "demo",
+        pendantFinish: "plain",
+        styleId: "plain_style_1",
+        text: "Aurora",
+        plainColor: "gold",
+        plainMetal: "gold",
+        plainChain: "rope"
+      })
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toMatch(/plainKarat/i);
+    expect(mocks.requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects plain pendant requests without a chain style", async () => {
+    const { POST } = await import("../route");
+
+    const response = await POST(new Request("http://test.local/api/requests", {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "demo",
+        pendantFinish: "plain",
+        styleId: "plain_style_1",
+        text: "Aurora",
+        plainColor: "gold",
+        plainMetal: "gold_plated"
+      })
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toMatch(/plainChain/i);
+    expect(mocks.requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not require karat for gold plated plain pendants", async () => {
+    const { POST } = await import("../route");
+
+    const response = await POST(new Request("http://test.local/api/requests", {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "demo",
+        pendantFinish: "plain",
+        styleId: "plain_style_1",
+        text: "Aurora",
+        plainColor: "gold",
+        plainMetal: "gold_plated",
+        plainChain: "cable"
+      })
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.requestCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        plainMetal: "gold_plated",
+        plainKarat: null,
+        plainChain: "cable"
+      })
+    });
+  });
 });
 
 describe("/api/requests/[id]", () => {

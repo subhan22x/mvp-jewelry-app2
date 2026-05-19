@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import DesignProgressBar from "../components/DesignProgressBar";
 
 type CardConfig = {
   id: string;
@@ -18,7 +19,7 @@ const cards: CardConfig[] = [
   { id: "picture", label: "Picture Pendants", href: "/picture-pendants", thumb: "/picture-pendants/picturependant3.jpg" },
   { id: "custom", label: "Custom Design", href: "#", disabled: true },
   { id: "inspired", label: "Get Inspired", href: "#", disabled: true },
-  { id: "draw", label: "Draw your design", href: "#", disabled: true }
+  { id: "nameplates", label: "Nameplates", href: "/pendants/nameplates", thumb: "/plain-pendants/plain_style_1.png" }
 ];
 
 // Shared styling for each card. Adjust spacing or borders in one place.
@@ -29,12 +30,17 @@ export default function PendantsPage() {
   return (
     <main className="min-h-dvh px-4 py-5 text-white md:px-8 md:py-10">
       <div className="mx-auto w-full max-w-4xl px-4 pb-14 pt-3 sm:px-6 md:px-12 md:pt-10">
-        <Link
-          href="/"
-          className="mb-4 flex w-fit items-center gap-2 rounded-full border border-white/20 bg-black/35 px-4 py-2 text-sm uppercase tracking-wide transition hover:border-white/45 md:mb-6"
-        >
-          back
-        </Link>
+        <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
+          <Link
+            href="/"
+            aria-label="Back"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-xl leading-none text-white transition hover:border-white/45"
+          >
+            ←
+          </Link>
+          <DesignProgressBar current={0} className="justify-self-center" />
+          <span aria-hidden="true" />
+        </div>
 
         {/* Hero copy; tweak typography or messaging here. */}
         <header className="max-w-2xl">
@@ -93,16 +99,6 @@ export default function PendantsPage() {
             );
           })}
         </section>
-
-        {/* Pagination dots to mirror future carousel steps. */}
-        <footer className="mt-12 flex items-center justify-center gap-2">
-          {[0, 1, 2, 3].map(index => (
-            <span
-              key={index}
-              className={`h-2.5 w-2.5 rounded-full ${index === 1 ? "bg-blue-400" : "bg-white/25"}`}
-            />
-          ))}
-        </footer>
       </div>
     </main>
   );

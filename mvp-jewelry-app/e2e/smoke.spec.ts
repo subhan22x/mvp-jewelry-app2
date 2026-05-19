@@ -16,13 +16,17 @@ test.describe("Home page", () => {
     await expect(page).toHaveURL("/pendants");
   });
 
-  test("pendants page renders format cards and links to /name", async ({ page }) => {
+  test("pendants page renders format cards and links to builders", async ({ page }) => {
     await page.goto("/pendants");
-    await expect(page.getByRole("link", { name: /name/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /name\s+or initials/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /nameplates/i })).toBeVisible();
     await expect(page.getByText("Logo")).toBeVisible();
     await expect(page.getByText("Custom Design")).toBeVisible();
-    await page.getByRole("link", { name: /name/i }).click();
+    await page.getByRole("link", { name: /name\s+or initials/i }).click();
     await expect(page).toHaveURL("/name");
+    await page.goto("/pendants");
+    await page.getByRole("link", { name: /nameplates/i }).click();
+    await expect(page).toHaveURL("/pendants/nameplates");
   });
 });
 
@@ -71,6 +75,7 @@ test.describe("Name builder flow", () => {
     await page.goto("/name");
     await page.getByPlaceholder("text on pendant...").fill("Aurora");
     await page.getByRole("button", { name: /^next$/i }).click();
+    await page.getByRole("button", { name: /crown/i }).click();
     await page.getByRole("button", { name: /^next$/i }).click();
 
     await expect(page.getByRole("button", { name: /^vvs$/i })).toHaveAttribute("aria-pressed", "true");
@@ -108,8 +113,7 @@ test.describe("Name builder flow", () => {
   async function submitLeadForm(page: import("@playwright/test").Page) {
     await expect(page.getByRole("dialog", { name: /to continue/i })).toBeVisible({ timeout: 10_000 });
     await page.getByLabel(/^name$/i).fill("E2E User");
-    // PhoneInput renders a visible phone input — use placeholder text to locate it
-    const phoneInput = page.getByPlaceholder(/phone/i).first();
+    const phoneInput = page.getByLabel(/^phone number$/i);
     await phoneInput.fill("5555551234");
     await page.getByLabel(/^email address$/i).fill("e2e@example.com");
     await page.getByRole("button", { name: /^submit$/i }).click();
@@ -121,6 +125,7 @@ test.describe("Name builder flow", () => {
     await page.goto("/name");
     await page.getByPlaceholder("text on pendant...").fill("Aurora");
     await page.getByRole("button", { name: /^next$/i }).click();
+    await page.getByRole("button", { name: /crown/i }).click();
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^accept$/i }).click();
 
@@ -129,11 +134,38 @@ test.describe("Name builder flow", () => {
     expect(await page.getByRole("button", { name: /^draft \d$/i }).count()).toBe(2);
   });
 
+  test("plain flow can generate drafts and request quote from image", async ({ page }) => {
+    await mockGenerationApi(page, "e2e-plain");
+    await page.route("/api/quote-requests", async route => {
+      await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ quoteRequestId: "quote-plain" }) });
+    });
+
+    await page.goto("/pendants/nameplates");
+    await page.getByPlaceholder("text on pendant...").fill("Aurora");
+    await page.getByRole("button", { name: /^olivia$/i }).click();
+    await page.getByRole("button", { name: /^next$/i }).click();
+    await page.getByRole("button", { name: /^rose gold$/i }).click();
+    await page.getByRole("button", { name: /^gold$/i }).last().click();
+    await page.getByRole("button", { name: /^14k$/i }).click();
+    await page.getByLabel(/^chain$/i).selectOption("snake");
+    await page.getByRole("button", { name: /^next$/i }).click();
+    await expect(page.getByText("Olivia").first()).toBeVisible();
+    await expect(page.getByText("14K", { exact: true })).toBeVisible();
+    await expect(page.getByText("Snake chain")).toBeVisible();
+    await page.getByRole("button", { name: /^accept$/i }).click();
+
+    await submitLeadForm(page);
+    await expect(page.getByText("Choose your favourite")).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: /^get a quote$/i }).click();
+    await expect(page.getByText(/your design has been sent/i)).toBeVisible();
+  });
+
   test("step 4 — preview modal opens and closes", async ({ page }) => {
     await mockGenerationApi(page, "e2e-modal");
     await page.goto("/name");
     await page.getByPlaceholder("text on pendant...").fill("Aurora");
     await page.getByRole("button", { name: /^next$/i }).click();
+    await page.getByRole("button", { name: /crown/i }).click();
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^accept$/i }).click();
     await submitLeadForm(page);
@@ -151,6 +183,7 @@ test.describe("Name builder flow", () => {
     await page.goto("/name");
     await page.getByPlaceholder("text on pendant...").fill("Aurora");
     await page.getByRole("button", { name: /^next$/i }).click();
+    await page.getByRole("button", { name: /crown/i }).click();
     await page.getByRole("button", { name: /^next$/i }).click();
     await page.getByRole("button", { name: /^accept$/i }).click();
     await submitLeadForm(page);

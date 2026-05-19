@@ -14,6 +14,7 @@ type ThemedImageOptionProps = {
   imageSizes?: string;
   fallback?: ReactNode;
   badge?: ReactNode;
+  imageClassName?: string;
 };
 
 export default function ThemedImageOption({
@@ -25,7 +26,8 @@ export default function ThemedImageOption({
   className = styleOptionFrameClass,
   imageSizes = "(max-width: 640px) 210px, 260px",
   fallback,
-  badge
+  badge,
+  imageClassName = "object-cover object-center transition duration-500 group-hover:scale-105"
 }: ThemedImageOptionProps) {
   return (
     <div className={`relative flex-none ${className}`}>
@@ -43,7 +45,7 @@ export default function ThemedImageOption({
             alt={label}
             fill
             sizes={imageSizes}
-            className="object-cover object-center transition duration-500 group-hover:scale-105"
+            className={imageClassName}
           />
         ) : (
           fallback
