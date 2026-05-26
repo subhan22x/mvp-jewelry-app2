@@ -6,16 +6,15 @@ import { cx, themeBorder, themeRadius, themeSurface } from "@/src/lib/theme/ui-c
 type CategoryCard = {
   id: string;
   label: string;
-  href?: string;
-  disabled?: boolean;
+  href: string;
   iconSrc: string;
 };
 
 const categories: CategoryCard[] = [
   { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png" },
-  { id: "ring", label: "Ring", disabled: true, iconSrc: "/category-icons/ring.png" },
-  { id: "bracelet", label: "Bracelet", disabled: true, iconSrc: "/category-icons/bracelet.png" },
-  { id: "necklace", label: "Necklace", disabled: true, iconSrc: "/category-icons/necklace.png" }
+  { id: "ring", label: "Ring", href: "/coming-soon", iconSrc: "/category-icons/ring.png" },
+  { id: "bracelet", label: "Bracelet", href: "/coming-soon", iconSrc: "/category-icons/bracelet.png" },
+  { id: "watches", label: "Watches", href: "/coming-soon", iconSrc: "/category-icons/watch.png" }
 ];
 
 const cardClass = cx(
@@ -65,21 +64,12 @@ export default function Page() {
                 <span className="mt-3 text-lg font-semibold tracking-tight text-[var(--theme-text)] sm:mt-5 sm:text-2xl">
                   {category.label}
                 </span>
-                {category.disabled ? (
-                  <span className="mt-1 whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-text-muted)] sm:text-[10px] sm:tracking-[0.24em]">
-                    coming soon
-                  </span>
-                ) : null}
               </>
             );
 
-            const className = `${cardClass} ${category.disabled ? "cursor-not-allowed opacity-55" : ""}`;
+            const className = cardClass;
 
-            return category.disabled || !category.href ? (
-              <div key={category.id} className={className} aria-disabled="true">
-                {body}
-              </div>
-            ) : (
+            return (
               <Link key={category.id} href={category.href} className={className} aria-label={`${category.label} jewelry`}>
                 {body}
               </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import MobileOwnerNav from "../MobileOwnerNav";
 import StepProgress from "./components/StepProgress";
@@ -514,10 +514,15 @@ function WizardHeader({ step, onHome }: { step: VvsWizardStep; onHome: () => voi
 export default function VvsStudioWizard() {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, DEFAULT_STATE);
+  const [mounted, setMounted] = useState(false);
 
   const setStep = useCallback((step: VvsWizardStep) => dispatch({ type: "SET_STEP", step }), []);
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleHome = useCallback(() => {
     if (window.confirm("Your current VVS Studio draft will be lost if you leave. Go back home?")) {
@@ -1058,6 +1063,10 @@ export default function VvsStudioWizard() {
   }
 
   const isFullscreenStep = ["imageResult", "videoResult", "generatingImage", "generatingVideo"].includes(state.step);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>

@@ -40,6 +40,15 @@ function shortId(id: string) {
   return id.slice(0, 8);
 }
 
+function isRemoteUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default async function InternalGenerationsPage({
   searchParams
 }: {
@@ -119,7 +128,7 @@ export default async function InternalGenerationsPage({
             <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Internal</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Generation Review</h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-              Images from <code className="rounded bg-white/10 px-1.5 py-0.5">public/generated</code> matched with Prisma prompts.
+              Images from Prisma result URLs matched with generation prompts.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-sm md:w-[360px]">
@@ -189,7 +198,7 @@ export default async function InternalGenerationsPage({
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredRows.map(row => {
-            const hasImage = Boolean(row.imageUrl && fileSet.has(row.imageUrl));
+            const hasImage = Boolean(row.imageUrl && (isRemoteUrl(row.imageUrl) || fileSet.has(row.imageUrl)));
             return (
               <article key={row.id} className="flex flex-col rounded border border-white/10 bg-[#17191f] p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -211,7 +220,7 @@ export default async function InternalGenerationsPage({
                     <img src={row.imageUrl!} alt={`Generated draft ${row.variant}`} className="h-full w-full object-contain" />
                   ) : (
                     <div className="flex h-full items-center justify-center px-5 text-center text-xs text-zinc-500">
-                      {row.imageUrl ? "Image file missing from public/generated" : "No image for this attempt"}
+                      {row.imageUrl ? "Image URL unavailable or local file missing" : "No image for this attempt"}
                     </div>
                   )}
                 </div>

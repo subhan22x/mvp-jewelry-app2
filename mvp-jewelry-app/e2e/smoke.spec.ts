@@ -5,15 +5,22 @@ test.describe("Home page", () => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dream it first" })).toBeVisible();
     await expect(page.getByRole("link", { name: /pendant jewelry/i })).toBeVisible();
-    await expect(page.getByText("Ring")).toBeVisible();
-    await expect(page.getByText("Bracelet")).toBeVisible();
-    await expect(page.getByText("Necklace")).toBeVisible();
+    await expect(page.getByRole("link", { name: /ring jewelry/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /bracelet jewelry/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /watches jewelry/i })).toBeVisible();
   });
 
   test("Pendant card links to /pendants", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: /pendant jewelry/i }).click();
     await expect(page).toHaveURL("/pendants");
+  });
+
+  test("unavailable category cards link to coming soon placeholder", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: /ring jewelry/i }).click();
+    await expect(page).toHaveURL("/coming-soon");
+    await expect(page.getByRole("heading", { name: "Coming soon" })).toBeVisible();
   });
 
   test("pendants page renders format cards and links to builders", async ({ page }) => {

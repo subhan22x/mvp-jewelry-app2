@@ -20,6 +20,7 @@ vi.stubGlobal("fetch", mockFetch);
 
 // POST returns requestId immediately; GET returns 2 results and done flag
 const MOCK_RESULTS = [1, 2].map(v => ({
+  id: `result-${v}`,
   variant: v,
   imageUrl: `/generated/req-test-v${v}.png`
 }));
@@ -87,6 +88,35 @@ function mockVideoPostSuccess() {
   mockFetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({ videoId: "video-test" })
+  });
+}
+
+function mockRevisionPostSuccess(revisionNumber = 1) {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ revisionId: `revision-${revisionNumber}`, revisionNumber, status: "pending" })
+  });
+}
+
+function mockRevisionGetSuccess(revisionNumber = 1) {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      id: `revision-${revisionNumber}`,
+      requestId: "req-test",
+      sourceResultId: "result-1",
+      revisionNumber,
+      status: "succeeded",
+      imageUrl: `/generated/req-test-rev${revisionNumber}.png`,
+      done: true
+    })
+  });
+}
+
+function mockQuotePostSuccess() {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ quoteRequestId: "quote-test" })
   });
 }
 
@@ -699,7 +729,7 @@ describe("Step 4 — Progressive loading & Results", () => {
       "/api/videos",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ requestId: "req-test", accessCode: "ID8" })
+        body: JSON.stringify({ requestId: "req-test", accessCode: "ID8", sourceResultId: "result-1", sourceImageUrl: "/generated/req-test-v1.png" })
       })
     );
     expect(screen.getByText(/generated in 7\.25 seconds/i)).toBeInTheDocument();
@@ -755,6 +785,49 @@ describe("Step 4 — Progressive loading & Results", () => {
     const link = screen.getByRole("link", { name: /download/i });
     expect(link).toHaveAttribute("href", "/generated/req-test-v1.png");
     expect(link).toHaveAttribute("download");
+  });
+
+  it("opens the edit modal and creates a Rev 1 card", async () => {
+    const { user } = await setup();
+    await toStep4(user);
+    await tap(user, screen.getByLabelText(/edit draft 1/i));
+
+    expect(screen.getByRole("dialog", { name: /edit draft 1/i })).toBeInTheDocument();
+    await type(user, screen.getByLabelText(/revision notes/i), "Make the name thicker");
+    mockRevisionPostSuccess(1);
+    mockRevisionGetSuccess(1);
+    await tap(user, screen.getByRole("button", { name: /create revision/i }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /^rev 1$/i })).toBeInTheDocument());
+    expect(screen.getByText(/1 of 2 revisions used/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^rev 1$/i })).toHaveAttribute("aria-pressed", "true");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/requests/req-test/revisions",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ sourceResultId: "result-1", prompt: "Make the name thicker" })
+      })
+    );
+  });
+
+  it("sends the selected revision image with the quote request", async () => {
+    const { user } = await setup();
+    await toStep4(user);
+    await tap(user, screen.getByLabelText(/edit draft 1/i));
+    await type(user, screen.getByLabelText(/revision notes/i), "Raise the emblem");
+    mockRevisionPostSuccess(1);
+    mockRevisionGetSuccess(1);
+    await tap(user, screen.getByRole("button", { name: /create revision/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^rev 1$/i })).toHaveAttribute("aria-pressed", "true"));
+
+    mockQuotePostSuccess();
+    await tap(user, screen.getByRole("button", { name: /get a quote/i }));
+
+    const quoteCall = mockFetch.mock.calls.find(([url, init]) => url === "/api/quote-requests" && init?.method === "POST");
+    expect(quoteCall).toBeTruthy();
+    expect(JSON.parse(quoteCall![1].body)).toEqual(expect.objectContaining({
+      designedImageUrl: "/generated/req-test-rev1.png"
+    }));
   });
 
   it("global back button shows confirm dialog when generations exist", async () => {

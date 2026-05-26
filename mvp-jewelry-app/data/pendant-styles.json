@@ -1,13 +1,13 @@
 [
   {
     "id": "deja",
-    "label": "Deja",
-    "src": "/pendants/deja.png"
+    "label": "Mojo",
+    "src": "/pendants/mojo-deja.png"
   },
   {
     "id": "gatti",
-    "label": "Gatti",
-    "src": "/pendants/gatti.png"
+    "label": "Hasan",
+    "src": "/pendants/hasan-gatti.png"
   },
   {
     "id": "jaida",
@@ -26,8 +26,8 @@
   },
   {
     "id": "king",
-    "label": "King",
-    "src": "/pendants/king.png"
+    "label": "MANA",
+    "src": "/pendants/mana-king.png"
   },
   {
     "id": "lexy",

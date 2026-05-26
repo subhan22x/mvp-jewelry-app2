@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         requestId: request.id,
         resultId: betterResult?.id ?? null,
         videoId: video?.id ?? null,
-        designedImageUrl: betterResult?.imageUrl ?? body.designedImageUrl ?? video?.sourceImageUrl ?? null,
+        designedImageUrl: body.designedImageUrl ?? betterResult?.imageUrl ?? video?.sourceImageUrl ?? null,
         videoUrl: body.videoUrl ?? video?.videoUrl ?? null,
         generatedAt: betterResult?.completedAt ?? betterResult?.createdAt ?? request.createdAt,
         productType: request.productType,

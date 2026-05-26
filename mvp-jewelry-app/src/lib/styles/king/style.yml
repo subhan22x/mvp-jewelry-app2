@@ -1,5 +1,5 @@
 id: king
-label: King
+label: MANA
 templateKey: block_baguette_v1
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
@@ -15,7 +15,7 @@ variantMatrix:
   - { forceAllCaps: true }
 
 assets:
-  pendantRef: public/pendants/king.png
+  pendantRef: public/pendants/mana-king.png
   emblemRefs:
     crown: public/emblems/CROWN EMBLEM.png
     heart: public/emblems/heart emblem.png

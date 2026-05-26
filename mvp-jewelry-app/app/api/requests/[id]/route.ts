@@ -15,6 +15,7 @@ export async function GET(_: Request, { params }: { params: { id: string }}) {
   const productType = reqRow.productType ?? 'name';
   const expectedGenerationCount = productType === 'picture' ? 1 : EXPECTED_GENERATION_COUNT;
   const attempts = reqRow.Results.map(r => ({
+    id: r.id,
     variant: r.variant,
     status: r.status,
     imageUrl: r.imageUrl,
@@ -25,7 +26,7 @@ export async function GET(_: Request, { params }: { params: { id: string }}) {
   }));
   const results = attempts
     .filter(r => r.status === 'succeeded' && r.imageUrl)
-    .map(r => ({ variant: r.variant, imageUrl: r.imageUrl, modelId: r.modelId, durationSeconds: r.durationSeconds }));
+    .map(r => ({ id: r.id, variant: r.variant, imageUrl: r.imageUrl, modelId: r.modelId, durationSeconds: r.durationSeconds }));
   const pendingCount = attempts.filter(r => r.status === 'pending').length;
   const failedCount = attempts.filter(r => r.status === 'failed').length;
   const succeededCount = attempts.filter(r => r.status === 'succeeded').length;

@@ -1,5 +1,5 @@
 id: gatti
-label: Gatti
+label: Hasan
 templateKey: block_baguette_v1
 naturalLanguageTemplateKey: gatti-natural-language
 naturalLanguageSnippetsKey: gatti-natural-language-snippets
@@ -16,7 +16,7 @@ variantMatrix:
   - { deviationStrength: 0.50, bubbleOutline: true,  forceAllCaps: false }
 
 assets:
-  pendantRef: public/pendants/gatti.png
+  pendantRef: public/pendants/hasan-gatti.png
   emblemRefs:
     crown: public/emblems/CROWN EMBLEM.png
     heart: public/emblems/heart emblem.png
