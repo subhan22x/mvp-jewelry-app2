@@ -89,6 +89,7 @@ model Request {
   plainChain     String?
   uploadFileName String?
   Results        Result[]
+  ResultRevisions ResultRevision[]
   Videos         VideoGeneration[]
   QuoteRequests  QuoteRequest[]
 
@@ -112,9 +113,32 @@ model Result {
   durationMs    Int?
   createdAt     DateTime  @default(now())
   QuoteRequests QuoteRequest[]
+  Revisions     ResultRevision[]
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
+}
+
+model ResultRevision {
+  id             String   @id @default(cuid())
+  accountId      String   @default("demo-account")
+  requestId      String
+  request        Request  @relation(fields: [requestId], references: [id])
+  sourceResultId String
+  sourceResult   Result   @relation(fields: [sourceResultId], references: [id])
+  revisionNumber Int
+  prompt         String
+  imageUrl       String?
+  status         String   @default("pending") // pending | succeeded | failed
+  error          String?
+  provider       String?
+  modelId        String?
+  completedAt    DateTime?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+
+  @@index([accountId, requestId])
+  @@index([sourceResultId])
 }
 
 model Lead {

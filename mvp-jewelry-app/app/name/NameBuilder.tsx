@@ -27,7 +27,17 @@ type PlainMetalKey = "gold_plated" | "silver" | "gold";
 type PlainKaratKey = "10k" | "14k" | "18k";
 type PlainChainKey = "rope" | "box" | "snake" | "cable" | "station" | "bar_link_tube_station" | "figaro_oval_link";
 
-type GenerationOption = { id: string; label: string; src: string; variant: number };
+type GenerationOption = {
+  id: string;
+  label: string;
+  src: string;
+  variant: number;
+  kind: "original" | "revision";
+  sourceGenerationId?: string;
+  revisionNumber?: 1 | 2;
+  editPrompt?: string;
+  status?: "pending" | "succeeded" | "failed";
+};
 type GenerationAttempt = {
   variant: number;
   status: "pending" | "succeeded" | "failed";
@@ -61,6 +71,12 @@ const GOLD_COMBOS: ReadonlyArray<{ id: GoldComboKey; label: string; summary: str
   { id: "ROSE_WHITE", label: "Rose + White Gold", summary: "Rose gold + White gold" },
   { id: "WHITE", label: "White Gold", summary: "White gold" }
 ];
+
+const GOLD_COMBO_SWATCH_CLASS: Record<GoldComboKey, string> = {
+  YELLOW_WHITE: "from-[#f8cf61] via-[#f6c456] to-[#e9edf2]",
+  ROSE_WHITE: "from-[#e3a07e] via-[#d88b6d] to-[#eef1f5]",
+  WHITE: "from-[#fbfdff] via-[#dce4ee] to-[#aeb9c7]"
+};
 
 const PENDANT_SIZES: ReadonlyArray<{ id: PendantSizeKey; label: string }> = [
   { id: "2_3_inches", label: "2 - 3 inches" },
@@ -160,6 +176,10 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewOption, setPreviewOption] = useState<GenerationOption | null>(null);
+  const [editTarget, setEditTarget] = useState<GenerationOption | null>(null);
+  const [editPrompt, setEditPrompt] = useState("");
+  const [revisionError, setRevisionError] = useState<string | null>(null);
+  const [isRevisionSubmitting, setIsRevisionSubmitting] = useState(false);
   const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [capturedRequestId, setCapturedRequestId] = useState<string | null>(null);
   const [showAccessCodePrompt, setShowAccessCodePrompt] = useState(false);
@@ -177,6 +197,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoEpochRef = useRef(0);
   const videoPollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const revisionPollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const pendantColumns = buildPendantColumns(pendantStyles);
   const activeStyle = pendantStyles.find(style => style.id === styleId) ?? pendantStyles[0];
@@ -196,6 +217,11 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
   const canAddLine = lines.length < MAX_NAME_LINES;
   const hasPrimaryName = lines[0]?.trim().length > 0;
   const highQualityGeneration = generations.find(generation => generation.variant === 1) ?? null;
+  const revisionGenerations = generations
+    .filter(generation => generation.kind === "revision")
+    .sort((a, b) => (a.revisionNumber ?? 0) - (b.revisionNumber ?? 0));
+  const selectedGeneration = generations.find(generation => generation.id === selectedGenerationId) ?? highQualityGeneration;
+  const canCreateRevision = revisionGenerations.length < 2;
 
   const updateLine = (value: string, index: number) => {
     setLines(prev => prev.map((entry, idx) => (idx === index ? value : entry)));
@@ -237,16 +263,17 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     setIsVideoGenerating(false);
   };
 
+  const cancelRevisionPolling = () => {
+    if (revisionPollTimeoutRef.current) {
+      clearTimeout(revisionPollTimeoutRef.current);
+      revisionPollTimeoutRef.current = null;
+    }
+    setIsRevisionSubmitting(false);
+  };
+
   const confirmDiscardGenerations = () =>
     generations.length === 0 && !videoStatus ||
     window.confirm("You will lose your generated drafts and video progress if you leave this flow. Continue?");
-
-  const handleHomeFromResults = () => {
-    if (!confirmDiscardGenerations()) return;
-    cancelPolling();
-    cancelVideoPolling();
-    router.push("/");
-  };
 
   const handleBack = () => {
     if ((step === 4 || step === 5) && !confirmDiscardGenerations()) return;
@@ -257,8 +284,12 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     if (step === 4 || step === 5) {
       cancelPolling();
       cancelVideoPolling();
+      cancelRevisionPolling();
       setGenerations([]);
       setSelectedGenerationId(null);
+      setEditTarget(null);
+      setEditPrompt("");
+      setRevisionError(null);
       setShowLeadCapture(false);
       setShowAccessCodePrompt(false);
       setVideoStatus(null);
@@ -322,6 +353,9 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     setGenerationError(null);
     setGenerations([]);
     setSelectedGenerationId(null);
+    setEditTarget(null);
+    setEditPrompt("");
+    setRevisionError(null);
     setLeadContact(null);
     setQuoteStatus("idle");
     setQuoteError(null);
@@ -354,16 +388,22 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
           const pollData = await pollRes.json().catch(() => ({}));
           if (epoch !== generationEpochRef.current) return;
 
-          const results: Array<{ variant: number; imageUrl: string }> = pollData.results ?? [];
+          const results: Array<{ id?: string; variant: number; imageUrl: string }> = pollData.results ?? [];
           const attempts: GenerationAttempt[] = pollData.attempts ?? [];
           const failedAttempts = attempts.filter(attempt => attempt.status === "failed");
           const mapped: GenerationOption[] = results.map(r => ({
-            id: `variant-${r.variant}`,
+            id: r.id ?? `variant-${r.variant}`,
             label: `Draft ${r.variant}`,
             src: r.imageUrl,
-            variant: r.variant
+            variant: r.variant,
+            kind: "original",
+            sourceGenerationId: r.id ?? `variant-${r.variant}`,
+            status: "succeeded"
           }));
-          setGenerations(mapped);
+          setGenerations(prev => [
+            ...mapped,
+            ...prev.filter(generation => generation.kind === "revision")
+          ]);
           if (mapped.length > 0) {
             setSelectedGenerationId(prev => prev ?? mapped[0].id);
           }
@@ -397,14 +437,131 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     }
   };
 
+  const handleOpenEdit = (option: GenerationOption) => {
+    if (!canCreateRevision || option.status === "pending") return;
+    setEditTarget(option);
+    setEditPrompt("");
+    setRevisionError(null);
+  };
+
+  const pollRevision = (requestId: string, revisionId: string, placeholderId: string) => {
+    let pollCount = 0;
+    const poll = async () => {
+      pollCount += 1;
+      try {
+        const response = await fetch(`/api/requests/${requestId}/revisions/${revisionId}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error ?? "Failed to check revision.");
+
+        if (data.done || pollCount >= MAX_POLL_ATTEMPTS) {
+          revisionPollTimeoutRef.current = null;
+          setIsRevisionSubmitting(false);
+          if (data.status === "succeeded" && data.imageUrl) {
+            setGenerations(prev => prev.map(generation =>
+              generation.id === placeholderId || generation.id === revisionId
+                ? {
+                    ...generation,
+                    id: revisionId,
+                    label: `Rev ${data.revisionNumber}`,
+                    src: data.imageUrl,
+                    status: "succeeded",
+                    variant: 100 + data.revisionNumber
+                  }
+                : generation
+            ));
+            setSelectedGenerationId(revisionId);
+          } else {
+            setGenerations(prev => prev.map(generation =>
+              generation.id === placeholderId || generation.id === revisionId
+                ? { ...generation, id: revisionId, status: "failed" }
+                : generation
+            ));
+            setRevisionError(data.error ?? "Revision did not complete. Please try again.");
+          }
+          return;
+        }
+      } catch (error) {
+        if (pollCount >= MAX_POLL_ATTEMPTS) {
+          revisionPollTimeoutRef.current = null;
+          setIsRevisionSubmitting(false);
+          setGenerations(prev => prev.map(generation =>
+            generation.id === placeholderId || generation.id === revisionId
+              ? { ...generation, id: revisionId, status: "failed" }
+              : generation
+          ));
+          setRevisionError(error instanceof Error ? error.message : "Revision did not complete.");
+          return;
+        }
+      }
+      revisionPollTimeoutRef.current = setTimeout(poll, 1200);
+    };
+
+    void poll();
+  };
+
+  const handleSubmitRevision = async () => {
+    if (!capturedRequestId || !editTarget || isRevisionSubmitting) return;
+    if (!canCreateRevision) {
+      setRevisionError("This design already has the maximum of 2 revisions.");
+      return;
+    }
+
+    const prompt = editPrompt.trim();
+    if (!prompt) {
+      setRevisionError("Describe the changes you want first.");
+      return;
+    }
+
+    const revisionNumber = (revisionGenerations.length + 1) as 1 | 2;
+    const sourceResultId = editTarget.sourceGenerationId ?? editTarget.id;
+    const placeholderId = `pending-revision-${revisionNumber}`;
+    setRevisionError(null);
+    setIsRevisionSubmitting(true);
+    setGenerations(prev => [
+      ...prev,
+      {
+        id: placeholderId,
+        label: `Rev ${revisionNumber}`,
+        src: "",
+        variant: 100 + revisionNumber,
+        kind: "revision",
+        sourceGenerationId: sourceResultId,
+        revisionNumber,
+        editPrompt: prompt,
+        status: "pending"
+      }
+    ]);
+    setEditTarget(null);
+    setEditPrompt("");
+
+    try {
+      const response = await fetch(`/api/requests/${capturedRequestId}/revisions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceResultId, prompt })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error ?? "Failed to start revision.");
+      const revisionId: string = data.revisionId;
+      setGenerations(prev => prev.map(generation =>
+        generation.id === placeholderId ? { ...generation, id: revisionId } : generation
+      ));
+      pollRevision(capturedRequestId, revisionId, placeholderId);
+    } catch (error) {
+      setIsRevisionSubmitting(false);
+      setGenerations(prev => prev.filter(generation => generation.id !== placeholderId));
+      setRevisionError(error instanceof Error ? error.message : "Failed to start revision.");
+    }
+  };
+
   const handleStartVideo = async () => {
     if (isVideoGenerating) return;
     if (!capturedRequestId) {
       setVideoError("Missing request id for this generation.");
       return;
     }
-    if (!highQualityGeneration) {
-      setVideoError("The higher quality draft is not ready yet.");
+    if (!selectedGeneration?.src) {
+      setVideoError("Select a finished draft before generating video.");
       return;
     }
 
@@ -419,7 +576,12 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
       const response = await fetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId: capturedRequestId, accessCode: videoAccessCode })
+        body: JSON.stringify({
+          requestId: capturedRequestId,
+          accessCode: videoAccessCode,
+          sourceResultId: selectedGeneration.kind === "original" ? selectedGeneration.id : undefined,
+          sourceImageUrl: selectedGeneration.src
+        })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error ?? "Failed to start video generation.");
@@ -485,7 +647,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
         body: JSON.stringify({
           requestId: capturedRequestId,
           videoId: videoStatus?.id,
-          designedImageUrl: highQualityGeneration?.src,
+          designedImageUrl: selectedGeneration?.src ?? highQualityGeneration?.src,
           videoUrl: videoStatus?.videoUrl,
           diamondQuality: isPlain ? undefined : diamondQuality,
           customerName: leadContact?.name,
@@ -507,6 +669,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     return () => {
       if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
       if (videoPollTimeoutRef.current) clearTimeout(videoPollTimeoutRef.current);
+      if (revisionPollTimeoutRef.current) clearTimeout(revisionPollTimeoutRef.current);
     };
   }, []);
 
@@ -607,7 +770,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                             selected={isActive}
                             src={style.src}
                             label={style.label}
-                            className={styleOptionFrameClass}
+                            className={cx("aspect-square w-full min-w-0", themeRadius.imageOption)}
                             imageSizes="(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 220px"
                             imageClassName="object-contain object-center p-3 transition duration-500 group-hover:scale-105"
                           />
@@ -768,8 +931,23 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                               key={option.id}
                               selected={isActive}
                               onClick={() => setGoldCombo(option.id)}
+                              className="min-h-14"
                             >
-                              {option.label}
+                              <span className="flex items-center justify-center gap-3">
+                                <span
+                                  className={cx(
+                                    "relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/45 bg-gradient-to-br shadow-[inset_0_1px_2px_rgba(255,255,255,0.75),0_2px_8px_rgba(0,0,0,0.22)]",
+                                    GOLD_COMBO_SWATCH_CLASS[option.id]
+                                  )}
+                                  aria-hidden="true"
+                                >
+                                  {option.id !== "WHITE" && (
+                                    <span className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-br from-white via-[#edf2f8] to-[#b9c2ce]" />
+                                  )}
+                                  <span className="absolute inset-[3px] rounded-full border border-white/55" />
+                                </span>
+                                <span>{option.label}</span>
+                              </span>
                             </ThemedOptionButton>
                           );
                         })}
@@ -1005,9 +1183,14 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                       {generationError}
                     </div>
                   )}
+                  {revisionError && (
+                    <div className="mt-4 rounded-2xl border border-sky-400/60 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
+                      {revisionError}
+                    </div>
+                  )}
                   <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
                     {([1, 2] as const).map(variantNum => {
-                      const option = generations.find(g => g.variant === variantNum);
+                      const option = generations.find(g => g.kind === "original" && g.variant === variantNum);
                       if (!option) {
                         return (
                           <div
@@ -1047,6 +1230,16 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                             />
                             <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-transparent via-transparent to-black/20" aria-hidden />
                           </button>
+                          {canCreateRevision && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(option)}
+                              className="absolute left-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
+                              aria-label={`Edit ${option.label}`}
+                            >
+                              edit
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => setPreviewOption(option)}
@@ -1058,25 +1251,89 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                         </div>
                       );
                     })}
+                    {revisionGenerations.map(option => {
+                      const isSelected = selectedGenerationId === option.id;
+                      const isPending = option.status === "pending";
+                      const isFailed = option.status === "failed";
+                      return (
+                        <div key={option.id} className="relative">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isPending && !isFailed) setSelectedGenerationId(option.id);
+                            }}
+                            disabled={isPending || isFailed}
+                            className={cx(
+                              "group relative block min-h-[220px] w-full overflow-hidden transition sm:min-h-[260px]",
+                              themeRadius.resultCard,
+                              themeSurface.muted,
+                              themeFocusRing,
+                              isSelected
+                                ? cx(themeBorder.selected, "shadow-[0_0_35px_var(--theme-selected-glow)]")
+                                : themeBorder.base,
+                              isPending || isFailed ? "cursor-not-allowed" : ""
+                            )}
+                            aria-pressed={isSelected}
+                            aria-label={option.label}
+                          >
+                            {option.src && !isFailed ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={option.src}
+                                alt={option.label}
+                                className="block h-auto w-full transition duration-500 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-sky-950 via-slate-950 to-black" />
+                            )}
+                            <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                              {option.label}
+                            </span>
+                            <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-transparent via-transparent to-black/20" aria-hidden />
+                            {(isPending || isFailed) && (
+                              <span className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm font-semibold text-white/70">
+                                {isPending ? "Creating revision..." : "Revision failed"}
+                              </span>
+                            )}
+                          </button>
+                          {!isPending && !isFailed && canCreateRevision && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(option)}
+                              className="absolute left-3 top-12 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
+                              aria-label={`Edit ${option.label}`}
+                            >
+                              edit
+                            </button>
+                          )}
+                          {!isPending && !isFailed && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewOption(option)}
+                              className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
+                              aria-label={`Preview ${option.label}`}
+                            >
+                              view
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                  <p className="mt-4 text-xs text-[var(--theme-text-muted)]">
+                    {revisionGenerations.length} of 2 revisions used
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={handleHomeFromResults}
-                    className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-5 py-3 text-base font-medium transition hover:border-[color:var(--theme-border-hover)]"
-                  >
-                    home
-                  </button>
-                  <button
-                    type="button"
                     onClick={handleQuoteRequest}
-                    disabled={!highQualityGeneration || isGenerating || quoteStatus !== "idle"}
+                    disabled={!selectedGeneration?.src || isGenerating || quoteStatus !== "idle"}
                     className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${
                       quoteStatus === "submitted"
                         ? "cursor-default bg-emerald-600 text-white"
-                        : highQualityGeneration && !isGenerating
+                        : selectedGeneration?.src && !isGenerating
                           ? "bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]"
                           : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"
                     }`}
@@ -1089,8 +1346,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                       setVideoError(null);
                       setShowAccessCodePrompt(true);
                     }}
-                    disabled={!highQualityGeneration || isGenerating}
-                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${highQualityGeneration && !isGenerating ? "bg-red-600 text-white hover:bg-red-500" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
+                    disabled={!selectedGeneration?.src || isGenerating}
+                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${selectedGeneration?.src && !isGenerating ? "bg-red-600 text-white hover:bg-red-500" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
                   >
                     Generate Video
                   </button>
@@ -1153,13 +1410,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                   )}
 
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={handleHomeFromResults}
-                      className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-5 py-3 text-base font-medium transition hover:border-[color:var(--theme-border-hover)]"
-                    >
-                      home
-                    </button>
                     {videoStatus?.videoUrl ? (
                       <button
                         type="button"
@@ -1272,6 +1522,79 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
       </div>
     )}
 
+    {editTarget && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit ${editTarget.label}`}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+      >
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            void handleSubmitRevision();
+          }}
+          className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#1d120c] shadow-2xl"
+        >
+          <div className="max-h-[58vh] overflow-hidden bg-black">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={editTarget.src}
+              alt={`${editTarget.label} selected for editing`}
+              className="mx-auto block max-h-[58vh] w-full object-contain"
+            />
+          </div>
+          <div className="space-y-4 p-5">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Describe the changes</h2>
+              <p className="mt-1 text-sm text-white/60">
+                You can create {Math.max(0, 2 - revisionGenerations.length)} more revision{2 - revisionGenerations.length === 1 ? "" : "s"} for this design.
+              </p>
+            </div>
+            <label className="block text-sm text-white/70">
+              Revision notes
+              <textarea
+                value={editPrompt}
+                onChange={event => {
+                  setEditPrompt(event.target.value);
+                  setRevisionError(null);
+                }}
+                autoFocus
+                rows={4}
+                placeholder="e.g. make the letters thicker and change the butterfly to sit higher"
+                className="mt-2 w-full resize-none rounded-2xl border border-white/15 bg-black/45 px-4 py-3 text-base text-white outline-none transition placeholder:text-white/30 focus:border-sky-400"
+              />
+            </label>
+            {revisionError && (
+              <div className="rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {revisionError}
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditTarget(null);
+                  setEditPrompt("");
+                  setRevisionError(null);
+                }}
+                className="flex-1 rounded-2xl border border-white/15 bg-black/45 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/35"
+              >
+                cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!editPrompt.trim() || isRevisionSubmitting}
+                className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition ${editPrompt.trim() && !isRevisionSubmitting ? "bg-sky-500 text-white hover:bg-sky-400" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
+              >
+                {isRevisionSubmitting ? "creating..." : "create revision"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    )}
+
     {showAccessCodePrompt && (
       <div
         role="dialog"
@@ -1288,7 +1611,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
         >
           <h2 className="text-lg font-semibold text-white">Generate Video</h2>
           <p className="mt-2 text-sm text-white/60">
-            Enter the internal access code to animate the higher-quality draft.
+            Enter the internal access code to animate the selected draft.
           </p>
           <label className="mt-5 block text-sm text-white/70">
             Access code

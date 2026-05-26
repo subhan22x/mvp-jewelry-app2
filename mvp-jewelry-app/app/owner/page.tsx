@@ -225,14 +225,14 @@ function GenerationCard({ row }: { row: GenerationRow }) {
         </div>
       </div>
 
-      <div className="-mt-8 flex min-w-0 flex-1 flex-col justify-between bg-gradient-to-t from-[#17191F] via-[#17191F] to-transparent p-5 md:mt-0 md:bg-none">
+      <div className="flex min-w-0 flex-1 flex-col justify-between bg-[#17191F] p-5 md:bg-transparent">
         <div>
-          <div className="flex min-w-0 items-baseline justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="min-w-0">
-              <h3 className="min-w-0 break-words text-[22px] font-bold text-[#e1e2ec]">{generationTitle(row)}</h3>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#f7bc5f]">{generationTypeLabel(row)} / Draft {row.variant}</p>
+              <h3 className="min-w-0 break-words text-[22px] font-bold leading-tight text-[#e1e2ec]">{generationTitle(row)}</h3>
+              <p className="mt-2 break-words text-[11px] font-semibold uppercase leading-5 tracking-[0.18em] text-[#f7bc5f]">{generationTypeLabel(row)} / Draft {row.variant}</p>
             </div>
-            <span className="flex-shrink-0 text-[11px] text-[#8c909f]">{formatDate(row.createdAt)}</span>
+            <span className="flex-shrink-0 text-[11px] leading-5 text-[#8c909f] sm:pt-1">{formatDate(row.createdAt)}</span>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-4 border-t border-white/5 pb-2 pt-4 sm:grid-cols-2">

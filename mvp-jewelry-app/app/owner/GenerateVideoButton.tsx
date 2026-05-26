@@ -51,7 +51,7 @@ export default function GenerateVideoButton({ resultId, attemptCount, completedC
           setConfirming(true);
         }}
         disabled={disabled || submitting}
-        className="min-h-10 rounded-lg bg-[#3B82F6] px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-60"
+        className="min-h-10 rounded-lg bg-[#f7bc5f] px-3 py-2 text-xs font-semibold text-[#101114] transition hover:bg-[#ffd88a] disabled:cursor-wait disabled:opacity-60"
       >
         {submitting ? "Starting..." : label}
       </button>

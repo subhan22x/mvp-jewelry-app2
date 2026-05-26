@@ -7,7 +7,9 @@ import { buildJewelryVideoPrompt, generateSeedanceVideo } from "@/lib/video/wave
 
 const Body = z.object({
   requestId: z.string().min(1),
-  accessCode: z.string().min(1)
+  accessCode: z.string().min(1),
+  sourceResultId: z.string().min(1).optional(),
+  sourceImageUrl: z.string().min(1).optional()
 });
 
 function getExpectedAccessCode() {
@@ -37,20 +39,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Video generation is currently available for name pendant generations only." }, { status: 400 });
     }
 
+    const requestedResult = body.sourceResultId
+      ? request.Results.find(result => result.id === body.sourceResultId && result.status === "succeeded" && result.imageUrl)
+      : null;
     const betterResult = request.Results.find(result => result.variant === 1 && result.status === "succeeded" && result.imageUrl);
-    if (!betterResult?.imageUrl) {
+    const sourceResult = requestedResult ?? betterResult;
+    if (!sourceResult?.imageUrl) {
       return NextResponse.json({ error: "The higher quality draft is not ready, so video generation cannot start yet." }, { status: 400 });
     }
 
-    const sourceImageUrl = toPublicImageUrl(req, betterResult.imageUrl);
+    const sourceImageUrl = toPublicImageUrl(req, body.sourceImageUrl ?? sourceResult.imageUrl);
     assertPublicImageUrl(sourceImageUrl);
+    const sourceResultId = requestedResult?.id ?? (body.sourceImageUrl ? null : sourceResult.id);
     const prompt = buildJewelryVideoPrompt();
     const startedAt = new Date();
     const video = await prisma.videoGeneration.create({
       data: {
         accountId: request.accountId,
         requestId: request.id,
-        sourceResultId: betterResult.id,
+        sourceResultId,
         sourceImageUrl,
         prompt,
         modelId: "bytedance/seedance-2.0-fast/image-to-video",

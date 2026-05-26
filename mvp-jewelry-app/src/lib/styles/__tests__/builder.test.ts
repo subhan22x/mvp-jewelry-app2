@@ -33,7 +33,11 @@ function naturalPromptsFor(styleId: string) {
 
 describe("buildVariants", () => {
   it("builds DEJA with CC Matinee Idol and model-specific bubble settings", () => {
-    const variants = promptFor("deja");
+    const variants = buildVariants({ ...baseInput, styleId: "deja" }).map(variant => ({
+      variant: variant.variant,
+      prompt: JSON.parse(variant.prompt),
+      attachments: variant.attachments
+    }));
 
     expect(variants).toHaveLength(2);
     expect(variants[0]).toMatchObject({
@@ -67,10 +71,15 @@ describe("buildVariants", () => {
       }
     });
     expect(variants[1].prompt).not.toHaveProperty("composition_control");
+    expect(variants[0].attachments).toContain(`${process.cwd()}/public/pendants/mojo-deja.png`);
   });
 
   it("builds KING as a forced all-caps prose prompt", () => {
-    const variants = rawPromptsFor("king");
+    const variants = buildVariants({ ...baseInput, styleId: "king" }).map(variant => ({
+      variant: variant.variant,
+      prompt: variant.prompt,
+      attachments: variant.attachments
+    }));
 
     expect(variants).toHaveLength(2);
     for (const variant of variants) {
@@ -78,6 +87,7 @@ describe("buildVariants", () => {
       expect(variant.prompt).toContain('Use the font Helvetica Black SLANTED');
       expect(variant.prompt).toContain('Add a butterfly emblem like the one shown in the second picture');
       expect(variant.prompt).toContain('change the color of the entire jewelry pendant to two_tone rose_gold + white_gold');
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/mana-king.png`);
     }
     expect(variants[0].prompt).toContain("vertical 9:16 composition");
     expect(variants[1].prompt).not.toContain("vertical 9:16 composition");
@@ -96,7 +106,7 @@ describe("buildVariants", () => {
   });
 
   it("builds GATTI with the natural-language template and injected snippets", () => {
-    const variants = naturalPromptsFor("gatti");
+    const variants = buildVariants({ ...baseInput, styleId: "gatti" }, { promptMode: "natural_language" });
 
     expect(variants).toHaveLength(2);
     for (const variant of variants) {
@@ -104,6 +114,7 @@ describe("buildVariants", () => {
       expect(variant.prompt).toContain("Add a butterfly emblem above the lettering");
       expect(variant.prompt).toContain("Use a two tone Rose Gold and White Gold color scheme");
       expect(variant.prompt).toContain("Use a vertical 9:16 composition");
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/hasan-gatti.png`);
       expect(() => JSON.parse(variant.prompt)).toThrow();
     }
   });
