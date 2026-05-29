@@ -44,6 +44,19 @@ function parseExtraLinks(value: string | null | undefined) {
   }
 }
 
+function formatAddress(profile: {
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+}) {
+  const region = [profile.state, profile.postalCode].filter(Boolean).join(" ");
+  const locality = [profile.city, region].filter(Boolean).join(", ");
+  return [profile.addressLine1, profile.addressLine2, locality, profile.country].filter(Boolean).join(", ");
+}
+
 async function getProfile(accountSlug: string) {
   return prisma.account.findUnique({
     where: { slug: accountSlug },
@@ -84,6 +97,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const instagramHref = instagramHandle ? `https://instagram.com/${instagramHandle}` : null;
   const websiteHref = normalizeUrl(profile.websiteUrl);
   const extraLinks = parseExtraLinks(profile.extraLinksJson);
+  const address = formatAddress(profile);
   const collections = account.ProductCollections.filter(collection => collection.Products.length > 0);
   const featuredProduct = collections.flatMap(collection => collection.Products).find(product => product.isFeatured);
   const products = collections.flatMap(collection => collection.Products.map(product => ({
@@ -93,6 +107,11 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
     imageUrl: product.imageUrl,
     href: product.href,
     priceLabel: product.priceLabel,
+    material: product.material,
+    metalDetail: product.metalDetail,
+    stoneQuality: product.stoneQuality,
+    weightLabel: product.weightLabel,
+    badgeLabel: product.badgeLabel,
     isFeatured: product.isFeatured,
     category: product.category,
     collectionSlug: collection.slug,
@@ -113,6 +132,11 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                   </div>
                 )}
               </div>
+              {messageHref && (
+                <a href={messageHref} className="mb-1 flex h-11 items-center justify-center rounded-full bg-[#D3A84F] px-5 text-sm font-black text-black shadow-[0_12px_28px_rgba(0,0,0,0.24)] hover:bg-[#f1c96c]">
+                  Message
+                </a>
+              )}
             </div>
 
             <div className="mt-4">
@@ -125,7 +149,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                   </a>
                 )}
                 {profile.phone && <span className="inline-flex items-center gap-1.5"><PhoneMiniIcon />{profile.phone}</span>}
-                {profile.city && <span className="inline-flex items-center gap-1.5"><LocationMiniIcon />{profile.city}{profile.country ? `, ${profile.country}` : ""}</span>}
+                {address && <span className="inline-flex items-center gap-1.5"><LocationMiniIcon />{address}</span>}
                 {profile.headline && <span>{profile.headline}</span>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -143,7 +167,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
         <section className="px-5 pt-6">
           <div className="grid grid-cols-2 gap-3">
-            {messageHref && <ProfileButton href={messageHref} label="Message" />}
+            <ProfileButton href={`/s/${account.slug}/review`} label="Reviews" />
             {instagramHref && <ProfileButton href={instagramHref} label="Instagram" external />}
             {websiteHref && <ProfileButton href={websiteHref} label="Website" external />}
             <ProfileButton href={`/name?account=${account.slug}`} label="Design Custom" />

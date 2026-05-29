@@ -214,6 +214,10 @@ model QuoteRequest {
   status           String           @default("pending") // pending | priced | sent | closed
   quotedPriceCents Int?
   quoteNotes       String?
+  estimatedDelivery String?
+  quoteMaterial    String?
+  quoteMaterialKarat String?
+  quoteStoneType   String?
   referenceImageUrlsJson String?
   createdAt        DateTime         @default(now())
 
@@ -249,7 +253,11 @@ model StoreProfile {
   websiteUrl          String?
   extraLinksJson      String?
   instagramHandle     String?
+  addressLine1        String?
+  addressLine2        String?
   city                String?
+  state               String?
+  postalCode          String?
   country             String?
   yearStarted         String?
   statusLabel         String?

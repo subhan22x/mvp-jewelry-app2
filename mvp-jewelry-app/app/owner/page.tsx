@@ -74,6 +74,16 @@ function materialSpecLabel(value?: string | null) {
   return value ? labels[value] ?? value : "n/a";
 }
 
+function quoteMaterialFromSelection(value?: string | null) {
+  if (value === "gold" || value === "silver") return value;
+  return null;
+}
+
+function quoteStoneFromSelection(value?: string | null) {
+  const supported = new Set(["natural_diamonds", "lab_diamonds", "moissanite", "cz", "other"]);
+  return value && supported.has(value) ? value : null;
+}
+
 function statusClass(status: string) {
   if (status === "sent") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
   if (status === "failed") return "border-red-300/30 bg-red-400/10 text-red-200";
@@ -203,11 +213,43 @@ function generationTitle(row: GenerationRow) {
   return row.request.text || "Name pendant";
 }
 
+function quoteReviewDetails(row: GenerationRow, quote: NonNullable<GenerationRow["QuoteRequests"][number]>) {
+  const productType = quote.productType ?? row.request.productType;
+  const pendantFinish = quote.pendantFinish ?? row.request.pendantFinish;
+  const isPlain = pendantFinish === "plain";
+
+  const customerDetails = [
+    { label: "Customer", value: quote.customerName },
+    { label: "Phone", value: quote.customerPhone },
+    { label: "Email", value: quote.customerEmail },
+  ];
+
+  const designDetails = [
+    { label: "Text / engraving", value: quote.text ?? row.request.text },
+    { label: "Finish", value: isPlain ? "Plain" : "Icedout" },
+    { label: "Metal colors", value: metalLabel(quote.primaryMetal ?? row.request.primaryMetal, quote.secondaryMetal ?? row.request.secondaryMetal) },
+    { label: "Size", value: sizeLabel(quote.size ?? row.request.size) },
+    { label: "Metal type", value: materialSpecLabel(quote.metalType ?? row.request.metalType) },
+    { label: "Stone type", value: materialSpecLabel(quote.stoneType ?? row.request.stoneType) },
+    { label: "Style", value: quote.styleId ?? row.request.styleId },
+    { label: "Product", value: productType === "picture" ? "Picture pendant" : isPlain ? "Nameplate" : "Icedout name pendant" },
+    { label: "Plain color", value: materialSpecLabel(quote.plainColor ?? row.request.plainColor) },
+    { label: "Plain metal", value: materialSpecLabel(quote.plainMetal ?? row.request.plainMetal) },
+    { label: "Karat", value: materialSpecLabel(quote.plainKarat ?? row.request.plainKarat) },
+    { label: "Chain", value: materialSpecLabel(quote.plainChain ?? row.request.plainChain) },
+    { label: "Emblem", value: quote.emblem },
+    { label: "Diamond quality", value: quote.diamondQuality },
+  ].filter(detail => detail.value && detail.value !== "n/a" && detail.value !== "Not selected");
+
+  return { customerDetails, designDetails };
+}
+
 function GenerationCard({ row }: { row: GenerationRow }) {
   const quote = row.QuoteRequests[0] ?? null;
   const videosForImage = row.request.Videos.filter(video => video.sourceResultId === row.id);
   const completedVideos = videosForImage.filter(video => video.status === "succeeded").length;
   const canGenerateVideo = row.request.productType === "name";
+  const reviewDetails = quote ? quoteReviewDetails(row, quote) : null;
 
   return (
     <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#D1B873]/30 bg-[#17191F] shadow-[0_8px_30px_rgba(0,0,0,0.4)] md:flex-row">
@@ -296,13 +338,20 @@ function GenerationCard({ row }: { row: GenerationRow }) {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid items-start gap-3 sm:grid-cols-2">
           {quote ? (
             <SendQuoteForm
               quoteId={quote.id}
               status={quote.status}
               quotedPriceCents={quote.quotedPriceCents}
               quoteNotes={quote.quoteNotes}
+              estimatedDelivery={quote.estimatedDelivery}
+              quoteMaterial={quote.quoteMaterial ?? quoteMaterialFromSelection(quote.metalType ?? row.request.metalType ?? quote.plainMetal ?? row.request.plainMetal)}
+              quoteMaterialKarat={quote.quoteMaterialKarat ?? quote.plainKarat ?? row.request.plainKarat}
+              quoteStoneType={quote.quoteStoneType ?? quoteStoneFromSelection(quote.stoneType ?? row.request.stoneType)}
+              imageUrl={row.imageUrl}
+              customerDetails={reviewDetails?.customerDetails ?? []}
+              designDetails={reviewDetails?.designDetails ?? []}
             />
           ) : (
             <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">

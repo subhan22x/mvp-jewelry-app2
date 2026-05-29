@@ -7,7 +7,6 @@ type Ctx = { params: { accountSlug: string } };
 const reviewSchema = z.object({
   reviewerName: z.string().trim().min(1, "Name is required.").max(120),
   reviewerPhone: z.string().trim().max(80).optional().or(z.literal("")),
-  reviewerEmail: z.string().trim().email("Enter a valid email.").optional().or(z.literal("")),
   reviewerInstagram: z.string().trim().max(80).optional().or(z.literal("")),
   rating: z.coerce.number().int().min(1).max(5).default(5),
   reviewText: z.string().trim().min(5, "Review must be at least 5 characters.").max(2000),
@@ -33,10 +32,9 @@ export async function POST(req: Request, { params }: Ctx) {
 
     const body = reviewSchema.parse(await req.json());
     const reviewerPhone = optional(body.reviewerPhone);
-    const reviewerEmail = optional(body.reviewerEmail);
     const reviewerInstagram = cleanInstagram(body.reviewerInstagram);
-    if (!reviewerPhone && !reviewerEmail && !reviewerInstagram) {
-      return NextResponse.json({ error: "Enter a phone, email, or Instagram so the owner can verify the review." }, { status: 400 });
+    if (!reviewerPhone && !reviewerInstagram) {
+      return NextResponse.json({ error: "Enter a phone number or Instagram username so the owner can verify the review." }, { status: 400 });
     }
 
     const review = await prisma.storeReview.create({
@@ -44,7 +42,7 @@ export async function POST(req: Request, { params }: Ctx) {
         accountId: account.id,
         reviewerName: body.reviewerName,
         reviewerPhone,
-        reviewerEmail,
+        reviewerEmail: null,
         reviewerInstagram,
         rating: body.rating,
         reviewText: body.reviewText,

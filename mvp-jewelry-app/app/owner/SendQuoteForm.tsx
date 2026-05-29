@@ -8,17 +8,80 @@ type Props = {
   status: string;
   quotedPriceCents: number | null;
   quoteNotes: string | null;
+  estimatedDelivery: string | null;
+  quoteMaterial: string | null;
+  quoteMaterialKarat: string | null;
+  quoteStoneType: string | null;
+  imageUrl: string | null;
+  customerDetails: Array<{ label: string; value: string | null | undefined }>;
+  designDetails: Array<{ label: string; value: string | null | undefined }>;
 };
+
+const DELIVERY_OPTIONS = ["1 week", "2 weeks", "3-4 weeks", "6-8 weeks"] as const;
+const MATERIAL_OPTIONS = [
+  { value: "gold", label: "Gold" },
+  { value: "silver", label: "Silver" },
+  { value: "platinum", label: "Platinum" },
+] as const;
+const KARAT_OPTIONS = ["18k", "14k", "10k"] as const;
+const STONE_OPTIONS = [
+  { value: "natural_diamonds", label: "Natural Diamonds" },
+  { value: "cz", label: "CZ" },
+  { value: "moissanite", label: "Moissanite" },
+  { value: "lab_diamonds", label: "Lab Diamonds" },
+  { value: "other", label: "Other" },
+] as const;
 
 function centsToDollars(value: number | null) {
   return typeof value === "number" ? (value / 100).toFixed(2) : "";
 }
 
-export default function SendQuoteForm({ quoteId, status, quotedPriceCents, quoteNotes }: Props) {
+function ReviewDetailGroup({ title, details, columns = false }: { title: string; details: Array<{ label: string; value: string | null | undefined }>; columns?: boolean }) {
+  const visibleDetails = details.filter(detail => detail.value);
+  if (visibleDetails.length === 0) return null;
+
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/5 bg-[#101114]/75 p-3">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#9ba3b4]">{title}</h3>
+      <dl className={`mt-2 grid gap-x-4 gap-y-2 ${columns ? "sm:grid-cols-2" : ""}`}>
+        {visibleDetails.map(detail => (
+          <div key={detail.label} className="min-w-0">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.13em] text-[#D1B873]">{detail.label}</dt>
+            <dd className="mt-0.5 break-words text-[13px] font-medium leading-5 text-[#f2f3f8]">{detail.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function deliveryOptionFor(value: string | null) {
+  if (!value) return "";
+  return DELIVERY_OPTIONS.some(option => option === value) ? value : "custom";
+}
+
+export default function SendQuoteForm({
+  quoteId,
+  status,
+  quotedPriceCents,
+  quoteNotes,
+  estimatedDelivery,
+  quoteMaterial,
+  quoteMaterialKarat,
+  quoteStoneType,
+  imageUrl,
+  customerDetails,
+  designDetails
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState(centsToDollars(quotedPriceCents));
   const [notes, setNotes] = useState(quoteNotes ?? "");
+  const [deliveryOption, setDeliveryOption] = useState(deliveryOptionFor(estimatedDelivery));
+  const [customDelivery, setCustomDelivery] = useState(deliveryOptionFor(estimatedDelivery) === "custom" ? estimatedDelivery ?? "" : "");
+  const [material, setMaterial] = useState(quoteMaterial ?? "");
+  const [materialKarat, setMaterialKarat] = useState(quoteMaterialKarat ?? "");
+  const [stoneType, setStoneType] = useState(quoteStoneType ?? "");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(status === "sent");
   const [submitting, setSubmitting] = useState(false);
@@ -42,6 +105,10 @@ export default function SendQuoteForm({ quoteId, status, quotedPriceCents, quote
         body: JSON.stringify({
           quotedPriceCents: Math.round(parsedPrice * 100),
           quoteNotes: notes.trim(),
+          estimatedDelivery: deliveryOption === "custom" ? customDelivery.trim() : deliveryOption,
+          quoteMaterial: material,
+          quoteMaterialKarat: material === "gold" ? materialKarat : "",
+          quoteStoneType: stoneType,
           status: "sent"
         })
       });
@@ -62,7 +129,7 @@ export default function SendQuoteForm({ quoteId, status, quotedPriceCents, quote
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold text-white transition ${
+        className={`flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition ${
           success
             ? "bg-emerald-600/90 hover:bg-emerald-500"
             : "bg-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:bg-blue-400"
@@ -80,7 +147,7 @@ export default function SendQuoteForm({ quoteId, status, quotedPriceCents, quote
         >
           <form
             onSubmit={handleSubmit}
-            className="w-full max-w-md rounded-3xl border border-[#D1B873]/25 bg-[#17191F] p-6 text-[#e1e2ec] shadow-[0_28px_80px_rgba(0,0,0,0.65)]"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#D1B873]/25 bg-[#17191F] p-6 text-[#e1e2ec] shadow-[0_28px_80px_rgba(0,0,0,0.65)]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -96,6 +163,89 @@ export default function SendQuoteForm({ quoteId, status, quotedPriceCents, quote
                 close
               </button>
             </div>
+
+            <section className="mt-5 rounded-2xl border border-[#D1B873]/15 bg-black/25 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D1B873]">Review before pricing</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-[150px_1fr]">
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="" className="aspect-square w-full object-cover" />
+                  ) : (
+                    <div className="flex aspect-square w-full items-center justify-center px-3 text-center text-xs text-[#8c909f]">No generated image</div>
+                  )}
+                </div>
+                <div className="grid min-w-0 gap-4">
+                  <ReviewDetailGroup title="Customer" details={customerDetails} />
+                  <ReviewDetailGroup title="Design details" details={designDetails} columns />
+                </div>
+              </div>
+            </section>
+
+            <section className="mt-5 grid gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">Estimated delivery</span>
+                <select
+                  value={deliveryOption}
+                  onChange={event => setDeliveryOption(event.target.value)}
+                  className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/45 px-4 text-base text-white outline-none focus:border-white/35"
+                >
+                  <option value="">Select delivery timeline</option>
+                  {DELIVERY_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              {deliveryOption === "custom" && (
+                <label className="sm:col-span-2">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">Custom delivery text</span>
+                  <input
+                    value={customDelivery}
+                    onChange={event => setCustomDelivery(event.target.value)}
+                    className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/45 px-4 text-base text-white outline-none placeholder:text-white/30 focus:border-white/35"
+                    placeholder="e.g. Ready after CAD approval"
+                  />
+                </label>
+              )}
+
+              <label>
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">Material</span>
+                <select
+                  value={material}
+                  onChange={event => {
+                    setMaterial(event.target.value);
+                    if (event.target.value !== "gold") setMaterialKarat("");
+                  }}
+                  className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/45 px-4 text-base text-white outline-none focus:border-white/35"
+                >
+                  <option value="">Select material</option>
+                  {MATERIAL_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+
+              <label>
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">Gold karat</span>
+                <select
+                  value={materialKarat}
+                  onChange={event => setMaterialKarat(event.target.value)}
+                  disabled={material !== "gold"}
+                  className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/45 px-4 text-base text-white outline-none focus:border-white/35 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <option value="">Select karat</option>
+                  {KARAT_OPTIONS.map(option => <option key={option} value={option}>{option.toUpperCase()}</option>)}
+                </select>
+              </label>
+
+              <label className="sm:col-span-2">
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">Stone type</span>
+                <select
+                  value={stoneType}
+                  onChange={event => setStoneType(event.target.value)}
+                  className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/45 px-4 text-base text-white outline-none focus:border-white/35"
+                >
+                  <option value="">Select stone type</option>
+                  {STONE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+            </section>
 
             <label htmlFor={`quote-price-${quoteId}`} className="mt-5 block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">
               Quote price

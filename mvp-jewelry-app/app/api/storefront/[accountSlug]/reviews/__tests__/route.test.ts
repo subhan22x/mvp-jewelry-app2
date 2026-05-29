@@ -31,7 +31,6 @@ describe("/api/storefront/[accountSlug]/reviews", () => {
       body: JSON.stringify({
         reviewerName: "Ari",
         reviewerPhone: "",
-        reviewerEmail: "ari@example.com",
         reviewerInstagram: "@ari",
         rating: 5,
         reviewText: "Great custom pendant experience.",
@@ -45,7 +44,7 @@ describe("/api/storefront/[accountSlug]/reviews", () => {
         accountId: "account-1",
         reviewerName: "Ari",
         reviewerPhone: null,
-        reviewerEmail: "ari@example.com",
+        reviewerEmail: null,
         reviewerInstagram: "ari",
         rating: 5,
         reviewText: "Great custom pendant experience.",
@@ -55,7 +54,7 @@ describe("/api/storefront/[accountSlug]/reviews", () => {
     });
   });
 
-  it("rejects reviews without phone, email, or Instagram", async () => {
+  it("rejects reviews without phone or Instagram", async () => {
     const { POST } = await import("../route");
 
     const response = await POST(new Request("http://test.local/api/storefront/demo/reviews", {
