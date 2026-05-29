@@ -43,6 +43,7 @@ model Account {
   StoreServices        StoreService[]
   ProductCollections   ProductCollection[]
   Products             Product[]
+  StoreReviews         StoreReview[]
   VvsStudioShoots           VvsStudioShoot[]
   VvsStudioUploads          VvsStudioUpload[]
   VvsStudioImageGenerations VvsStudioImageGeneration[]
@@ -245,6 +246,8 @@ model StoreProfile {
   coverTextColor      String   @default("light") // light | dark
   phone               String?
   whatsappPhone       String?
+  websiteUrl          String?
+  extraLinksJson      String?
   instagramHandle     String?
   city                String?
   country             String?
@@ -300,7 +303,13 @@ model Product {
   slug         String
   description  String?
   imageUrl     String
+  category     String?
   priceLabel   String?
+  priceMode    String?
+  material     String?
+  metalDetail  String?
+  stoneQuality String?
+  weightLabel  String?
   badgeLabel   String?
   variantLabelsJson String?
   href         String?
@@ -315,6 +324,26 @@ model Product {
   @@index([collectionId, sortOrder])
 }
 
+model StoreReview {
+  id                String   @id @default(cuid())
+  accountId         String
+  account           Account  @relation(fields: [accountId], references: [id])
+  reviewerName      String
+  reviewerPhone     String?
+  reviewerEmail     String?
+  reviewerInstagram String?
+  rating            Int      @default(5)
+  reviewText        String
+  status            String   @default("published") // published | pending | hidden
+  source            String   @default("public_profile") // public_profile | owner_request | imported
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+  @@index([accountId, rating])
+}
+
 // ── VVS Studio ───────────────────────────────────────────────────
 
 model VvsStudioShoot {
@@ -324,18 +353,20 @@ model VvsStudioShoot {
 
   createdByUserId String?
 
-  pieceType       String?
-  visualStyle     String?
-  mood            String?
-  aspectRatio     String?
+  pieceType       String?  // pendant | ring | chainz | grills | band
+  visualStyle     String?  // dark | marble | street | velvet | ice
+  mood            String?  // luxury | street | editorial | minimal
+  aspectRatio     String?  // square | expanded | story
+  videoDurationSeconds Int? @default(6) // 6 | 10
 
-  metalType       String?
-  goldColor       String?
+  metalType       String?  // 10k_gold | 14k_gold | 18k_gold
+  goldColor       String?  // yellow_gold | white_gold | rose_gold
   diamondWeight   String?
   engravingText   String?
   priceLabel      String?
   stoneSetting    String?
 
+  // draft | ready | generating_image | image_succeeded | image_finalized | generating_video | video_succeeded | failed | archived
   status          String   @default("draft")
   error           String?
   imageFinalizedAt DateTime?
@@ -359,7 +390,7 @@ model VvsStudioUpload {
   shootId               String
   shoot                 VvsStudioShoot @relation(fields: [shootId], references: [id])
 
-  angle                 String
+  angle                 String         // top | left | right
   storageKey            String
   imageUrl              String
   originalContentType   String?
@@ -384,10 +415,11 @@ model VvsStudioImageGeneration {
   shoot         VvsStudioShoot @relation(fields: [shootId], references: [id])
 
   variant       Int            @default(1)
+  // pending | succeeded | failed
   status        String         @default("pending")
   prompt        String
   promptVersion String?
-  provider      String
+  provider      String         // openai | gemini
   modelId       String?
   providerJobId String?
   imageUrl      String?
@@ -411,12 +443,14 @@ model VvsStudioVideoGeneration {
   sourceImageGenerationId String?
   sourceImageUrl          String
 
+  // pending | succeeded | failed
   status        String  @default("pending")
   prompt        String
   promptVersion String?
   provider      String  @default("wavespeed")
   modelId       String?
   providerJobId String?
+  videoDurationSeconds Int? @default(6) // 6 | 10
   videoUrl      String?
   remoteVideoUrl String?
   error         String?

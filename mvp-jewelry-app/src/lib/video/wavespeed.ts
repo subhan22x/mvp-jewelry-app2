@@ -36,8 +36,8 @@ function getApiKey() {
   return apiKey;
 }
 
-function getVideoDuration() {
-  const parsed = Number(process.env.VIDEO_DURATION_SECONDS ?? "7");
+function getVideoDuration(durationSeconds?: number) {
+  const parsed = Number(durationSeconds ?? process.env.VIDEO_DURATION_SECONDS ?? "7");
   if (!Number.isFinite(parsed)) return 7;
   return Math.min(15, Math.max(4, Math.round(parsed)));
 }
@@ -81,7 +81,7 @@ function assertOkPayload(payload: WavespeedResponse) {
   if (payload.message && payload.code && payload.code >= 400) throw new Error(payload.message);
 }
 
-async function submitSeedanceTask({ imageUrl, prompt }: { imageUrl: string; prompt: string }) {
+async function submitSeedanceTask({ imageUrl, prompt, durationSeconds }: { imageUrl: string; prompt: string; durationSeconds?: number }) {
   const response = await fetch(WAVESPEED_SEEDANCE_ENDPOINT, {
     method: "POST",
     headers: {
@@ -92,7 +92,7 @@ async function submitSeedanceTask({ imageUrl, prompt }: { imageUrl: string; prom
       prompt,
       image: imageUrl,
       resolution: getVideoResolution(),
-      duration: getVideoDuration(),
+      duration: getVideoDuration(durationSeconds),
       enable_web_search: false,
       generate_audio: getGenerateAudio()
     })
@@ -127,8 +127,8 @@ function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function generateSeedanceVideo({ imageUrl, prompt }: { imageUrl: string; prompt: string }): Promise<VideoGenerationResult> {
-  const submitted = await submitSeedanceTask({ imageUrl, prompt });
+export async function generateSeedanceVideo({ imageUrl, prompt, durationSeconds }: { imageUrl: string; prompt: string; durationSeconds?: number }): Promise<VideoGenerationResult> {
+  const submitted = await submitSeedanceTask({ imageUrl, prompt, durationSeconds });
   if (submitted.status === "completed" && submitted.immediateVideoUrl) {
     return {
       videoUrl: submitted.immediateVideoUrl,

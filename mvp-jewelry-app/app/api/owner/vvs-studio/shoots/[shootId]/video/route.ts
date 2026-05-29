@@ -17,6 +17,10 @@ function errorMessage(err: unknown) {
   return err instanceof Error ? err.message : "Video generation failed.";
 }
 
+function requestedVideoDuration(value: number | null | undefined) {
+  return value === 10 ? 10 : 6;
+}
+
 export async function POST(req: Request, { params }: Ctx) {
   const accountId = getDefaultAccountId();
   const shoot = await prisma.vvsStudioShoot.findUnique({ where: { id: params.shootId } });
@@ -35,10 +39,12 @@ export async function POST(req: Request, { params }: Ctx) {
     assertPublicImageUrl(sourceImageUrl);
 
     const settings = await getVvsModelSettings(accountId);
+    const durationSeconds = requestedVideoDuration(shoot.videoDurationSeconds);
     const prompt = buildVvsStudioVideoPrompt({
       pieceType: shoot.pieceType ?? undefined,
       mood: shoot.mood ?? undefined,
       aspectRatio: shoot.aspectRatio ?? undefined,
+      videoDurationSeconds: durationSeconds,
     });
 
     const videoGenerationId = crypto.randomUUID();
@@ -57,6 +63,7 @@ export async function POST(req: Request, { params }: Ctx) {
         prompt,
         provider: "wavespeed",
         modelId: settings.wavespeedVideoModel,
+        videoDurationSeconds: durationSeconds,
         status: "pending",
         startedAt,
       },
@@ -70,6 +77,7 @@ export async function POST(req: Request, { params }: Ctx) {
           prompt,
           videoGenerationId: videoGen.id,
           modelId: settings.wavespeedVideoModel,
+          durationSeconds,
         });
         const completedAt = new Date();
         await prisma.vvsStudioVideoGeneration.update({

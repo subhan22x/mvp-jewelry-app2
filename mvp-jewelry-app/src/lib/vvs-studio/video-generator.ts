@@ -6,6 +6,7 @@ export type VvsVideoInput = {
   prompt: string;
   videoGenerationId: string;
   modelId: string;
+  durationSeconds: number;
 };
 
 export type VvsVideoResult = {
@@ -19,6 +20,7 @@ export async function generateVvsVideo(input: VvsVideoInput): Promise<VvsVideoRe
   const { videoUrl: remoteVideoUrl, modelId, providerJobId } = await generateSeedanceVideo({
     imageUrl: input.sourceImageUrl,
     prompt: input.prompt,
+    durationSeconds: input.durationSeconds,
   });
 
   const videoUrl = await saveRemoteVideoLocally(remoteVideoUrl, input.videoGenerationId);

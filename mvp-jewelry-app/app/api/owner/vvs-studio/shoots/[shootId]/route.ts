@@ -10,6 +10,7 @@ const PatchBody = z.object({
   visualStyle: z.string().optional(),
   mood: z.string().optional(),
   aspectRatio: z.string().optional(),
+  videoDurationSeconds: z.number().int().refine(value => value === 6 || value === 10).optional(),
   metalType: z.string().optional(),
   goldColor: z.string().optional(),
   diamondWeight: z.string().optional(),

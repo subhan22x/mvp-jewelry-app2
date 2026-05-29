@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/server/db/client";
+import StorefrontCollections from "./StorefrontCollections";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +25,23 @@ function whatsappHref(phone: string | null | undefined) {
   return `https://wa.me/${phone.replace(/[^\d]/g, "")}`;
 }
 
-function serviceHref(service: { kind: string; href: string | null }, accountSlug: string, phone: string | null | undefined, whatsappPhone?: string | null) {
-  if (service.kind === "design_custom") return `/name?account=${accountSlug}`;
-  if (service.kind === "quote") return `/s/${accountSlug}/quote`;
-  if (service.kind === "message") return whatsappHref(whatsappPhone) ?? phoneHref(phone, "sms") ?? service.href ?? "#";
-  if (service.kind === "appointment") return service.href ?? phoneHref(phone, "tel") ?? "#";
-  return service.href ?? "#";
+function normalizeUrl(value: string | null | undefined) {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `https://${value}`;
+}
+
+function parseExtraLinks(value: string | null | undefined) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as Array<{ label?: string; url?: string }>;
+    return parsed
+      .filter(link => link.label && link.url)
+      .slice(0, 2)
+      .map(link => ({ label: link.label!, url: normalizeUrl(link.url!) ?? "#" }));
+  } catch {
+    return [];
+  }
 }
 
 async function getProfile(accountSlug: string) {
@@ -38,10 +49,6 @@ async function getProfile(accountSlug: string) {
     where: { slug: accountSlug },
     include: {
       StoreProfile: true,
-      StoreServices: {
-        where: { isActive: true },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
-      },
       ProductCollections: {
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -74,24 +81,30 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
   const instagramHandle = normalizeHandle(profile.instagramHandle);
   const messageHref = whatsappHref(profile.whatsappPhone) ?? phoneHref(profile.phone, "sms");
+  const instagramHref = instagramHandle ? `https://instagram.com/${instagramHandle}` : null;
+  const websiteHref = normalizeUrl(profile.websiteUrl);
+  const extraLinks = parseExtraLinks(profile.extraLinksJson);
   const collections = account.ProductCollections.filter(collection => collection.Products.length > 0);
   const featuredProduct = collections.flatMap(collection => collection.Products).find(product => product.isFeatured);
+  const products = collections.flatMap(collection => collection.Products.map(product => ({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    imageUrl: product.imageUrl,
+    href: product.href,
+    priceLabel: product.priceLabel,
+    isFeatured: product.isFeatured,
+    category: product.category,
+    collectionSlug: collection.slug,
+  })));
 
   return (
     <main className="min-h-screen bg-[#151311] text-[#F5F0E8]">
       <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#181512] shadow-2xl shadow-black/40">
         <section className="relative">
-          <div className="relative h-40 overflow-hidden rounded-b-[2rem] bg-[#24201A]">
-            {profile.coverImageUrl ? (
-              <img src={profile.coverImageUrl} alt="" className="h-full w-full object-cover opacity-90" />
-            ) : (
-              <div className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#8B5E22,transparent_34%),linear-gradient(135deg,#2A2015,#171511)]" />
-            )}
-            <div className="absolute inset-0 bg-black" style={{ opacity: Math.min(Math.max(profile.coverOverlayOpacity, 0), 85) / 100 }} />
-          </div>
-          <div className="px-5">
-            <div className="-mt-10 flex items-end justify-between gap-4">
-              <div className="h-24 w-24 overflow-hidden rounded-[1.7rem] border-4 border-[#181512] bg-[#24201A]">
+          <div className="px-5 pt-8">
+            <div className="flex items-end justify-between gap-4">
+              <div className="h-24 w-24 overflow-hidden rounded-[1.7rem] border border-[#342E26] bg-[#24201A]">
                 {profile.profileImageUrl ? (
                   <img src={profile.profileImageUrl} alt={`${profile.displayName} profile`} className="h-full w-full object-cover" />
                 ) : (
@@ -100,22 +113,19 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                   </div>
                 )}
               </div>
-              {messageHref && (
-                <a href={messageHref} className="mb-2 rounded-full bg-[#F5F0E8] px-5 py-3 text-sm font-bold text-black hover:bg-[#D3A84F]">
-                  Message
-                </a>
-              )}
             </div>
 
             <div className="mt-4">
               <h1 className="text-2xl font-black tracking-normal">{profile.displayName}</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-zinc-400">
                 {instagramHandle && (
-                  <a href={`https://instagram.com/${instagramHandle}`} target="_blank" rel="noreferrer" className="hover:text-white">
+                  <a href={`https://instagram.com/${instagramHandle}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-white">
+                    <InstagramMiniIcon />
                     @{instagramHandle}
                   </a>
                 )}
-                {profile.city && <span>{profile.city}{profile.country ? `, ${profile.country}` : ""}</span>}
+                {profile.phone && <span className="inline-flex items-center gap-1.5"><PhoneMiniIcon />{profile.phone}</span>}
+                {profile.city && <span className="inline-flex items-center gap-1.5"><LocationMiniIcon />{profile.city}{profile.country ? `, ${profile.country}` : ""}</span>}
                 {profile.headline && <span>{profile.headline}</span>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -133,16 +143,20 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
         <section className="px-5 pt-6">
           <div className="grid grid-cols-2 gap-3">
-            {account.StoreServices.map(service => (
-              <a
-                key={service.id}
-                href={serviceHref(service, account.slug, profile.phone, profile.whatsappPhone)}
-                className="flex min-h-12 items-center justify-center rounded-full bg-[#24201A] px-4 text-center text-sm font-semibold text-[#F5F0E8] hover:bg-[#30291F]"
-              >
-                {service.ctaLabel}
-              </a>
-            ))}
+            {messageHref && <ProfileButton href={messageHref} label="Message" />}
+            {instagramHref && <ProfileButton href={instagramHref} label="Instagram" external />}
+            {websiteHref && <ProfileButton href={websiteHref} label="Website" external />}
+            <ProfileButton href={`/name?account=${account.slug}`} label="Design Custom" />
           </div>
+          {extraLinks.length > 0 && (
+            <div className="mt-3 grid gap-2">
+              {extraLinks.map(link => (
+                <a key={`${link.label}-${link.url}`} href={link.url} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-full border border-[#342E26] bg-[#1C1915] px-4 text-center text-sm font-semibold text-[#F5F0E8] hover:bg-[#30291F]">
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
         </section>
 
         {featuredProduct && (
@@ -161,56 +175,48 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
           </section>
         )}
 
-        <section className="px-5 py-7">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-black uppercase tracking-[0.22em]">Collection</h2>
-            <Link href={`/name?account=${account.slug}`} className="text-xs font-bold text-[#D3A84F] hover:text-white">
-              Design Custom
-            </Link>
-          </div>
-
-          <div className="-mx-5 mb-5 flex gap-2 overflow-x-auto px-5 pb-1">
-            <a href="#all-products" className="shrink-0 rounded-full border border-white/10 bg-white px-4 py-2 text-xs font-bold text-black">
-              All
-            </a>
-            {collections.map(collection => (
-              <a key={collection.id} href={`#${collection.slug}`} className="shrink-0 rounded-full border border-[#342E26] bg-[#1C1915] px-4 py-2 text-xs font-bold uppercase text-[#B7AEA2]">
-                {collection.title}
-              </a>
-            ))}
-          </div>
-
-          <div id="all-products" className="space-y-8">
-            {collections.map(collection => (
-              <div key={collection.id} id={collection.slug} className="scroll-mt-6">
-                <div className="mb-3 flex items-end justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-black">{collection.title}</h3>
-                    {collection.description && <p className="mt-1 text-sm text-zinc-400">{collection.description}</p>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {collection.Products.map(product => (
-                    <a key={product.id} href={product.href ?? messageHref ?? "#"} className="group block overflow-hidden rounded-2xl bg-[#211D18]">
-                      <div className="aspect-square overflow-hidden bg-[#24201A]">
-                        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                      </div>
-                      <div className="p-3">
-                        <div className="flex min-h-10 items-start justify-between gap-2">
-                          <p className="text-sm font-bold leading-5">{product.name}</p>
-                          {product.isFeatured && <span className="rounded-full bg-[#D3A84F] px-2 py-0.5 text-[10px] font-black text-black">Hot</span>}
-                        </div>
-                        {product.priceLabel && <p className="mt-1 text-xs font-bold text-[#D3A84F]">{product.priceLabel}</p>}
-                        {product.description && <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#8D8377]">{product.description}</p>}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <StorefrontCollections products={products} fallbackHref={messageHref ?? "#"} />
       </div>
     </main>
+  );
+}
+
+function ProfileButton({ href, label, external = false }: { href: string; label: string; external?: boolean }) {
+  return (
+    <a
+      href={href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noreferrer" : undefined}
+      className="flex min-h-12 items-center justify-center rounded-full bg-[#24201A] px-4 text-center text-sm font-semibold text-[#F5F0E8] hover:bg-[#30291F]"
+    >
+      {label}
+    </a>
+  );
+}
+
+function InstagramMiniIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#D3A84F]">
+      <rect x="4" y="4" width="16" height="16" rx="5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="16.7" cy="7.3" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PhoneMiniIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#D3A84F]">
+      <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9" d="M6.6 3.8 9.2 3l2 4.8-1.7 1.1c.9 1.9 2.4 3.4 4.5 4.6l1.2-1.7 4.8 2.1-.8 2.7c-.3 1-1.2 1.6-2.2 1.5C9.5 17.5 4.8 12.8 4.2 5.3c-.1-1 .5-1.9 1.4-2.2Z" />
+    </svg>
+  );
+}
+
+function LocationMiniIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[#D3A84F]">
+      <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9" d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" />
+      <circle cx="12" cy="10" r="2.3" fill="none" stroke="currentColor" strokeWidth="1.9" />
+    </svg>
   );
 }

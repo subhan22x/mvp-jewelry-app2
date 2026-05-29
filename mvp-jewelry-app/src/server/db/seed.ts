@@ -60,6 +60,11 @@ async function main() {
       coverTextColor: 'light',
       phone: '+15555550123',
       whatsappPhone: '+15555550123',
+      websiteUrl: 'https://iceking.example',
+      extraLinksJson: JSON.stringify([
+        { label: 'Financing', url: 'https://iceking.example/financing' },
+        { label: 'Reviews', url: 'https://iceking.example/reviews' }
+      ]),
       instagramHandle: 'icekinglondon',
       city: 'London',
       country: 'United Kingdom',
@@ -81,6 +86,11 @@ async function main() {
       coverTextColor: 'light',
       phone: '+15555550123',
       whatsappPhone: '+15555550123',
+      websiteUrl: 'https://iceking.example',
+      extraLinksJson: JSON.stringify([
+        { label: 'Financing', url: 'https://iceking.example/financing' },
+        { label: 'Reviews', url: 'https://iceking.example/reviews' }
+      ]),
       instagramHandle: 'icekinglondon',
       city: 'London',
       country: 'United Kingdom',
@@ -131,7 +141,13 @@ async function main() {
       slug: 'ryder-pendant',
       description: 'Ask for iced name pendant pricing.',
       imageUrl: '/samples/JWAE-Custom-Moissanite-Name-Pendant-14K-Gold-icecartel-white.png',
+      category: 'pendant',
+      priceMode: 'ask',
       badgeLabel: 'Featured',
+      material: 'gold',
+      metalDetail: '14K Gold',
+      stoneQuality: 'Moissanite',
+      weightLabel: null,
       variantLabelsJson: JSON.stringify(['14K Gold', 'With chain']),
       isFeatured: true,
       sortOrder: 0
@@ -143,6 +159,12 @@ async function main() {
       slug: 'gatti-pendant',
       description: 'Custom pendant design starter.',
       imageUrl: '/pendants/gatti.png',
+      category: 'pendant',
+      priceMode: 'ask',
+      material: 'gold',
+      metalDetail: '10K-18K Gold',
+      stoneQuality: 'Moissanite',
+      weightLabel: null,
       variantLabelsJson: JSON.stringify(['10K Gold', '18K Gold']),
       sortOrder: 1
     },
@@ -153,6 +175,12 @@ async function main() {
       slug: 'king-pendant',
       description: 'Bold block name pendant.',
       imageUrl: '/pendants/king.png',
+      category: 'pendant',
+      priceMode: 'ask',
+      material: 'silver',
+      metalDetail: 'Silver',
+      stoneQuality: null,
+      weightLabel: null,
       variantLabelsJson: JSON.stringify(['Silver']),
       sortOrder: 2
     },
@@ -163,6 +191,12 @@ async function main() {
       slug: 'skeleton-watch',
       description: 'Send a photo to request similar sourcing.',
       imageUrl: '/samples/King slanted.png',
+      category: 'watch',
+      priceMode: 'ask',
+      material: 'other',
+      metalDetail: null,
+      stoneQuality: null,
+      weightLabel: null,
       variantLabelsJson: JSON.stringify([]),
       sortOrder: 0
     }

@@ -17,6 +17,7 @@ export type VvsStudioVideoPromptInput = {
   pieceType?: string;
   mood?: string;
   aspectRatio?: string;
+  videoDurationSeconds?: number;
 };
 
 export type VvsGenerateImageInput = {

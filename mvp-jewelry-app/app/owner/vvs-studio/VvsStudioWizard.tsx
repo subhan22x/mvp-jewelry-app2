@@ -18,8 +18,8 @@ import type {
   VvsStoneSetting,
   VvsMood,
   VvsAspectRatio,
+  VvsVideoDurationSeconds,
   VvsUploadedFile,
-  VvsImageProvider,
 } from "./types";
 import { DEFAULT_STATE } from "./types";
 
@@ -92,6 +92,7 @@ const METAL_TYPES: { value: VvsMetalType; label: string }[] = [
   { value: "10k_gold", label: "10K Gold" },
   { value: "14k_gold", label: "14K Gold" },
   { value: "18k_gold", label: "18K Gold" },
+  { value: "silver", label: "Silver" },
 ];
 
 const GOLD_COLORS: { value: VvsGoldColor; label: string }[] = [
@@ -115,27 +116,12 @@ const MOODS: { value: VvsMood; label: string }[] = [
 ];
 
 const RATIOS: { value: VvsAspectRatio; label: string; sub: string; pw: number; ph: number }[] = [
-  { value: "square", label: "Square", sub: "1:1  Instagram Post", pw: 46, ph: 46 },
-  { value: "expanded", label: "Expanded", sub: "4:5  Instagram Feed", pw: 38, ph: 48 },
   { value: "story", label: "Story", sub: "9:16  Reels / TikTok", pw: 29, ph: 52 },
 ];
 
-const IMAGE_PROVIDERS: { value: VvsImageProvider; label: string; models: { value: string; label: string }[] }[] = [
-  {
-    value: "gemini",
-    label: "Gemini",
-    models: [
-      { value: "gemini-3-pro-image-preview", label: "Gemini 3 Pro" },
-      { value: "gemini-3.1-flash-image-preview", label: "Gemini 3.1 Flash" },
-    ],
-  },
-  {
-    value: "openai",
-    label: "OpenAI",
-    models: [
-      { value: "gpt-image-1", label: "GPT Image 1" },
-    ],
-  },
+const VIDEO_DURATIONS: { value: VvsVideoDurationSeconds; label: string; sub: string }[] = [
+  { value: 6, label: "6 sec", sub: "Standard reel" },
+  { value: 10, label: "10 sec", sub: "Longer showcase" },
 ];
 
 // ── Pill chip ─────────────────────────────────────────────────────
@@ -306,7 +292,7 @@ function RatioCard({
         alignItems: "center",
         gap: 8,
         padding: "10px 6px",
-        cursor: "pointer",
+        cursor: "default",
         borderRadius: 9,
         border: `1.5px solid ${active ? G : BD}`,
         background: active ? G + "12" : BG,
@@ -383,10 +369,33 @@ function SecondaryBtn({ label, onClick }: { label: string; onClick: () => void }
   );
 }
 
-function FInput({ label, placeholder, value, onChange }: { label: string; placeholder: string; value: string; onChange: (v: string) => void }) {
+function FieldLabel({ label, optional }: { label: string; optional?: boolean }) {
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>
+      <span>{label}</span>
+      {optional && (
+        <span
+          style={{
+            borderRadius: 999,
+            border: `1px solid ${BD}`,
+            padding: "1px 5px",
+            fontSize: 8,
+            lineHeight: 1.2,
+            letterSpacing: "0.04em",
+            color: "#8f8f98",
+          }}
+        >
+          OPTIONAL
+        </span>
+      )}
+    </span>
+  );
+}
+
+function FInput({ label, placeholder, value, onChange, optional }: { label: string; placeholder: string; value: string; onChange: (v: string) => void; optional?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-      <span style={{ fontSize: 10, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>{label}</span>
+      <FieldLabel label={label} optional={optional} />
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -409,10 +418,10 @@ function FInput({ label, placeholder, value, onChange }: { label: string; placeh
   );
 }
 
-function FSelect<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+function FSelect<T extends string>({ label, value, options, onChange, optional }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; optional?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-      <span style={{ fontSize: 10, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>{label}</span>
+      <FieldLabel label={label} optional={optional} />
       <select
         value={value}
         onChange={e => onChange(e.target.value as T)}
@@ -617,6 +626,7 @@ export default function VvsStudioWizard() {
           body: JSON.stringify({
             mood: state.mood,
             aspectRatio: state.aspectRatio,
+            videoDurationSeconds: state.videoDurationSeconds,
             metalType: state.metalType,
             goldColor: state.goldColor,
             engravingText: state.engravingText,
@@ -752,7 +762,7 @@ export default function VvsStudioWizard() {
 
   const hasUpload = Boolean(state.uploads.top || state.uploads.left || state.uploads.right);
   const canProceedCapture = hasUpload && Boolean(state.visualStyle);
-  const canProceedDetails = Boolean(state.pieceType) && Boolean(state.metalType) && Boolean(state.goldColor);
+  const canProceedDetails = Boolean(state.pieceType);
   const canGenerate = Boolean(state.mood) && Boolean(state.aspectRatio);
 
   // ── Step: Capture ────────────────────────────────────────────────
@@ -788,10 +798,12 @@ export default function VvsStudioWizard() {
               display: "flex",
               gap: 8,
               overflowX: "auto",
-              paddingBottom: 4,
-              scrollbarWidth: "none",
-              marginRight: -22,
-              paddingRight: 22,
+              overscrollBehaviorX: "contain",
+              WebkitOverflowScrolling: "touch",
+              paddingBottom: 10,
+              scrollbarColor: `${G} ${BD}`,
+              scrollbarWidth: "thin",
+              maxWidth: "100%",
             }}
           >
             {STYLE_LABELS.map(s => (
@@ -851,20 +863,22 @@ export default function VvsStudioWizard() {
         <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TX }}>Piece Details</span>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 11 }}>
+          <FInput label="ENGRAVING / TEXT" placeholder="e.g. LOYALTY" value={state.engravingText ?? ""} onChange={v => dispatch({ type: "SET_FIELD", field: "engravingText", value: v || undefined })} />
+          <FInput label="PRICE" placeholder="$4,500" value={state.price ?? ""} onChange={v => dispatch({ type: "SET_FIELD", field: "price", value: v || undefined })} optional />
           <FSelect
             label="METAL TYPE"
             value={state.metalType ?? ("" as VvsMetalType)}
             options={[{ value: "" as VvsMetalType, label: "Select..." }, ...METAL_TYPES]}
             onChange={v => dispatch({ type: "SET_FIELD", field: "metalType", value: v || undefined })}
+            optional
           />
           <FSelect
             label="GOLD COLOR"
             value={state.goldColor ?? ("" as VvsGoldColor)}
             options={[{ value: "" as VvsGoldColor, label: "Select..." }, ...GOLD_COLORS]}
             onChange={v => dispatch({ type: "SET_FIELD", field: "goldColor", value: v || undefined })}
+            optional
           />
-          <FInput label="PRICE" placeholder="$4,500" value={state.price ?? ""} onChange={v => dispatch({ type: "SET_FIELD", field: "price", value: v || undefined })} />
-          <FInput label="ENGRAVING / TEXT" placeholder="e.g. LOYALTY" value={state.engravingText ?? ""} onChange={v => dispatch({ type: "SET_FIELD", field: "engravingText", value: v || undefined })} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -912,8 +926,6 @@ export default function VvsStudioWizard() {
 
   // ── Step: Theme + Format ─────────────────────────────────────────
   function renderTheme() {
-    const providerEntry = IMAGE_PROVIDERS.find(p => p.value === state.imageProvider) ?? IMAGE_PROVIDERS[0];
-
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
         <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 22, fontWeight: 700, color: TX }}>Choose Aesthetic</span>
@@ -942,37 +954,46 @@ export default function VvsStudioWizard() {
                 sub={r.sub}
                 pw={r.pw}
                 ph={r.ph}
-                active={state.aspectRatio === r.value}
-                onClick={() => dispatch({ type: "SET_FIELD", field: "aspectRatio", value: r.value })}
+                active
+                onClick={() => undefined}
               />
             ))}
           </div>
         </div>
 
-        {/* Model settings — compact advanced section */}
-        <details style={{ borderTop: `1px solid ${BD}`, paddingTop: 12 }}>
-          <summary style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", cursor: "pointer", letterSpacing: "0.05em" }}>
-            ADVANCED  ·  Image Model
-          </summary>
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <FSelect
-              label="IMAGE PROVIDER"
-              value={state.imageProvider}
-              options={IMAGE_PROVIDERS.map(p => ({ value: p.value, label: p.label }))}
-              onChange={v => {
-                const entry = IMAGE_PROVIDERS.find(p => p.value === v);
-                dispatch({ type: "SET_FIELD", field: "imageProvider", value: v });
-                if (entry) dispatch({ type: "SET_FIELD", field: "imageModelId", value: entry.models[0].value });
-              }}
-            />
-            <FSelect
-              label="IMAGE MODEL"
-              value={state.imageModelId}
-              options={providerEntry.models}
-              onChange={v => dispatch({ type: "SET_FIELD", field: "imageModelId", value: v })}
-            />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>VIDEO DURATION</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+            {VIDEO_DURATIONS.map(option => {
+              const active = state.videoDurationSeconds === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => dispatch({ type: "SET_FIELD", field: "videoDurationSeconds", value: option.value })}
+                  style={{
+                    minHeight: 74,
+                    borderRadius: 9,
+                    border: `1.5px solid ${active ? G : BD}`,
+                    background: active ? G + "14" : BG,
+                    color: active ? G : SOFT,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5,
+                    fontFamily: "'DM Sans', sans-serif",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                >
+                  <span style={{ fontSize: 16, fontWeight: 700 }}>{option.label}</span>
+                  <span style={{ fontSize: 10, color: DIM }}>{option.sub}</span>
+                </button>
+              );
+            })}
           </div>
-        </details>
+        </div>
 
         <div style={{ flex: 1 }} />
 
