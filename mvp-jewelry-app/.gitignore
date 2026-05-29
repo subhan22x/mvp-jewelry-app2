@@ -3,6 +3,11 @@ node_modules/
 dist/
 build/
 .env*
+!.env.example
 .vercel/
 .DS_Store
 dev.db
+public/generated/*
+!public/generated/.gitkeep
+
+test-results/
