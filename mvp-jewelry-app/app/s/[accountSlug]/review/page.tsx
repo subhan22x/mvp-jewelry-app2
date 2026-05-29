@@ -29,7 +29,10 @@ export default async function PublicReviewPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-[#151311] text-[#F5F0E8]">
-      <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#181512] px-5 py-8 shadow-2xl shadow-black/40">
+      <div className="mx-auto min-h-screen w-full max-w-[430px] bg-[#181512] px-6 py-6 shadow-2xl shadow-black/40">
+        <a href={`/s/${account.slug}`} className="mb-7 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#24201A] text-xl text-[#F5F0E8] hover:bg-[#30291F]">
+          ←
+        </a>
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 overflow-hidden rounded-2xl border border-[#342E26] bg-[#24201A]">
             {account.StoreProfile.profileImageUrl ? (
@@ -39,12 +42,12 @@ export default async function PublicReviewPage({ params }: PageProps) {
             )}
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#D3A84F]">Review</p>
-            <h1 className="mt-1 text-2xl font-black">{displayName}</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#D3A84F]">Leave a review</p>
+            <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight">{displayName}</h1>
           </div>
         </div>
-        <p className="mt-6 text-sm leading-6 text-[#B7AEA2]">
-          Share your experience so future customers know what to expect.
+        <p className="mt-7 text-sm leading-6 text-[#8D8377]">
+          Rate your experience and share a few words for future customers.
         </p>
         <ReviewForm accountSlug={account.slug} />
       </div>

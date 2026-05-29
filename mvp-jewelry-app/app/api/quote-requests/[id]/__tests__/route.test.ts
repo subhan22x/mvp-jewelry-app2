@@ -34,6 +34,10 @@ describe("/api/quote-requests/[id]", () => {
       id: "quote-test",
       quotedPriceCents: 125000,
       quoteNotes: "Ready in 3 weeks.",
+      estimatedDelivery: "3-4 weeks",
+      quoteMaterial: "gold",
+      quoteMaterialKarat: "14k",
+      quoteStoneType: "natural_diamonds",
       status: "sent"
     });
   });
@@ -74,6 +78,10 @@ describe("/api/quote-requests/[id]", () => {
     const response = await PATCH(authedRequest({
       quotedPriceCents: 125000,
       quoteNotes: "Ready in 3 weeks.",
+      estimatedDelivery: "3-4 weeks",
+      quoteMaterial: "gold",
+      quoteMaterialKarat: "14k",
+      quoteStoneType: "natural_diamonds",
       status: "sent"
     }), { params: { id: "quote-test" } });
     const json = await response.json();
@@ -83,6 +91,10 @@ describe("/api/quote-requests/[id]", () => {
       id: "quote-test",
       quotedPriceCents: 125000,
       quoteNotes: "Ready in 3 weeks.",
+      estimatedDelivery: "3-4 weeks",
+      quoteMaterial: "gold",
+      quoteMaterialKarat: "14k",
+      quoteStoneType: "natural_diamonds",
       status: "sent"
     });
     expect(mocks.quoteRequestUpdate).toHaveBeenCalledWith({
@@ -90,6 +102,10 @@ describe("/api/quote-requests/[id]", () => {
       data: {
         quotedPriceCents: 125000,
         quoteNotes: "Ready in 3 weeks.",
+        estimatedDelivery: "3-4 weeks",
+        quoteMaterial: "gold",
+        quoteMaterialKarat: "14k",
+        quoteStoneType: "natural_diamonds",
         status: "sent"
       }
     });

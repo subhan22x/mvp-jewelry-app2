@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 
-type OwnerNavIcon = "quotes" | "vvs" | "reviews" | "collections" | "profile" | "settings";
+type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings";
 
 const ownerNav = [
   { label: "Quotes", href: "/owner", icon: "quotes" },
+  { label: "VVS Design", href: "/", icon: "design" },
   { label: "VVS Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Reviews", href: "/owner/reviews", icon: "reviews" },
   { label: "Collections", href: "/owner/collections", icon: "collections" },
@@ -26,6 +27,13 @@ function NavIcon({ icon }: { icon: OwnerNavIcon }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
       {icon === "quotes" && <path {...common} d="M7 8h10M7 12h7M6.5 19.5 4 21V5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v9A2.5 2.5 0 0 1 17.5 17H9l-2.5 2.5Z" />}
+      {icon === "design" && (
+        <>
+          <path {...common} d="M5 19h14" />
+          <path {...common} d="M7 16.5 17.9 5.6a2.1 2.1 0 0 1 3 3L10 19H6.5v-3.5Z" />
+          <path {...common} d="m15.5 8 2.5 2.5" />
+        </>
+      )}
       {icon === "vvs" && <path {...common} d="M12 3 15 9l6 3-6 3-3 6-3-6-6-3 6-3 3-6Z" />}
       {icon === "reviews" && <path {...common} d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9L12 3Z" />}
       {icon === "collections" && (

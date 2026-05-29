@@ -3,6 +3,7 @@ import OwnerFrame from "../OwnerFrame";
 import OwnerLoginForm from "../OwnerLoginForm";
 import PromptModeForm from "../PromptModeForm";
 import { isOwnerAuthenticated } from "../_auth";
+import ThemeSettingsForm from "./ThemeSettingsForm";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function OwnerSettingsPage() {
           <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Settings</h1>
           <p className="mt-2 text-[15px] text-[#c2c6d6]">Account preferences, prompt mode, and operational controls.</p>
         </section>
+        <ThemeSettingsForm />
         <PromptModeForm initialMode={promptMode} />
       </div>
     </OwnerFrame>
