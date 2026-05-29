@@ -26,6 +26,7 @@ export function buildVvsStudioVideoPrompt(input: VvsStudioVideoPromptInput): str
     input.pieceType ? `Piece type: ${input.pieceType}.` : "",
     input.mood ? `Mood: ${input.mood}.` : "",
     input.aspectRatio ? `Aspect ratio: ${input.aspectRatio}.` : "",
+    input.videoDurationSeconds ? `Video duration: ${input.videoDurationSeconds} seconds.` : "",
     "Use subtle camera motion, polished light sweeps, and luxury product-video pacing.",
   ]
     .filter(Boolean)

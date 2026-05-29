@@ -78,6 +78,10 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - `/owner/videos` lists all pendant video jobs, including pending, completed, and failed attempts.
 - `/owner/videos/[videoJobId]` shows the selected source image, loading/progress state, final video player, download action, and share/copy action.
 - Completed Wavespeed videos are downloaded into `GENERATED_IMAGE_DIR`, served from `/generated/:file`, and stored in `VideoGeneration.videoUrl`. The original Wavespeed URL is retained in `VideoGeneration.remoteVideoUrl`.
+- `/owner/profile` edits the public storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links.
+- The profile editor uses a country-aware phone input and best-effort verifier icons for Instagram, Website, and extra links.
+- `/owner/collections` manages public product pieces by fixed categories. Draft pieces use `Product.isActive = false`; published pieces appear on `/s/:slug`.
+- `/owner/reviews` shows persisted `StoreReview` rows, filters/searches reviews, and includes a request-review pane for sharing `/s/:slug/review`.
 - The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
 - `Send Quote` currently saves price, note, and `status: sent` only; email delivery is intentionally not wired yet.
 
@@ -194,8 +198,13 @@ app/
   name/__tests__/            # Vitest unit tests for the name builder
   owner/page.tsx             # owner dashboard: quote requests + Generate Video section
   owner/account/page.tsx     # owner account settings, including Prompt System
+  owner/profile/page.tsx     # public storefront profile editor
+  owner/collections/page.tsx # owner collection/piece manager
+  owner/reviews/page.tsx     # owner review dashboard and request-review pane
   owner/videos/page.tsx      # all pendant video jobs
   owner/videos/[videoJobId]/page.tsx # video job status/player/download/share page
+  s/[accountSlug]/page.tsx   # public storefront profile and collections
+  s/[accountSlug]/review/    # public customer review form
   api/requests/route.ts      # POST /api/requests — creates a Request and fires 2 async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
   api/quote-requests/route.ts # POST — persists the customer quote/admin handoff snapshot
@@ -218,7 +227,7 @@ src/lib/styles/              # canonical generation system
   <style>/<templateKey>.jsonp # prompt template with {{PLACEHOLDERS}}
 
 prisma/
-  schema.prisma              # User, Request, Result, Lead, VideoGeneration, QuoteRequest
+  schema.prisma              # Account, StoreProfile, Product, StoreReview, Request, Result, Lead, VideoGeneration, QuoteRequest
   migrations/
 
 public/

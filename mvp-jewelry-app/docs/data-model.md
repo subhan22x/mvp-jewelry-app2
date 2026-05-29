@@ -8,6 +8,14 @@ Format: Mermaid ER diagrams. GitHub renders these directly in Markdown, and the 
 
 This is the model that exists in `prisma/schema.prisma` today. It is single-store and still uses a `User` row as the store/demo owner.
 
+Recent owner-profile additions are now part of the current schema:
+
+- `Account` scopes public profile, products, reviews, quote requests, generated media, and VVS Studio records.
+- `StoreProfile` stores public profile content, website URL, city/country, phone, Instagram handle, and up to two extra links in `extraLinksJson`.
+- `ProductCollection` and `Product` power the public `/s/:slug` collections grid and `/owner/collections` manager. Products use `isActive` for draft/published state.
+- `StoreReview` stores customer reviews submitted from `/s/:slug/review`.
+- VVS Studio records store owner-uploaded product shoots, image generations, video generations, and selected video duration.
+
 ```mermaid
 erDiagram
   USER ||--o{ REQUEST : owns
@@ -129,6 +137,10 @@ This is the proposed complete model for the subscription SaaS version. The tenan
 ```mermaid
 erDiagram
   ACCOUNT ||--o{ ACCOUNT_MEMBERSHIP : has
+  ACCOUNT ||--o{ STORE_PROFILE : has_profile
+  ACCOUNT ||--o{ PRODUCT_COLLECTION : groups
+  ACCOUNT ||--o{ PRODUCT : lists
+  ACCOUNT ||--o{ STORE_REVIEW : receives
   USER ||--o{ ACCOUNT_MEMBERSHIP : joins
   ACCOUNT ||--o{ CUSTOMER : owns
   ACCOUNT ||--o{ PUBLIC_SESSION : tracks
@@ -186,6 +198,71 @@ erDiagram
     string subscriptionStatus
     datetime subscriptionCurrentPeriodEnd
     datetime trialEndsAt
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  STORE_PROFILE {
+    string id PK
+    string accountId FK
+    string displayName
+    string headline
+    string bio
+    string profileImageUrl
+    string phone
+    string whatsappPhone
+    string websiteUrl
+    string extraLinksJson
+    string instagramHandle
+    string city
+    string country
+    boolean isPublished
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  PRODUCT_COLLECTION {
+    string id PK
+    string accountId FK
+    string title
+    string slug
+    int sortOrder
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  PRODUCT {
+    string id PK
+    string accountId FK
+    string collectionId FK
+    string name
+    string slug
+    string description
+    string imageUrl
+    string category
+    string priceLabel
+    string priceMode
+    string material
+    string metalDetail
+    string stoneQuality
+    string weightLabel
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  STORE_REVIEW {
+    string id PK
+    string accountId FK
+    string reviewerName
+    string reviewerPhone
+    string reviewerEmail
+    string reviewerInstagram
+    int rating
+    string reviewText
+    string status
+    string source
     datetime createdAt
     datetime updatedAt
   }

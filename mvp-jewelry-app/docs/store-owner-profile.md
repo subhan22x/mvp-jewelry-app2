@@ -3,10 +3,14 @@
 ## Decisions
 
 - Public profile URL: `/s/:slug`.
-- Store owners provide a regular phone number and a separate WhatsApp number.
+- Store owners edit their public profile at `/owner/profile`.
+- Store owners provide one public phone number, which is also used for WhatsApp message links.
 - Product upload during onboarding is optional.
 - Email/password account creation happens at the final onboarding step.
 - `Get Quote` is a dedicated general quote intake flow, separate from the pendant builder.
+- Public profile buttons are fixed: Message, Instagram, Website, and Design Custom. Instagram and Website are hidden when empty.
+- Owners can add up to two extra Linktree-style public links.
+- Public collections are represented by products grouped under fixed categories, not a separate custom collection builder.
 
 ## Onboarding Route
 
@@ -70,7 +74,7 @@ Stored in:
 
 - `StoreService`
 
-Current services:
+Legacy/current services:
 
 - `quote`: Custom Quote Requests
 - `design_custom`: Design Custom
@@ -80,7 +84,7 @@ Current services:
 - `repair`: placeholder
 - `reviews`: placeholder
 
-Only active services appear on the public profile.
+`StoreService` rows are retained for compatibility. The current public profile renders fixed main buttons from `StoreProfile` fields instead of rendering service rows directly.
 
 ## Step 4: Page Look
 
@@ -93,6 +97,10 @@ Collect:
 - regular phone
 - WhatsApp phone
 - profile photo
+- website URL
+- city
+- country
+- two optional extra links
 
 Stored in:
 
@@ -104,8 +112,20 @@ Stored in:
 - `StoreProfile.phone`
 - `StoreProfile.whatsappPhone`
 - `StoreProfile.profileImageUrl`
+- `StoreProfile.websiteUrl`
+- `StoreProfile.city`
+- `StoreProfile.country`
+- `StoreProfile.extraLinksJson`
 
 Uploaded files go through the public media storage helper. R2 is used when configured; otherwise local generated storage is used.
+
+The owner profile editor also includes best-effort verification helpers:
+
+- phone number input uses country flag formatting via `react-international-phone`
+- Instagram handle check calls `/api/owner/instagram`
+- Website and extra link URL checks call `/api/owner/link`
+
+The link verifier is intentionally permissive: any real HTTP response from the domain counts as reachable, including Cloudflare/Shopify protection responses. It only fails malformed, local/internal, DNS, timeout, or no-response cases.
 
 ## Step 5: First Products
 
@@ -126,15 +146,38 @@ Stored in:
 
 Current product categories:
 
-- chain
 - pendant
+- watch
 - ring
 - bracelet
-- watch
-- grillz
 - earrings
-- trophy
+- chain
+- grillz
 - other
+
+The owner collection manager at `/owner/collections` ensures default category collections exist for:
+
+- pendant
+- ring
+- grillz
+- bracelet
+- earrings
+- watch
+- chain
+- other
+
+Each managed piece stores one cover image and optional specs:
+
+- `Product.category`
+- `Product.priceMode`
+- `Product.priceLabel`
+- `Product.material`
+- `Product.metalDetail`
+- `Product.stoneQuality`
+- `Product.weightLabel`
+- `Product.isActive`
+
+Draft pieces use `Product.isActive = false`; published pieces use `Product.isActive = true`.
 
 ## Step 6: Publish
 
@@ -194,12 +237,50 @@ Quote metadata:
 - all uploaded images are stored in `referenceImageUrlsJson`
 - request is scoped to the store owner's `accountId`
 
+## Reviews Flow
+
+Owner route:
+
+```text
+/owner/reviews
+```
+
+Public review route:
+
+```text
+/s/:slug/review
+```
+
+API route:
+
+```text
+POST /api/storefront/:slug/reviews
+```
+
+Customers submit:
+
+- name
+- rating
+- review text
+- at least one contact method: phone, email, or Instagram
+
+Creates:
+
+- `StoreReview`
+
+Review rows are scoped to the store owner's `accountId`. Current statuses are:
+
+- `published`
+- `pending`
+- `hidden`
+
+The owner reviews dashboard supports search, status filters, rating filters, average rating, rating distribution, and a request-review pane that creates a shareable review URL and WhatsApp message.
+
 ## Admin Follow-Up Needed
 
 Next owner/admin work:
 
-- add profile editor under `/owner/profile` or `/owner/account`
-- add product/collection manager
 - show general quote requests in owner dashboard with all reference images
 - add real owner auth sessions for accounts created through onboarding
 - add slug redirects if store owners change their public URL
+- decide whether reviews should auto-publish or require moderation by subscription tier
