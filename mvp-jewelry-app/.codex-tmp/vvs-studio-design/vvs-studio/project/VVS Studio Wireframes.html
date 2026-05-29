@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VVS Studio — Layout Wireframes</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0e0e10; font-family: 'DM Sans', sans-serif; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100% { opacity:.3; transform:scale(.9); } 50% { opacity:1; transform:scale(1.1); } }
+  @keyframes progbar { from { width:0 } to { width:65% } }
+  @keyframes progvid { from { width:0 } to { width:42% } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+// ── tokens ────────────────────────────────────────────────────────
+const G = '#D4A853';
+const BG  = '#16161a';
+const BG2 = '#1e1e24';
+const BD  = '#35353d';
+const TX  = '#c0c0c8';
+const DIM = '#606068';
+const WH  = '#eaeaf0';
+const CAV = "'Figtree', sans-serif";
+const MON = "'DM Sans', sans-serif";
+
+// ── Logo ─────────────────────────────────────────────────────────
+const Logo = () => (
+  <img src="uploads/b2378fd04f254a85a986908cc613d661.png"
+    style={{ height:30, objectFit:'contain', mixBlendMode:'lighten', opacity:0.92 }}
+    alt="VVS Studio" />
+);
+const L = ({ sz=15, gold, dim, bold, mono, center, italic, style={}, children }) => {
+  const isHeading = bold && sz >= 18;
+  return (
+    <span style={{
+      fontFamily: isHeading ? CAV : MON,
+      fontSize: sz,
+      color: gold ? G : dim ? DIM : WH,
+      fontWeight: bold ? (isHeading ? 700 : 600) : 400,
+      fontStyle: 'normal',
+      textAlign: center ? 'center' : undefined,
+      display: center ? 'block' : undefined,
+      lineHeight: 1.3,
+      letterSpacing: isHeading ? '-0.01em' : mono ? undefined : '0.01em',
+      ...style
+    }}>{children}</span>
+  );
+};
+
+const Box = ({ w, h, dashed, gold, r=6, style={}, children }) => (
+  <div style={{ width: w, height: h, flexShrink: 0,
+    border: `${gold ? 2 : 1.5}px ${dashed ? 'dashed' : 'solid'} ${gold ? G : BD}`,
+    borderRadius: r, background: BG2, overflow: 'hidden',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', ...style
+  }}>{children}</div>
+);
+
+const Pill = ({ label, active, small }) => (
+  <div style={{ padding: small ? '3px 9px' : '5px 13px', borderRadius: 20, flexShrink: 0, cursor: 'pointer',
+    border: `1.5px solid ${active ? G : BD}`, background: active ? G + '22' : BG }}>
+    <L sz={small ? 11 : 13} gold={active}>{label}</L>
+  </div>
+);
+
+const Btn = ({ label, primary, full, h=44, style={} }) => (
+  <div style={{ height: h, width: full ? '100%' : undefined,
+    border: `1.5px solid ${primary ? G : BD}`, borderRadius: 8,
+    background: primary ? G + '1a' : BG2, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ...style }}>
+    <L sz={14} gold={primary} bold={primary}>{label}</L>
+  </div>
+);
+
+const FInput = ({ label, placeholder }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    {label && <L sz={10} dim mono>{label}</L>}
+    <div style={{ height: 32, border: `1px solid ${BD}`, borderRadius: 5, background: BG,
+      padding: '0 9px', display: 'flex', alignItems: 'center' }}>
+      <L sz={12} dim>{placeholder}</L>
+    </div>
+  </div>
+);
+
+const FSelect = ({ label, value }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    {label && <L sz={10} dim mono>{label}</L>}
+    <div style={{ height: 32, border: `1px solid ${BD}`, borderRadius: 5, background: BG,
+      padding: '0 9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <L sz={12}>{value}</L><L sz={11} dim>▾</L>
+    </div>
+  </div>
+);
+
+const Steps = ({ n, cur }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+    {Array.from({ length: n }).map((_, i) => (
+      <React.Fragment key={i}>
+        <div style={{ width: i === cur ? 28 : 8, height: 8, borderRadius: 4,
+          background: i === cur ? G : i < cur ? G + '55' : BD }} />
+        {i < n - 1 && <div style={{ width: 12, height: 1, background: BD }} />}
+      </React.Fragment>
+    ))}
+  </div>
+);
+
+const UpZone = ({ src, label, sub, active, w=108, h=108 }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+    <div style={{ width: w, height: h, border: `2px dashed ${active ? G : BD}`, borderRadius: 10,
+      overflow: 'hidden', background: BG }}>
+      <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: active ? 0.9 : 0.55 }} alt={label} />
+    </div>
+    <L sz={12} gold={active}>{label}</L>
+    <L sz={10} dim>{sub}</L>
+  </div>
+);
+
+const Swatch = ({ color, label, active }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+    <div style={{ width: 48, height: 48, borderRadius: 8, background: color,
+      border: `2px solid ${active ? G : BD}` }} />
+    <L sz={10} gold={active} dim={!active}>{label}</L>
+  </div>
+);
+
+// ── A: LINEAR WIZARD ─────────────────────────────────────────────
+
+// Style video card — portrait rectangle
+const StyleCard = ({ idx, label, active, onClick }) => (
+  <div onClick={onClick} style={{ flex:1, display:'flex', flexDirection:'column', gap:5, cursor:'pointer' }}>
+    <div style={{ height:100, border:`2px solid ${active ? G : BD}`, borderRadius:8,
+      background:BG2, position:'relative', overflow:'hidden' }}>
+      <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+        <defs>
+          <pattern id={`sc${idx}`} x="0" y="0" width="14" height="14"
+            patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="14" stroke="#252530" strokeWidth="1.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#sc${idx})`} />
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ width:22, height:22, borderRadius:'50%',
+          background: active ? G+'55' : BD+'88',
+          display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <L sz={9} style={{ marginLeft:2, color: active ? G : DIM }}>▶</L>
+        </div>
+      </div>
+      {active && <div style={{ position:'absolute', top:5, right:5, width:14, height:14,
+        borderRadius:'50%', background:G,
+        display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <L sz={8} style={{ color:'#000' }}>✓</L>
+      </div>}
+    </div>
+    <L sz={10} gold={active} dim={!active} center>{label}</L>
+  </div>
+);
+
+const A1 = () => {
+  const [style, setStyle] = React.useState(0);
+  return (
+  <div style={{ width:390, height:780, background:BG, display:'flex', flexDirection:'column', padding:'22px 22px 18px', gap:14 }}>
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <Logo />
+      <Box w={28} h={28} r={14}><L sz={11} dim>✕</L></Box>
+    </div>
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <Steps n={4} cur={0} />
+      <div style={{ display:'flex', gap:14 }}>
+        {['Piece','Capture','Details','Theme'].map((s,i) =>
+          <L key={s} sz={11} gold={i===0} dim={i!==0}>{s}</L>)}
+      </div>
+    </div>
+
+    {/* Capture */}
+    <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+      <L sz={18} bold>Capture 3 Angles</L>
+      <L sz={12} dim style={{ lineHeight:1.5 }}>Flat surface, even lighting. Tap each zone to upload.</L>
+      <div style={{ display:'flex', justifyContent:'space-around' }}>
+        <UpZone src="uploads/topview.jpg" label="Top View" sub="Straight down" active w={96} h={96} />
+        <UpZone src="uploads/bottomleftview.jpg" label="Left Angle" sub="45° left" w={96} h={96} />
+        <UpZone src="uploads/bottomrightview.jpg" label="Right Angle" sub="45° right" w={96} h={96} />
+      </div>
+    </div>
+
+    <div style={{ height:1, background:BD }} />
+
+    {/* Choose Style */}
+    <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+      <L sz={18} bold>Choose Style</L>
+      <L sz={12} dim>Pick a visual theme for your studio asset</L>
+      <div style={{ display:'flex', gap:7 }}>
+        {['Dark','Marble','Street','Velvet','Ice'].map((s,i) => (
+          <StyleCard key={s} idx={i} label={s} active={style===i} onClick={() => setStyle(i)} />
+        ))}
+      </div>
+    </div>
+
+    <div style={{ flex:1 }} />
+    <Btn label="NEXT  →" primary full h={48} />
+    <L sz={11} dim center>Step 1 of 4</L>
+  </div>
+  );
+};
+
+const A2 = () => (
+  <div style={{ width: 390, height: 780, background: BG, display: 'flex', flexDirection: 'column', padding: '28px 22px 22px', gap: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Logo />
+      <Box w={28} h={28} r={14}><L sz={11} dim>✕</L></Box>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <Steps n={4} cur={1} />
+      <div style={{ display: 'flex', gap: 14 }}>
+        {['Piece', 'Capture', 'Details', 'Theme'].map((s, i) =>
+          <L key={s} sz={11} gold={i===2} dim={i!==2}>{s}</L>)}
+      </div>
+    </div>
+    {/* Select Piece — moved from screen 01 */}
+  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+    <L sz={20} bold>Select Piece</L>
+    <div style={{ display:'flex', gap:6, flexWrap:'nowrap' }}>
+      {['Pendant','Ring','Chainz','Grills','Band'].map((p,i) =>
+        <Pill key={p} label={p} active={i===0} small />)}
+    </div>
+  </div>
+  <div style={{ height:1, background:BD }} />
+  <L sz={20} bold>Piece Details</L>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+      <FSelect label="METAL TYPE" value="14K Yellow Gold" />
+      <FSelect label="DIAMOND WT." value="1.2ct total" />
+      <FInput label="ENGRAVING / TEXT" placeholder="e.g.  LOYALTY" />
+      <FInput label="PRICE" placeholder="$4,500" />
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <L sz={11} dim mono>STONE SETTING</L>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {['Micro Pavé','Flooded','Baguette','Invisible'].map((s,i) =>
+          <Pill key={s} label={s} active={i===0} />)}
+      </div>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <L sz={11} dim mono>KARAT / ALLOY</L>
+      <div style={{ display: 'flex', gap: 7 }}>
+        {['10K','14K','18K','Plat'].map((k,i) =>
+          <Pill key={k} label={k} active={i===1} small />)}
+      </div>
+    </div>
+    <div style={{ flex: 1 }} />
+    <div style={{ display: 'flex', gap: 10 }}>
+      <Btn label="← Back" style={{ flex: 1 }} />
+      <Btn label="NEXT  →" primary style={{ flex: 2 }} />
+    </div>
+    <L sz={11} dim center>Step 2 of 4</L>
+  </div>
+);
+
+// Aspect ratio visual picker card
+const RatioCard = ({ w, h, label, sub, active, onClick }) => (
+  <div onClick={onClick} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+    gap:8, padding:'10px 6px 10px', cursor:'pointer', borderRadius:9,
+    border:`1.5px solid ${active ? G : BD}`, background: active ? G+'12' : BG,
+    transition:'border-color 0.15s' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:52 }}>
+      <div style={{ width:w, height:h, border:`2px solid ${active ? G : '#555'}`,
+        borderRadius:3, background: active ? G+'22' : BG2,
+        display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {active && <div style={{ width: Math.round(w*0.4), height: Math.round(h*0.4),
+          borderRadius:2, background: G+'55' }} />}
+      </div>
+    </div>
+    <L sz={13} gold={active} bold={active} center>{label}</L>
+    <L sz={10} dim center>{sub}</L>
+  </div>
+);
+
+const A3 = () => {
+  const [ratio, setRatio] = useState(0);
+  const [mood, setMood] = useState(0);
+
+  const ratios = [
+    { label:'Square', sub:'1:1  Instagram Post', pw:46, ph:46 },
+    { label:'Expanded', sub:'4:5  Instagram Feed', pw:38, ph:48 },
+    { label:'Story', sub:'9:16  Reels / TikTok', pw:29, ph:52 },
+  ];
+
+  // preview box dims
+  const previewAspects = [
+    { w:'100%', h:170 },
+    { w:'80%',  h:180 },
+    { w:'55%',  h:175 },
+  ];
+  const pa = previewAspects[ratio];
+
+  return (
+    <div style={{ width:390, height:780, background:BG, display:'flex', flexDirection:'column', padding:'28px 22px 22px', gap:14 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <Logo />
+        <Box w={28} h={28} r={14}><L sz={11} dim>✕</L></Box>
+      </div>
+      <Steps n={4} cur={3} />
+      <L sz={24} bold>Choose Aesthetic</L>
+
+      {/* Mood */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <L sz={11} dim mono>MOOD</L>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+          {['Luxury','Street','Editorial','Minimal'].map((m,i) => (
+            <div key={m} onClick={() => setMood(i)}>
+              <Pill label={m} active={mood===i} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Aspect ratio picker */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <L sz={11} dim mono>ASPECT RATIO</L>
+        <div style={{ display:'flex', gap:8 }}>
+          {ratios.map((r,i) => (
+            <RatioCard key={r.label} w={r.pw} h={r.ph}
+              label={r.label} sub={r.sub}
+              active={ratio===i} onClick={() => setRatio(i)} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ flex:1 }} />
+      <Btn label="✦  GENERATE STUDIO ASSET" primary full h={52} />
+      <div style={{ display:'flex', gap:10 }}>
+        <Btn label="← Back" style={{ flex:1, height:36 }} />
+        <L sz={11} dim style={{ display:'flex', alignItems:'center' }}>Step 4 of 4</L>
+      </div>
+    </div>
+  );
+};
+
+// ── A4: IMAGE LOADING ────────────────────────────────────────────
+const LoadStep = ({ label, done, active }) => (
+  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+    <div style={{ width:18, height:18, borderRadius:'50%', flexShrink:0,
+      background: done ? G : active ? G+'33' : BD,
+      border: active ? `2px solid ${G}` : 'none',
+      display:'flex', alignItems:'center', justifyContent:'center' }}>
+      {done && <L sz={10} style={{ color:'#000' }}>✓</L>}
+      {active && <div style={{ width:7, height:7, borderRadius:'50%', background:G, animation:'pulse 1.4s ease-in-out infinite' }} />}
+    </div>
+    <L sz={13} gold={active} dim={!done && !active}>{label}</L>
+  </div>
+);
+
+const A4 = () => (
+  <div style={{ width:390, height:780, background:BG, display:'flex', flexDirection:'column',
+    alignItems:'center', padding:'28px 22px 28px', position:'relative' }}>
+    <div style={{ position:'absolute', top:28, left:22, right:22, display:'flex', justifyContent:'space-between' }}>
+      <Logo />
+    </div>
+    <div style={{ flex:1 }} />
+    {/* Spinner */}
+    <div style={{ position:'relative', width:88, height:88, marginBottom:28 }}>
+      <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:`3px solid ${BD}` }} />
+      <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:`3px solid transparent`,
+        borderTopColor:G, animation:'spin 1s linear infinite' }} />
+      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <L sz={28} gold>✦</L>
+      </div>
+    </div>
+    <L sz={24} bold center>Generating...</L>
+    <L sz={13} dim center style={{ marginTop:6 }}>Creating your studio asset</L>
+
+    {/* Progress bar */}
+    <div style={{ width:'100%', marginTop:28, display:'flex', flexDirection:'column', gap:7 }}>
+      <div style={{ height:4, background:BD, borderRadius:2, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:0, background:G, borderRadius:2,
+          animation:'progbar 3s ease-out forwards' }} />
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between' }}>
+        <L sz={11} dim>Processing images</L>
+        <L sz={11} gold>65%</L>
+      </div>
+    </div>
+
+    {/* Steps */}
+    <div style={{ width:'100%', marginTop:24, display:'flex', flexDirection:'column', gap:13 }}>
+      <LoadStep label="Analyzing jewelry geometry" done />
+      <LoadStep label="Removing background" done />
+      <LoadStep label="Applying Noir theme" active />
+      <LoadStep label="Compositing studio lighting" />
+    </div>
+    <div style={{ flex:1 }} />
+    <L sz={11} dim center>Usually takes 10–20 seconds</L>
+  </div>
+);
+
+// ── A5: IMAGE RESULT ─────────────────────────────────────────────
+const A5 = () => (
+  <div style={{ width:390, height:780, background:BG, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    {/* Header */}
+    <div style={{ height:52, display:'flex', alignItems:'center', padding:'0 22px',
+      justifyContent:'space-between', flexShrink:0 }}>
+      <L sz={13} dim>← Back</L>
+      <Logo />
+      <L sz={13} style={{ color:G }}>↑ Share</L>
+    </div>
+
+    {/* Edit + Regenerate — safe zone up top, away from thumb */}
+    <div style={{ display:'flex', gap:8, padding:'0 22px 12px', flexShrink:0 }}>
+      <Btn label="✎  Edit Details" style={{ flex:1, height:36 }} />
+      <Btn label="↺  Regenerate" style={{ flex:1, height:36 }} />
+    </div>
+
+    <div style={{ height:1, background:BD, margin:'0 22px', flexShrink:0 }} />
+
+    {/* Generated image — square 1:1 */}
+    <div style={{ margin:'12px 22px 0', aspectRatio:'1/1', border:`1px solid ${BD}`, borderRadius:14,
+      position:'relative', overflow:'hidden', background:BG2, flexShrink:0 }}>
+      <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+        <defs>
+          <pattern id="hatchA5" x="0" y="0" width="22" height="22"
+            patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="22" stroke="#252530" strokeWidth="1.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#hatchA5)" />
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:8 }}>
+        <L sz={42} gold>✦</L>
+        <L sz={12} dim>Noir  ·  Pendant  ·  14K YG</L>
+      </div>
+      {/* Info overlay */}
+      <div style={{ position:'absolute', bottom:12, left:12, right:12,
+        background:BG2+'ee', border:`1px solid ${BD}`, borderRadius:10, padding:'8px 12px' }}>
+        <L sz={14} bold>LOYALTY PENDANT</L>
+        <div style={{ display:'flex', gap:10, marginTop:3 }}>
+          <L sz={11} dim>14K YG  ·  Micro Pavé  ·  1.2ct</L>
+          <L sz={12} gold>$4,500</L>
+        </div>
+      </div>
+    </div>
+
+    <div style={{ flex:1 }} />
+
+    {/* Bottom — only the primary destructive/action CTA */}
+    <div style={{ padding:'12px 22px 28px', display:'flex', flexDirection:'column', gap:10 }}>
+      <Btn label="↓  Save to Camera Roll" full h={44} />
+      <div style={{ height:58, background:G, borderRadius:12, cursor:'pointer',
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2 }}>
+        <L sz={16} bold style={{ color:'#000' }}>⬡  Generate Video Reel</L>
+        <L sz={11} style={{ color:'#000', opacity:0.55 }}>Motion reel from this image</L>
+      </div>
+    </div>
+  </div>
+);
+
+// ── A6: VIDEO LOADING ────────────────────────────────────────────
+const A6 = () => (
+  <div style={{ width:390, height:780, background:BG, display:'flex', flexDirection:'column',
+    alignItems:'center', padding:'28px 22px 28px', position:'relative' }}>
+    <div style={{ position:'absolute', top:28, left:22, right:22, display:'flex', justifyContent:'space-between' }}>
+      <Logo />
+    </div>
+    <div style={{ flex:1 }} />
+
+    {/* Thumbnail + spinner overlay */}
+    <div style={{ position:'relative', width:110, height:110, borderRadius:14, overflow:'hidden',
+      border:`1px solid ${BD}`, background:BG2, marginBottom:28, flexShrink:0 }}>
+      <svg width="100%" height="100%">
+        <defs>
+          <pattern id="hatchA6" x="0" y="0" width="16" height="16"
+            patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="16" stroke="#252530" strokeWidth="1.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#hatchA6)" />
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <L sz={28} gold>✦</L>
+      </div>
+      {/* Spinner overlay */}
+      <div style={{ position:'absolute', inset:0, background:'rgba(10,10,12,0.65)',
+        display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ position:'relative', width:44, height:44 }}>
+          <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:`2.5px solid ${BD}` }} />
+          <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:`2.5px solid transparent`,
+            borderTopColor:G, animation:'spin 1s linear infinite' }} />
+        </div>
+      </div>
+    </div>
+
+    <L sz={24} bold center>Generating Video...</L>
+    <L sz={13} dim center style={{ marginTop:6 }}>Creating your motion reel</L>
+
+    {/* Progress */}
+    <div style={{ width:'100%', marginTop:28, display:'flex', flexDirection:'column', gap:7 }}>
+      <div style={{ height:4, background:BD, borderRadius:2, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:0, background:G, borderRadius:2,
+          animation:'progvid 3s ease-out forwards' }} />
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between' }}>
+        <L sz={11} dim>Rendering frames</L>
+        <L sz={11} gold>42%</L>
+      </div>
+    </div>
+
+    {/* Steps */}
+    <div style={{ width:'100%', marginTop:24, display:'flex', flexDirection:'column', gap:13 }}>
+      <LoadStep label="Applying camera motion path" done />
+      <LoadStep label="Animating light reflections" done />
+      <LoadStep label="Rendering 120 frames" active />
+      <LoadStep label="Encoding for social media" />
+    </div>
+    <div style={{ flex:1 }} />
+    <L sz={11} dim center>Usually takes 30–60 seconds</L>
+  </div>
+);
+
+// ── A7: VIDEO RESULT ─────────────────────────────────────────────
+const A7 = () => (
+  <div style={{ width:390, height:780, background:BG, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    {/* Header */}
+    <div style={{ height:52, display:'flex', alignItems:'center', padding:'0 22px',
+      justifyContent:'space-between', flexShrink:0 }}>
+      <L sz={13} dim>← Back</L>
+      <Logo />
+      <L sz={13} style={{ color:G }}>↑ Share</L>
+    </div>
+
+    {/* Duration + format tag */}
+    <div style={{ display:'flex', gap:8, padding:'0 22px 10px', flexShrink:0 }}>
+      <div style={{ padding:'3px 10px', borderRadius:20, border:`1px solid ${BD}`, background:BG2 }}>
+        <L sz={11} dim>⬡  Video Reel</L>
+      </div>
+      <div style={{ padding:'3px 10px', borderRadius:20, border:`1px solid ${BD}`, background:BG2 }}>
+        <L sz={11} dim>0:08  ·  9:16</L>
+      </div>
+      <div style={{ padding:'3px 10px', borderRadius:20, border:`1px solid ${G+'44'}`, background:G+'0e' }}>
+        <L sz={11} gold>Ready</L>
+      </div>
+    </div>
+
+    {/* Video preview — 9:16 cropped within a fixed container */}
+    <div style={{ margin:'0 22px', position:'relative', borderRadius:14, overflow:'hidden',
+      background:BG2, border:`1px solid ${BD}`, flexShrink:0, height:320 }}>
+      <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+        <defs>
+          <pattern id="hatchA7" x="0" y="0" width="22" height="22"
+            patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="22" stroke="#252530" strokeWidth="1.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#hatchA7)" />
+      </svg>
+      {/* Play button */}
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:10 }}>
+        <div style={{ width:60, height:60, borderRadius:'50%',
+          background:G, display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow:`0 0 24px ${G}55` }}>
+          <L sz={22} style={{ color:'#000', marginLeft:4 }}>▶</L>
+        </div>
+        <L sz={12} dim>Tap to preview</L>
+      </div>
+      {/* Scrubber bar */}
+      <div style={{ position:'absolute', bottom:12, left:12, right:12, display:'flex', flexDirection:'column', gap:5 }}>
+        <div style={{ height:3, background:'rgba(255,255,255,0.15)', borderRadius:2 }}>
+          <div style={{ width:'35%', height:'100%', background:G, borderRadius:2 }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between' }}>
+          <L sz={10} dim>0:03</L>
+          <L sz={10} dim>0:08</L>
+        </div>
+      </div>
+      {/* Info overlay */}
+      <div style={{ position:'absolute', bottom:44, left:12, right:12,
+        background:BG2+'ee', border:`1px solid ${BD}`, borderRadius:10, padding:'7px 12px' }}>
+        <L sz={13} bold>LOYALTY PENDANT</L>
+        <div style={{ display:'flex', gap:8, marginTop:2 }}>
+          <L sz={10} dim>14K YG  ·  Micro Pavé</L>
+          <L sz={11} gold>$4,500</L>
+        </div>
+      </div>
+    </div>
+
+    <div style={{ flex:1 }} />
+
+    {/* Actions */}
+    <div style={{ padding:'12px 22px 28px', display:'flex', flexDirection:'column', gap:10 }}>
+      <Btn label="↓  Save Video" primary full h={52} />
+      <Btn label="+ New Shoot" full h={44} />
+    </div>
+  </div>
+);
+
+// ── B: SPLIT STUDIO ──────────────────────────────────────────────
+
+const B1 = () => (
+  <div style={{ width: 1100, height: 700, background: BG, display: 'flex' }}>
+    {/* Sidebar */}
+    <div style={{ width: 210, background: BG2, borderRight: `1px solid ${BD}`, display: 'flex', flexDirection: 'column', padding: '22px 0', flexShrink: 0 }}>
+      <div style={{ padding: '0 18px 18px' }}>
+        <Logo />
+      </div>
+      {[{ic:'◈',l:'New Shoot',s:'Active',active:true},{ic:'▤',l:'Library',s:'12 assets'},{ic:'◉',l:'Templates',s:'Presets'},{ic:'◎',l:'Scheduled',s:'Social posts'}]
+        .map(item => (
+        <div key={item.l} style={{ padding: '10px 18px', cursor: 'pointer',
+          background: item.active ? G + '15' : 'transparent',
+          borderLeft: `2px solid ${item.active ? G : 'transparent'}`,
+          display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <L sz={14} gold={item.active}>{item.ic}  {item.l}</L>
+          <L sz={11} dim>{item.s}</L>
+        </div>
+      ))}
+      <div style={{ flex: 1 }} />
+      <div style={{ padding: '14px 18px', borderTop: `1px solid ${BD}` }}>
+        <L sz={11} dim>CHAIN JEWELRY CO. ▾</L>
+      </div>
+    </div>
+
+    {/* Main */}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: `1px solid ${BD}`, overflow: 'hidden' }}>
+      {/* Step bar */}
+      <div style={{ height: 48, borderBottom: `1px solid ${BD}`, display: 'flex', alignItems: 'center', padding: '0 22px', gap: 20 }}>
+        {['Capture','Details','Theme','Generate'].map((s, i) => (
+          <React.Fragment key={s}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{ width: 20, height: 20, borderRadius: '50%',
+                background: i === 1 ? G : i < 1 ? G+'44' : BD,
+                display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <L sz={10} mono style={{ color: i <= 1 ? '#000':'#555' }}>{i < 1 ? '✓' : i+1}</L>
+              </div>
+              <L sz={13} gold={i===1} dim={i!==1}>{s}</L>
+            </div>
+            {i < 3 && <div style={{ width: 20, height: 1, background: BD }} />}
+          </React.Fragment>
+        ))}
+        <div style={{ flex: 1 }} />
+        <Btn label="Preview" h={30} style={{ padding: '0 14px' }} />
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, padding: '20px 24px', overflow: 'auto', display: 'flex', gap: 22 }}>
+        {/* Thumbnail column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          <L sz={10} dim mono>3 SHOTS</L>
+          {['uploads/topview.jpg','uploads/bottomleftview.jpg','uploads/bottomrightview.jpg'].map((src,i) => (
+            <div key={i} style={{ width: 76, height: 76, borderRadius: 7, overflow: 'hidden',
+              border: `1.5px solid ${i===0 ? G : BD}` }}>
+              <img src={src} style={{ width:'100%', height:'100%', objectFit:'cover', opacity: 0.75 }} alt="" />
+            </div>
+          ))}
+        </div>
+
+        {/* Form */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <L sz={22} bold>Piece Details</L>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <FSelect label="PIECE TYPE" value="Pendant" />
+            <FSelect label="METAL" value="14K Yellow Gold" />
+            <FSelect label="STONE SETTING" value="Micro Pavé" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FInput label="ENGRAVING / TEXT" placeholder="LOYALTY" />
+            <FInput label="PRICE TAG" placeholder="$4,500" />
+          </div>
+
+          {/* Diamond slider mockup */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <L sz={10} dim mono>DIAMOND WEIGHT</L>
+            <div style={{ height: 6, background: BD, borderRadius: 3, position: 'relative' }}>
+              <div style={{ position:'absolute', left:0, top:0, width:'38%', height:'100%', background: G, borderRadius: 3 }} />
+              <div style={{ position:'absolute', left:'38%', top:-5, width:14, height:14, borderRadius:'50%',
+                background: G, transform:'translateX(-50%)', border:`2px solid ${BG}` }} />
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between' }}>
+              <L sz={10} dim>0.5ct</L><L sz={11} gold>1.2ct selected</L><L sz={10} dim>5.0ct</L>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <L sz={10} dim mono>KARAT</L>
+            <div style={{ display: 'flex', gap: 7 }}>
+              {['10K','14K','18K','Platinum'].map((k,i) => <Pill key={k} label={k} active={i===1} small />)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ height: 54, borderTop:`1px solid ${BD}`, display:'flex', alignItems:'center', padding:'0 24px', gap:12 }}>
+        <Btn label="← Back" h={34} style={{ padding:'0 16px' }} />
+        <div style={{ flex:1 }} />
+        <Btn label="NEXT: CHOOSE THEME  →" primary h={38} style={{ padding:'0 22px' }} />
+      </div>
+    </div>
+
+    {/* Preview pane */}
+    <div style={{ width: 260, background: BG2, display:'flex', flexDirection:'column', padding:16, gap:14, flexShrink:0 }}>
+      <L sz={11} dim mono>LIVE PREVIEW</L>
+      <Box w="100%" h={220} dashed r={10} style={{ flexShrink:0 }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+          <L sz={28} gold>✦</L>
+          <L sz={11} dim center>AI preview updates{'\n'}as you fill in details</L>
+        </div>
+      </Box>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <L sz={10} dim mono>OUTPUT FORMAT</L>
+        {['Instagram Post  1:1','Story  9:16','Feed Banner  4:5'].map((f,i) => (
+          <div key={f} style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ width:14, height:14, borderRadius:'50%', border:`2px solid ${i===0 ? G : BD}`,
+              display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {i===0 && <div style={{ width:6, height:6, borderRadius:'50%', background: G }} />}
+            </div>
+            <L sz={12}>{f}</L>
+          </div>
+        ))}
+      </div>
+      <div style={{ flex:1 }} />
+      <Btn label="✦  GENERATE" primary full h={42} />
+      <Btn label="⬡  GENERATE VIDEO" full h={36} />
+    </div>
+  </div>
+);
+
+// ── C: CAPTURE-FIRST IMMERSIVE ──────────────────────────────────
+
+const C1 = () => (
+  <div style={{ width:390, height:780, background:'#0a0a0c', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ height:44, display:'flex', alignItems:'center', padding:'0 18px', justifyContent:'space-between' }}>
+      <L sz={11} dim>9:41</L>
+      <Logo />
+      <L sz={11} dim>100%</L>
+    </div>
+    {/* Piece chips */}
+    <div style={{ display:'flex', gap:9, padding:'6px 18px', overflowX:'hidden' }}>
+      {['Pendant','Ring','Chainz','Grills','Band'].map((p,i) => (
+        <div key={p} style={{ padding:'5px 14px', borderRadius:20, flexShrink:0,
+          background: i===0 ? G : BG2, border:`1px solid ${i===0 ? G : BD}` }}>
+          <L sz={13} style={{ color: i===0 ? '#000' : DIM }}>{p}</L>
+        </div>
+      ))}
+    </div>
+    {/* Photo grid */}
+    <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gridTemplateRows:'1.4fr 1fr',
+      gap:4, margin:'6px 18px', minHeight:0 }}>
+      <div style={{ gridColumn:'1/3', border:`2px dashed ${G}`, borderRadius:12, overflow:'hidden', position:'relative', minHeight:0 }}>
+        <img src="uploads/topview.jpg" style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.8 }} alt="top" />
+        <div style={{ position:'absolute', bottom:12, left:14 }}><L sz={15} bold>↑  TOP VIEW</L></div>
+        <div style={{ position:'absolute', top:10, right:10, width:30, height:30, borderRadius:'50%',
+          background: G, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <L sz={14} style={{ color:'#000' }}>✓</L>
+        </div>
+      </div>
+      <div style={{ border:`1.5px dashed ${BD}`, borderRadius:12, overflow:'hidden', position:'relative', minHeight:0 }}>
+        <img src="uploads/bottomleftview.jpg" style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.45 }} alt="left" />
+        <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4 }}>
+          <div style={{ width:28, height:28, borderRadius:'50%', border:`1.5px dashed ${DIM}`,
+            display:'flex', alignItems:'center', justifyContent:'center' }}><L sz={16} dim>+</L></div>
+          <L sz={11} dim>↖ LEFT</L>
+        </div>
+      </div>
+      <div style={{ border:`1.5px dashed ${BD}`, borderRadius:12, overflow:'hidden', position:'relative', minHeight:0 }}>
+        <img src="uploads/bottomrightview.jpg" style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.45 }} alt="right" />
+        <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4 }}>
+          <div style={{ width:28, height:28, borderRadius:'50%', border:`1.5px dashed ${DIM}`,
+            display:'flex', alignItems:'center', justifyContent:'center' }}><L sz={16} dim>+</L></div>
+          <L sz={11} dim>↗ RIGHT</L>
+        </div>
+      </div>
+    </div>
+    {/* Actions */}
+    <div style={{ padding:'12px 18px 28px', display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ display:'flex', gap:10 }}>
+        <div style={{ flex:1, height:48, border:`1.5px solid ${BD}`, borderRadius:10,
+          display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <L sz={13} dim>Camera Roll</L>
+        </div>
+        <div style={{ flex:1, height:48, background: G, borderRadius:10,
+          display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <L sz={14} bold style={{ color:'#000' }}>Take Photo →</L>
+        </div>
+      </div>
+      <L sz={11} dim center>1 of 3 photos captured</L>
+    </div>
+  </div>
+);
+
+const C2 = () => (
+  <div style={{ width:390, height:780, background:'#0a0a0c', display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+    {/* faint bg thumbnails */}
+    <div style={{ position:'absolute', inset:0, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', opacity:0.1, pointerEvents:'none' }}>
+      {['uploads/topview.jpg','uploads/bottomleftview.jpg','uploads/bottomrightview.jpg'].map((s,i) =>
+        <img key={i} src={s} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="" />)}
+    </div>
+    {/* Header */}
+    <div style={{ height:60, display:'flex', alignItems:'center', padding:'0 18px', justifyContent:'space-between', position:'relative', zIndex:1 }}>
+      <L sz={13} dim>3 shots  ✓</L>
+      <div style={{ display:'flex', gap:4 }}>
+        {[0,1,2].map(i => <div key={i} style={{ width:8, height:8, borderRadius:'50%', background: G }} />)}
+      </div>
+      <L sz={13} style={{ color: G }}>Retake</L>
+    </div>
+    <div style={{ flex:1, position:'relative', zIndex:1 }} />
+    {/* Bottom sheet */}
+    <div style={{ background: BG2, borderRadius:'20px 20px 0 0', padding:'14px 20px 32px',
+      border:`1px solid ${BD}`, borderBottom:'none', position:'relative', zIndex:1 }}>
+      <div style={{ width:36, height:4, borderRadius:2, background: BD, margin:'0 auto 14px' }} />
+      <L sz={22} bold>Add Details</L>
+      <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:11 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <FSelect label="METAL" value="14K Yellow Gold" />
+          <FInput label="PRICE" placeholder="$4,500" />
+        </div>
+        <FInput label="TEXT / ENGRAVING" placeholder="e.g. LOYALTY" />
+        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+          <L sz={10} dim mono>STONE SETTING</L>
+          <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+            {['Micro Pavé','Flooded','Baguette','Invisible'].map((s,i) =>
+              <Pill key={s} label={s} active={i===0} small />)}
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <L sz={11} dim>THEME:</L>
+          {[{c:'#0a0a0a',l:'Noir'},{c:'#1a1a2e',l:'Velvet'},{c:'#f8f5f0',l:'Marble'},{c:'#0d1b2a',l:'Ice'}].map((s,i) => (
+            <div key={s.l} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <div style={{ width:34, height:34, borderRadius:7, background:s.c, border:`2px solid ${i===0?G:BD}` }} />
+              <L sz={10} dim>{s.l}</L>
+            </div>
+          ))}
+        </div>
+        <div style={{ height:50, background: G, borderRadius:12,
+          display:'flex', alignItems:'center', justifyContent:'center', marginTop:4 }}>
+          <L sz={15} bold style={{ color:'#000' }}>✦  GENERATE STUDIO ASSET</L>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const C3 = () => (
+  <div style={{ width:390, height:780, background:'#0a0a0c', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ height:44, display:'flex', alignItems:'center', padding:'0 18px', justifyContent:'space-between' }}>
+      <L sz={13} dim>← New</L>
+      <Logo />
+      <L sz={13} style={{ color: G }}>Save</L>
+    </div>
+    {/* Generated result area */}
+    <div style={{ flex:1, margin:'0 18px', border:`1.5px solid ${BD}`, borderRadius:14, position:'relative',
+      overflow:'hidden', background: BG2, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+        <defs>
+          <pattern id="hatch" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="22" stroke="#252530" strokeWidth="1.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#hatch)" />
+      </svg>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:7, position:'relative', zIndex:1 }}>
+        <L sz={36} gold>✦</L>
+        <L sz={14} dim>Generated Studio Photo</L>
+        <L sz={11} dim>Noir  ·  Pendant  ·  14K YG</L>
+      </div>
+      {/* Info tag */}
+      <div style={{ position:'absolute', bottom:14, left:14, right:14,
+        background: BG2+'dd', border:`1px solid ${BD}`, borderRadius:10, padding:'8px 12px' }}>
+        <L sz={14} bold>LOYALTY PENDANT</L>
+        <div style={{ display:'flex', gap:10, marginTop:3 }}>
+          <L sz={11} dim>14K YG  ·  Micro Pavé  ·  1.2ct</L>
+          <L sz={12} gold>$4,500</L>
+        </div>
+      </div>
+    </div>
+    {/* Actions */}
+    <div style={{ padding:'12px 18px 28px', display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ display:'flex', gap:9 }}>
+        <Btn label="↓ Save" style={{ flex:1, height:42 }} />
+        <Btn label="↑ Share" style={{ flex:1, height:42 }} />
+        <Btn label="✎ Edit" style={{ flex:1, height:42 }} />
+      </div>
+      <div style={{ height:50, border:`1.5px solid ${G+'55'}`, borderRadius:12,
+        display:'flex', alignItems:'center', justifyContent:'center', gap:10, background: G+'0e' }}>
+        <L sz={15} gold>⬡  Generate Video Reel</L>
+      </div>
+    </div>
+  </div>
+);
+
+// ── D: PIPELINE COMMAND ─────────────────────────────────────────
+
+const PNode = ({ n, label, sub, done, active, children }) => (
+  <div style={{ display:'flex', flexDirection:'column', width:166, flexShrink:0,
+    border:`2px ${active ? 'solid' : done ? 'solid' : 'dashed'} ${active ? G : done ? G+'44' : BD}`,
+    borderRadius:10, background: active ? G+'0a' : BG2, padding:'12px 12px 14px', gap:8 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+      <div style={{ width:20, height:20, borderRadius:'50%', flexShrink:0,
+        background: active ? G : done ? G+'44' : BD,
+        display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <L sz={10} mono style={{ color: done||active ? '#111' : DIM }}>{done ? '✓' : n}</L>
+      </div>
+      <L sz={13} gold={active} bold={active}>{label}</L>
+    </div>
+    <L sz={11} dim>{sub}</L>
+    {children}
+  </div>
+);
+
+const Connector = ({ done }) => (
+  <div style={{ width:32, height:2, flexShrink:0, alignSelf:'center', marginTop:-16,
+    background: done ? G+'55' : BD }} />
+);
+
+const D1 = () => (
+  <div style={{ width:1100, height:500, background: BG, display:'flex', flexDirection:'column', padding:'28px 28px 24px', gap:20 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+      <Logo />
+      <div style={{ width:1, height:20, background: BD }} />
+      <L sz={14} dim>New Shoot</L>
+      <div style={{ flex:1 }} />
+      <Pill label="Pendant" active small />
+      <Btn label="+ New" h={30} style={{ padding:'0 14px' }} />
+    </div>
+
+    <div style={{ display:'flex', alignItems:'flex-start', gap:0, flex:1 }}>
+      <PNode n={1} label="Piece Type" sub="Category" done>
+        <Pill label="✓ Pendant" active small />
+      </PNode>
+      <Connector done />
+
+      <PNode n={2} label="Capture" sub="3 angle shots" done>
+        <div style={{ display:'flex', gap:4 }}>
+          {['uploads/topview.jpg','uploads/bottomleftview.jpg','uploads/bottomrightview.jpg'].map((src,i) => (
+            <div key={i} style={{ width:34, height:34, borderRadius:4, overflow:'hidden', border:`1.5px solid ${G+'44'}` }}>
+              <img src={src} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.65 }} alt="" />
+            </div>
+          ))}
+        </div>
+        <L sz={10} dim>3/3  ✓</L>
+      </PNode>
+      <Connector done />
+
+      <PNode n={3} label="Details" sub="Metal · setting · price" active>
+        <FSelect label="" value="14K Yellow Gold" />
+        <FSelect label="" value="Micro Pavé" />
+        <FInput label="" placeholder="Price: $4,500" />
+      </PNode>
+      <Connector />
+
+      <PNode n={4} label="Theme" sub="Visual aesthetic">
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          {['#0a0a0a','#1a1a2e','#f8f5f0','#0d1b2a'].map(c => (
+            <div key={c} style={{ width:26, height:26, borderRadius:5, background:c, border:`1px solid ${BD}` }} />
+          ))}
+        </div>
+      </PNode>
+      <Connector />
+
+      <PNode n={5} label="Generate" sub="AI renders output">
+        <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:2 }}>
+          <div style={{ height:26, background: G+'1a', border:`1px dashed ${G+'55'}`, borderRadius:6,
+            display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <L sz={11} dim>Studio Photo</L>
+          </div>
+          <div style={{ height:26, border:`1px dashed ${BD}`, borderRadius:6,
+            display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <L sz={11} dim>Video Reel</L>
+          </div>
+        </div>
+      </PNode>
+
+      <div style={{ flex:1 }} />
+
+      <div style={{ display:'flex', flexDirection:'column', gap:9, marginTop:6, alignSelf:'center' }}>
+        <Btn label="✦  GENERATE →" primary h={52} style={{ padding:'0 28px' }} />
+        <L sz={11} dim center>Complete steps 3 & 4 to unlock</L>
+      </div>
+    </div>
+
+    {/* Progress note */}
+    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px',
+      border:`1px solid ${BD}`, borderRadius:8, background: BG2 }}>
+      <div style={{ width:8, height:8, borderRadius:'50%', background: G, flexShrink:0 }} />
+      <L sz={12} dim>Step 3 of 5 active — fill in piece details to continue the pipeline</L>
+    </div>
+  </div>
+);
+
+// ── A1 DESKTOP ───────────────────────────────────────────────────
+const A1Desktop = () => {
+  const [style, setStyle] = React.useState(0);
+  const pieces = ['Pendant','Ring','Chainz','Grills','Band'];
+
+  return (
+    <div style={{ width:1200, height:780, background:BG, display:'flex', flexDirection:'column' }}>
+      {/* Top bar */}
+      <div style={{ height:64, borderBottom:`1px solid ${BD}`, display:'flex', alignItems:'center',
+        padding:'0 40px', justifyContent:'space-between', flexShrink:0 }}>
+        <Logo />
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          {['Piece & Capture','Details','Theme','Generate'].map((s,i) => (
+            <React.Fragment key={s}>
+              <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                <div style={{ width:22, height:22, borderRadius:'50%', flexShrink:0,
+                  background: i===0 ? G : BD,
+                  display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <L sz={10} style={{ color: i===0 ? '#000' : DIM }}>{i===0 ? '1' : i+1}</L>
+                </div>
+                <L sz={13} gold={i===0} dim={i!==0}>{s}</L>
+              </div>
+              {i < 3 && <div style={{ width:28, height:1, background:BD }} />}
+            </React.Fragment>
+          ))}
+        </div>
+        <Box w={32} h={32} r={16}><L sz={12} dim>✕</L></Box>
+      </div>
+
+      {/* Two-column body */}
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1.5fr',
+        minHeight:0, overflow:'hidden' }}>
+
+        {/* Left — Piece type + Choose Style */}
+        <div style={{ borderRight:`1px solid ${BD}`, padding:'32px 36px',
+          display:'flex', flexDirection:'column', gap:28, overflow:'hidden' }}>
+
+          {/* Choose Style */}
+          <div style={{ display:'flex', flexDirection:'column', gap:14, flex:1 }}>
+            <div>
+              <L sz={22} bold>Choose Style</L>
+              <L sz={13} dim style={{ display:'block', marginTop:5 }}>
+                Pick a visual theme — preview from real studio reels
+              </L>
+            </div>
+            <div style={{ display:'flex', gap:14, flex:1 }}>
+              {['Dark','Marble','Street','Velvet','Ice'].map((s,i) => (
+                <div key={s} onClick={() => setStyle(i)}
+                  style={{ flex:1, display:'flex', flexDirection:'column', gap:8, cursor:'pointer' }}>
+                  <div style={{ flex:1, minHeight:160, border:`2px solid ${style===i ? G : BD}`,
+                    borderRadius:12, background:BG2, position:'relative', overflow:'hidden' }}>
+                    <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }}>
+                      <defs>
+                        <pattern id={`dsc${i}`} x="0" y="0" width="14" height="14"
+                          patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                          <line x1="0" y1="0" x2="0" y2="14" stroke="#252530" strokeWidth="1.5"/>
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill={`url(#dsc${i})`} />
+                    </svg>
+                    <div style={{ position:'absolute', inset:0, display:'flex',
+                      alignItems:'center', justifyContent:'center' }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%',
+                        background: style===i ? G+'55' : BD+'99',
+                        display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <L sz={11} style={{ marginLeft:2, color: style===i ? G : DIM }}>▶</L>
+                      </div>
+                    </div>
+                    {style===i && <div style={{ position:'absolute', top:7, right:7,
+                      width:16, height:16, borderRadius:'50%', background:G,
+                      display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <L sz={9} style={{ color:'#000' }}>✓</L>
+                    </div>}
+                  </div>
+                  <L sz={12} gold={style===i} dim={style!==i} center>{s}</L>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right — Capture */}
+        <div style={{ padding:'32px 36px', display:'flex', flexDirection:'column', gap:20 }}>
+          <div>
+            <L sz={22} bold>Capture 3 Angles</L>
+            <L sz={13} dim style={{ display:'block', marginTop:5 }}>
+              Flat surface, even lighting. Click each zone to upload.
+            </L>
+          </div>
+          <div style={{ display:'flex', gap:20, flex:1, minHeight:0 }}>
+            {[
+              { src:'uploads/topview.jpg', label:'Top View', sub:'Directly overhead', active:true },
+              { src:'uploads/bottomleftview.jpg', label:'Left Angle', sub:'45° from left' },
+              { src:'uploads/bottomrightview.jpg', label:'Right Angle', sub:'45° from right' },
+            ].map((z,i) => (
+              <div key={z.label} style={{ flex:1, display:'flex', flexDirection:'column', gap:10, cursor:'pointer', minHeight:0 }}>
+                <div style={{ flex:1, border:`2px dashed ${z.active ? G : BD}`, borderRadius:16,
+                  overflow:'hidden', background:BG, position:'relative', minHeight:0 }}>
+                  <img src={z.src} style={{ width:'100%', height:'100%', objectFit:'cover',
+                    opacity: z.active ? 0.88 : 0.45 }} alt={z.label} />
+                  {z.active && <div style={{ position:'absolute', top:10, right:10, width:28, height:28,
+                    borderRadius:'50%', background:G, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <L sz={12} style={{ color:'#000' }}>✓</L>
+                  </div>}
+                  {!z.active && <div style={{ position:'absolute', inset:0, display:'flex',
+                    alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:44, height:44, borderRadius:'50%', border:`1.5px dashed ${DIM}`,
+                      display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <L sz={22} dim>+</L>
+                    </div>
+                  </div>}
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                  <L sz={14} bold={z.active} gold={z.active}>{z.label}</L>
+                  <L sz={12} dim>{z.sub}</L>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px',
+            border:`1px solid ${BD}`, borderRadius:10, background:BG2, flexShrink:0 }}>
+            <div style={{ width:8, height:8, borderRadius:'50%', background:G, flexShrink:0 }} />
+            <L sz={13} dim>Tip: use a plain surface and natural light for best AI results</L>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ height:68, borderTop:`1px solid ${BD}`, display:'flex', alignItems:'center',
+        padding:'0 40px', justifyContent:'space-between', flexShrink:0 }}>
+        <L sz={13} dim>Step 1 of 4</L>
+        <div style={{ display:'flex', gap:6 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{ width: i===0 ? 20 : 8, height:8, borderRadius:4,
+              background: i===0 ? G : BD }} />
+          ))}
+        </div>
+        <Btn label="NEXT  →" primary h={44} style={{ padding:'0 32px' }} />
+      </div>
+    </div>
+  );
+};
+
+// ── Root ─────────────────────────────────────────────────────────
+const App = () => (
+  <DesignCanvas title="VVS Studio — Layout Explorations">
+    <DCSection id="a" title="A — Linear Wizard  ·  Focused step-by-step mobile flow">
+      <DCArtboard id="a1d" label="01  Piece + Capture — Desktop" width={1200} height={780}><A1Desktop /></DCArtboard>
+      <DCArtboard id="a1" label="01  Piece + Capture — Mobile" width={390} height={780}><A1 /></DCArtboard>
+      <DCArtboard id="a2" label="02  Details Form" width={390} height={780}><A2 /></DCArtboard>
+      <DCArtboard id="a3" label="03  Theme + Format" width={390} height={780}><A3 /></DCArtboard>
+      <DCArtboard id="a4" label="04  Generating Image..." width={390} height={780}><A4 /></DCArtboard>
+      <DCArtboard id="a5" label="05  Result" width={390} height={780}><A5 /></DCArtboard>
+      <DCArtboard id="a6" label="06  Generating Video..." width={390} height={780}><A6 /></DCArtboard>
+      <DCArtboard id="a7" label="07  Video Result" width={390} height={780}><A7 /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="b" title="B — Split Studio Panel  ·  Desktop dashboard with live preview">
+      <DCArtboard id="b1" label="Studio — Details Step" width={1100} height={700}><B1 /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="c" title="C — Capture-First Immersive  ·  App-native, photos are the hero">
+      <DCArtboard id="c1" label="01  Scan Angles" width={390} height={780}><C1 /></DCArtboard>
+      <DCArtboard id="c2" label="02  Details Sheet" width={390} height={780}><C2 /></DCArtboard>
+      <DCArtboard id="c3" label="03  Result + Actions" width={390} height={780}><C3 /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="d" title="D — Pipeline Command  ·  Visual node graph, power-user workflow">
+      <DCArtboard id="d1" label="Full Pipeline View" width={1100} height={500}><D1 /></DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
