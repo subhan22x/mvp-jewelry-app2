@@ -1,20 +1,170 @@
 {
   "role": "image_generation_request",
   "version": "1.1",
-  "purpose": "Create an ultra-realistic product photo of a bold slanted name pendant with invisible-set baguette interiors.",
+  "purpose": "Create an ultra-realistic product photo of a customized diamond name pendant, inheriting visual style from a provided reference pendant while changing user-specified variables.",
   "style_control": {
     "inherit_from_source": true,
     "deviation_strength": {{DEVIATION}},
-    "notes": "Do not change the core style; allow small controlled variations."
+    "notes": "0 = copy style exactly, 1 = free reinterpretation. Keep metal finish, pave density, borders, and overall vibe consistent with the source image."
   },
+
+  "source_images": {
+    "pendant_reference": "{{PENDANT_REF}}",
+    "bail_reference": "{{BAIL_REF}}"
+  },
+
   "pendant": {
-    "text": { "content": "{{TEXT}}", "case": "as-is" },
-    "caps_policy": "{{CAPS_POLICY}}",
-    "bubble_outline": {{BUBBLE_OUTLINE}},
-    "emblem": "{{EMBLEM}}",
-    "colorway": "{{COLOR_SCHEME}}",
-    "setting": "invisible_set_baguette"
+    "object_type": "name_pendant",
+    "materials": {
+      "base_metal": "gold",
+      "gold_plating_rule": "All visible metal surfaces are gold but serve primarily as substrate for diamonds.",
+      "pave_rule": "Design elements should be diamond-set pave; avoid large bare gold fields unless they are thin outlines, prongs, or structural backs.",
+      "stone": "round brilliant diamonds",
+      "stone_density": "match source image"
+    },
+
+    "text": {
+      "Primary TEXT": {{LINES_ARRAY}},
+      "max_lines": 2,
+      "font": {
+        "preferred_family": "Great Vibes",
+        "fallback_policy": "If no font is provided, replicate the lettering style from the source pendant (stroke thickness, slant, terminals, swashes).",
+        "kerning_tracking": "optical to keep strokes continuous",
+        "thickness_match": "match source",
+        "outline": "diamond pave with gold rim if present in source"
+      },
+      "physical_rules": {
+        "single_piece_rule": "All letters must connect so the pendant is one rigid piece; add tasteful connectors where needed.",
+        "centerline_continuity": true,
+        "legibility_priority": "high"
+      }
+    },
+
+    "Emblem": {
+      "type": "emblem",
+      "emblem_shape": "{{EMBLEM}}",
+      "emblem_reference_usage": "Match the second image's emblem style; preserve pave pattern and edging.",
+      "placement": "top center of pendant",
+      "proportion_to_text": { "min_ratio": 0.15, "max_ratio": 0.30 },
+      "color_sync": "match pendant metal/stone scheme",
+      "physics": {
+        "attach_at_center_of_mass": true,
+        "attach_using_a_solid_integrated_part_of_the_pendant": true,
+        "hang_axis": "vertical",
+        "structural_thickness": "realistic for support"
+      },
+      "supports": {
+        "type": "twin support struts",
+        "count": 2,
+        "geometry": "short, sturdy, close together and evenly spaced on the centerline",
+        "note": "These are structural bridges, not gemstone-setting prongs."
+      }
+    },
+
+    "colorway": {
+      "scheme_type": "{{SCHEME_TYPE}}",
+      "metals": {
+        "primary": "{{PRIMARY_METAL}}",
+        "secondary": "{{SECONDARY_METAL}}"
+      },
+      "two_tone_mapping_rule": {
+        "default": "Top-facing letter surfaces and emblem faces in white gold beneath diamonds; rims/edges/backs in rose gold.",
+        "consistency": "Apply mapping consistently across all letters and emblem.",
+        "override_allowed": false
+      }
+    }
   },
-  "background": "suede_matte_black",
-  "render_view": "{{VIEW}}"
+
+  "text_bubble_outline": {
+    "enabled": {{BUBBLE_OUTLINE_ENABLED}},
+    "concept_aliases": ["heavy outline", "perimeter rim", "halo border", "bubble outline"],
+    "silhouette": "continuous unified contour around the entire wordmark; merges letters into one plate",
+    "offset_ratio": 0.18,
+    "offset_ratio_range": [0.16, 0.24],
+    "profile": {
+      "edge_roundness": "soft-rounded",
+      "gold_lip_mm": 0.6,
+      "height_vs_face": "rim height equal to or slightly above letter face"
+    },
+    "pave": {
+      "rows": 2,
+      "stone": "round brilliant micro-pave",
+      "density": "match source; no bald patches"
+    },
+    "avoid": [
+      "thin hairline outlines",
+      "gaps between rim and letters",
+      "floating strokes not fused to the rim"
+    ]
+  },
+
+  "layout_constraints": {
+    "composition": "bail centered over name; pendant horizontally balanced",
+    "margins": "leave comfortable breathing room within frame",
+    "silhouette_cleanliness": "no floating islands; continuous outline"
+  },
+
+  "realism": {
+    "micro_details": [
+      "prongs and bead-set diamonds visible",
+      "subtle variances in stone reflection and scintillation",
+      "fine hairline scratches in gold only where realistic (very minimal)"
+    ],
+    "defects_to_avoid": [
+      "floating letters",
+      "misaligned bail",
+      "bare gold design fields without pave (except trims/prongs/backs)"
+    ]
+  },
+
+  "background": {
+    "type": "textured",
+    "name": "suede_matte_black",
+    "hex": "#000000",
+    "texture": {
+      "description": "fine suede nap, matte, soft directional grain",
+      "roughness": 0.95,
+      "reflectance": 0.02
+    }
+  },
+
+  "rendering": {
+    "view": "front_three_quarter",
+    "image_size_px": 1536,
+    "format": "png",
+    "crop": "include full pendant and bail with clean margins",
+    "shadow": "subtle studio on suede surface",
+    "capture": "ultra_realistic_photo",
+    "lighting": {
+      "style": "studio-ultra-real",
+      "key_light": {
+        "position": "top-right",
+        "elevation_deg": 40,
+        "azimuth_deg": 45,
+        "hardness": "semi-hard",
+        "intensity": 1.0,
+        "notes": "angled highlights across pave; allow a few crisp star glints on stones/rim"
+      },
+      "fill_light": {
+        "position": "left-lower",
+        "intensity": 0.2,
+        "hardness": "soft",
+        "color_temp_K": 5600
+      },
+      "ambient": 0.05,
+      "back_rim": { "enabled": false }
+    }
+  },
+
+  "output": {
+    "return_format": "single image",
+    "color_profile": "sRGB",
+    "notes": "Final looks like a commercial jewelry photo on matte suede black with angled top-right key light."
+  },
+
+  "failure_modes_and_fixes": [
+    { "if": "letters are not connected", "then": "add discreet connectors while preserving style." },
+    { "if": "bail not centered or too large/small", "then": "reposition to top center and resize within 15-30% of main text height." },
+    { "if": "large bare gold patches appear", "then": "apply diamond pave consistent with source; keep gold as rim/prongs/back only." }
+  ]
 }

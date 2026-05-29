@@ -4,6 +4,8 @@ This file is for coding agents (and humans designing changes). It explains the a
 
 The product itself is documented in `README.md`. Read that first.
 
+The SaaS transition plan is documented in `SAAS_PRODUCT_MAP.md`. Use `Account` as the tenant name in new multi-tenant work; do not introduce parallel terms like workspace or tenant in code unless deliberately refactoring this decision.
+
 ## Mental model
 
 The system has four editable surfaces, in increasing volatility:
@@ -171,6 +173,8 @@ If you add a new placeholder, update `builder.ts` and every template that uses i
 ## What the API stores
 
 `Request` rows store the user's choices. `Result` rows store the **exact prompt** sent for that variant alongside the image URL — this matters because prompt iteration is the main game; you need to see what was sent to understand what came back. Don't drop prompt persistence.
+
+`VideoGeneration` rows store every Seedance video attempt. Customer video generation uses the high-quality result image and `VIDEO_ACCESS_CODE`; owner/admin generation starts from a specific `Result` image through `/api/owner/video-jobs` and uses the owner session instead. Completed videos are downloaded into `GENERATED_IMAGE_DIR`, served as `/generated/...`, and stored in `videoUrl`; the original Wavespeed-hosted URL is stored in `remoteVideoUrl`.
 
 ## Things not to do
 
