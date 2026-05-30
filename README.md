@@ -21,10 +21,9 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 
 ## Setup
 
-All commands run from inside this folder:
+All commands run from the repository root:
 
 ```bash
-cd mvp-jewelry-app
 npm install
 ```
 
@@ -92,7 +91,6 @@ The repo includes `render.yaml` for a quick Render deploy using SQLite plus a pe
 Render settings:
 
 ```bash
-Root directory: mvp-jewelry-app
 Build command: npm ci && npm run prisma:generate && npm run build
 Start command: npm run start
 Persistent disk mount: /var/data

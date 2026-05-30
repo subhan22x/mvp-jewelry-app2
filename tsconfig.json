@@ -14,12 +14,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "@/lib/styles/*": [
-        "./src/lib/styles/*"
-      ],
-      "@/server/*": [
-        "./src/server/*"
       ]
     },
     "resolveJsonModule": true,

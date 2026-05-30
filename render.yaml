@@ -3,7 +3,6 @@ services:
     name: mvp-jewelry-app
     runtime: node
     plan: starter
-    rootDir: mvp-jewelry-app
     buildCommand: npm ci && npm run prisma:generate && npm run build
     startCommand: npm run start
     envVars:

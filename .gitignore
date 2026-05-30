@@ -1,39 +1,24 @@
-# Dependencies
 node_modules/
-
-# Env / secrets
-.env
-.env.*
+.next/
+dist/
+build/
+.codex
+.codex/
+owner-frontend-for-stitch.md
+.env*
 !.env.example
-
-# Local databases
+.vercel/
+.DS_Store
 *.db
 *.db-journal
 *.sqlite
 *.sqlite3
+public/generated/*
+!public/generated/.gitkeep
 
-# Build output
-.next/
-out/
-dist/
-build/
-
-# Logs
+test-results/
+playwright-report/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Editor / OS
-.DS_Store
-.vscode/
-.idea/
-*.swp
-
-# Temp / scratch
 temp.txt
 temp_check.py
 *.tmp
-
-# TypeScript
-*.tsbuildinfo

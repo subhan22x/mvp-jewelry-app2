@@ -2,7 +2,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$ROOT_DIR/mvp-jewelry-app"
 
 PORT="${PORT:-3000}"
 RESET_BUILD="${RESET_BUILD:-0}"
@@ -64,12 +63,7 @@ warn_if_port_is_busy() {
   fi
 }
 
-if [ ! -d "$APP_DIR" ]; then
-  printf '[run] error: expected app directory at %s\n' "$APP_DIR" >&2
-  exit 1
-fi
-
-cd "$APP_DIR"
+cd "$ROOT_DIR"
 
 if [ "$SKIP_INSTALL" != "1" ] && [ ! -d node_modules ]; then
   log 'node_modules not found, running npm install'
