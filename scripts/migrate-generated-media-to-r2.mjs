@@ -2,9 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import mime from "mime";
 import { Client } from "pg";
-import { PrismaClient } from "@prisma/client";
 import { loadEnvLocal } from "./env-local.mjs";
-import { getSqliteSourceUrl } from "./sqlite-source.mjs";
+import { createSqliteClient } from "./sqlite-client.mjs";
 import { getR2Config, uploadToR2 } from "../src/lib/storage/r2.ts";
 
 const envLocal = loadEnvLocal();
@@ -69,9 +68,7 @@ async function uploadGeneratedFiles(fileNames) {
 }
 
 async function updateSqlite(urlByFileName) {
-  const prisma = new PrismaClient({
-    datasources: { db: { url: getSqliteSourceUrl() } }
-  });
+  const prisma = await createSqliteClient();
 
   const counts = {
     Result: 0,

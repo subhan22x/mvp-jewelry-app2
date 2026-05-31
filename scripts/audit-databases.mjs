@@ -1,6 +1,6 @@
 import { Client } from "pg";
-import { PrismaClient } from "@prisma/client";
 import { loadEnvLocal } from "./env-local.mjs";
+import { createSqliteClient } from "./sqlite-client.mjs";
 import { getSqliteSourceUrl } from "./sqlite-source.mjs";
 
 const TABLES = [
@@ -25,9 +25,7 @@ const TABLES = [
   ["VvsStudioVideoGeneration", "vvsStudioVideoGeneration"],
 ];
 
-const sqlite = new PrismaClient({
-  datasources: { db: { url: getSqliteSourceUrl() } }
-});
+const sqlite = await createSqliteClient();
 
 const sqliteCounts = new Map();
 console.log(`SQLite source: ${getSqliteSourceUrl()}`);
@@ -66,4 +64,3 @@ try {
 } finally {
   await pg.end();
 }
-

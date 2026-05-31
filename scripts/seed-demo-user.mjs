@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { loadEnvLocal } from "./env-local.mjs";
 
+Object.assign(process.env, loadEnvLocal());
 const prisma = new PrismaClient();
 
 try {

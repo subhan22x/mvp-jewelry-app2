@@ -1,6 +1,6 @@
 import { Client } from "pg";
-import { PrismaClient } from "@prisma/client";
 import { loadEnvLocal } from "./env-local.mjs";
+import { createSqliteClient } from "./sqlite-client.mjs";
 import { getSqliteSourceUrl } from "./sqlite-source.mjs";
 
 const envLocal = loadEnvLocal();
@@ -18,9 +18,7 @@ if (postgresUrl.includes("[YOUR-PASSWORD]")) {
   process.exit(1);
 }
 
-const sqlite = new PrismaClient({
-  datasources: { db: { url: getSqliteSourceUrl() } }
-});
+const sqlite = await createSqliteClient();
 
 const pg = new Client({
   connectionString: postgresUrl,
