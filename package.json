@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "supabase:push": "node scripts/push-supabase-schema.mjs",
     "supabase:migrate-metadata": "node scripts/migrate-sqlite-to-supabase.mjs",
+    "supabase:audit": "node scripts/audit-databases.mjs",
     "r2:migrate-generated": "node --experimental-strip-types scripts/migrate-generated-media-to-r2.mjs",
     "db:seed": "node scripts/seed-demo-user.mjs"
   },
