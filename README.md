@@ -152,6 +152,7 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | `npm run db:seed`         | Seed the `demo` user                                  |
 | `npm run supabase:push`   | Push the Postgres schema to Supabase using `.env.local` |
 | `npm run supabase:migrate-metadata` | Copy SQLite metadata rows to Supabase/Postgres |
+| `npm run supabase:audit`  | Compare canonical SQLite and Supabase/Postgres table counts |
 | `npm run r2:migrate-generated` | Upload local generated media to R2 and rewrite matching SQLite/Supabase URLs |
 | `npm run styles`          | Manage `data/pendant-styles.json` via script          |
 

@@ -22,11 +22,26 @@ This repo currently supports the early Supabase testing path with:
 ```bash
 npm run supabase:push
 npm run supabase:migrate-metadata
+npm run supabase:audit
 ```
 
 `supabase:push` creates/updates the schema from `prisma/schema.postgres.prisma`.
 
-`supabase:migrate-metadata` copies SQLite metadata rows into Supabase/Postgres. It does not upload generated media to R2.
+`supabase:migrate-metadata` copies SQLite metadata rows into Supabase/Postgres in dependency order, including revisions, reviews, and VVS Studio rows. The copy runs in a transaction and verifies every migrated source key before committing. It does not upload generated media to R2.
+
+`supabase:audit` compares table row counts between the canonical local SQLite source and Supabase/Postgres. By default, migration scripts read SQLite from `prisma/dev.db`. Override that only when needed:
+
+```env
+SQLITE_SOURCE_DATABASE_URL="file:/absolute/path/to/source.db"
+```
+
+The clean Postgres baseline SQL generated from the current schema lives at:
+
+```text
+prisma/postgres-baseline/0001_initial.sql
+```
+
+Use the baseline for a fresh production Supabase project. `supabase:push` remains useful while iterating against an early development project.
 
 After R2 is configured, run:
 
@@ -44,6 +59,20 @@ The preferred production path is:
 4. Apply it to Supabase.
 5. Seed the demo account/admin.
 6. Use future migrations normally from there.
+
+## Runtime Switch Checklist
+
+The schema sync and metadata copy do not automatically switch the running app from SQLite to Postgres. Keep that as a separate reviewed change:
+
+1. Confirm `npm run supabase:audit` reports matching counts.
+2. Archive the SQLite source before changing runtime configuration.
+3. Make `prisma/schema.prisma` use the Postgres datasource and keep a separate SQLite schema only for archived-data migration utilities.
+4. Regenerate Prisma Client from the Postgres runtime schema.
+5. Run the app locally with Supabase `DATABASE_URL` and `DIRECT_URL`.
+6. Verify onboarding, profile editing, collections, reviews, quote requests, revisions, and VVS Studio persistence.
+7. Deploy with Postgres environment variables and remove SQLite disk assumptions from the production start command.
+
+Do not combine the runtime switch with destructive cleanup of local SQLite files. Keep the archived source until production verification is complete.
 
 ## Supabase Environment Variables
 
