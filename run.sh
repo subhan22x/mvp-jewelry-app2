@@ -95,8 +95,7 @@ log 'Generating Prisma client'
 npm run prisma:generate
 
 if [ "$SKIP_MIGRATE" != "1" ]; then
-  log 'Applying Prisma migrations'
-  npx prisma migrate deploy
+  log 'Skipping automatic schema migration; run npm run supabase:push after schema changes'
 fi
 
 if [ "$SKIP_SEED" != "1" ]; then

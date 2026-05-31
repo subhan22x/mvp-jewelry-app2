@@ -47,11 +47,11 @@ GEMINI_API_KEY=your_key_here
 # R2_PUBLIC_BASE_URL=https://media.example.com
 ```
 
-Initialize the database (SQLite, on disk at `prisma/dev.db`):
+Configure Supabase Postgres in `.env.local`, then initialize the database:
 
 ```bash
 npm run prisma:generate
-npm run prisma:migrate
+npm run supabase:push
 npm run db:seed   # creates the demo user
 ```
 
@@ -86,7 +86,7 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 
 ## Render deployment
 
-The repo includes `render.yaml` for a quick Render deploy using SQLite plus a persistent disk. This is the lowest-friction MVP setup and keeps generated images/videos metadata durable across deploys.
+The repo includes `render.yaml` for a Render Node deployment using Supabase Postgres plus a persistent disk fallback for generated media. Configure R2 to store generated media outside the app server.
 
 Render settings:
 
@@ -99,7 +99,8 @@ Persistent disk mount: /var/data
 Required Render environment variables:
 
 ```bash
-DATABASE_URL=file:/var/data/dev.db
+DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://...
 GENERATED_IMAGE_DIR=/var/data/generated
 GOOGLE_API_KEY=...
 WAVESPEED_API_KEY=...
@@ -112,7 +113,7 @@ APP_BASE_URL=https://your-render-service.onrender.com
 
 Generated files are served through `/generated/:file`, so `GENERATED_IMAGE_DIR` can point at Render's persistent disk instead of `public/generated`.
 
-For a larger production setup, migrate from SQLite to Postgres and move generated files to Cloudflare R2. The Render disk setup is intentionally the quick MVP path.
+Cloudflare R2 is the preferred production media store. The Render disk remains a fallback while the remaining local-write paths are hardened.
 
 ## Environment variables
 
@@ -142,13 +143,13 @@ For a larger production setup, migrate from SQLite to Postgres and move generate
 | ------------------------- | ----------------------------------------------------- |
 | `npm run dev`             | Next.js dev server                                    |
 | `npm run build`           | Next.js production build                              |
-| `npm run start`           | Run migrations, seed demo user, and start production  |
+| `npm run start`           | Seed demo user and start the production server        |
 | `npm run start:next`      | Run Next.js production server without migration/seed  |
 | `npm run start:render`    | Alias for `npm run start`                             |
 | `npm test`                | Vitest unit tests                                     |
 | `npm run test:e2e`        | Playwright end-to-end tests (requires dev server)     |
 | `npm run prisma:generate` | Generate Prisma client                                |
-| `npm run prisma:migrate`  | Run migrations (`prisma migrate dev`)                 |
+| `npm run prisma:migrate`  | Push the current Postgres schema to Supabase           |
 | `npm run db:seed`         | Seed the `demo` user                                  |
 | `npm run supabase:push`   | Push the Postgres schema to Supabase using `.env.local` |
 | `npm run supabase:migrate-metadata` | Copy SQLite metadata rows to Supabase/Postgres |
