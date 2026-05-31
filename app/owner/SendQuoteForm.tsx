@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 type Props = {
   quoteId: string;
-  status: string;
   quotedPriceCents: number | null;
   quoteNotes: string | null;
   estimatedDelivery: string | null;
@@ -13,6 +12,7 @@ type Props = {
   quoteMaterialKarat: string | null;
   quoteStoneType: string | null;
   imageUrl: string | null;
+  customerPhone: string;
   customerDetails: Array<{ label: string; value: string | null | undefined }>;
   designDetails: Array<{ label: string; value: string | null | undefined }>;
 };
@@ -60,9 +60,43 @@ function deliveryOptionFor(value: string | null) {
   return DELIVERY_OPTIONS.some(option => option === value) ? value : "custom";
 }
 
+function optionLabel<T extends ReadonlyArray<{ value: string; label: string }>>(options: T, value: string) {
+  return options.find(option => option.value === value)?.label ?? value;
+}
+
+function buildQuoteMessage({
+  price,
+  estimatedDelivery,
+  material,
+  materialKarat,
+  stoneType,
+  notes,
+}: {
+  price: string;
+  estimatedDelivery: string;
+  material: string;
+  materialKarat: string;
+  stoneType: string;
+  notes: string;
+}) {
+  const materialLabel = material
+    ? `${material === "gold" && materialKarat ? `${materialKarat.toUpperCase()} ` : ""}${optionLabel(MATERIAL_OPTIONS, material)}`
+    : "";
+  const lines = [
+    "Your custom jewelry quote is ready.",
+    "",
+    `Price: $${Number.parseFloat(price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    estimatedDelivery ? `Estimated delivery: ${estimatedDelivery}` : "",
+    materialLabel ? `Material: ${materialLabel}` : "",
+    stoneType ? `Stone: ${optionLabel(STONE_OPTIONS, stoneType)}` : "",
+    notes.trim() ? `Message: ${notes.trim()}` : "",
+  ].filter(Boolean);
+
+  return lines.join("\n");
+}
+
 export default function SendQuoteForm({
   quoteId,
-  status,
   quotedPriceCents,
   quoteNotes,
   estimatedDelivery,
@@ -70,11 +104,13 @@ export default function SendQuoteForm({
   quoteMaterialKarat,
   quoteStoneType,
   imageUrl,
+  customerPhone,
   customerDetails,
   designDetails
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [price, setPrice] = useState(centsToDollars(quotedPriceCents));
   const [notes, setNotes] = useState(quoteNotes ?? "");
   const [deliveryOption, setDeliveryOption] = useState(deliveryOptionFor(estimatedDelivery));
@@ -83,8 +119,46 @@ export default function SendQuoteForm({
   const [materialKarat, setMaterialKarat] = useState(quoteMaterialKarat ?? "");
   const [stoneType, setStoneType] = useState(quoteStoneType ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(status === "sent");
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  function quoteMessage() {
+    return buildQuoteMessage({
+      price,
+      estimatedDelivery: deliveryOption === "custom" ? customDelivery.trim() : deliveryOption,
+      material,
+      materialKarat,
+      stoneType,
+      notes,
+    });
+  }
+
+  async function copyMessage() {
+    try {
+      await navigator.clipboard.writeText(quoteMessage());
+      setShareFeedback("Message copied.");
+    } catch {
+      setShareFeedback("Unable to copy automatically. Use Share instead.");
+    }
+  }
+
+  async function shareMessage() {
+    if (!navigator.share) {
+      setShareFeedback("Native sharing is not available on this device. Copy the message instead.");
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: "Customer quote",
+        text: quoteMessage(),
+      });
+      setShareFeedback("Share sheet opened.");
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setShareFeedback("Unable to open the share sheet. Copy the message instead.");
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,8 +188,9 @@ export default function SendQuoteForm({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error ?? "Unable to send quote.");
-      setSuccess(true);
       setOpen(false);
+      setShareFeedback(null);
+      setShareOpen(true);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to send quote.");
@@ -129,13 +204,9 @@ export default function SendQuoteForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex h-14 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition ${
-          success
-            ? "bg-emerald-600/90 hover:bg-emerald-500"
-            : "bg-[#3B82F6] shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:bg-blue-400"
-        }`}
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-[0_0_25px_rgba(59,130,246,0.35)] transition hover:bg-blue-400"
       >
-        {success ? "Quote sent" : "Send Quote"}
+        Send Quote
       </button>
 
       {open && (
@@ -290,6 +361,61 @@ export default function SendQuoteForm({
               {submitting ? "saving..." : "Send to Customer"}
             </button>
           </form>
+        </div>
+      )}
+
+      {shareOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Share quote"
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/75 p-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="w-full max-w-md rounded-3xl border border-[#D1B873]/25 bg-[#17191F] p-5 text-[#e1e2ec] shadow-[0_28px_80px_rgba(0,0,0,0.65)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#D1B873]">Quote saved</p>
+                <h2 className="mt-2 text-2xl font-bold text-white">Share with customer</h2>
+                <p className="mt-1 text-sm text-[#c2c6d6]">
+                  Send the prepared quote message to {customerPhone || "the customer"}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareOpen(false)}
+                className="rounded-full border border-white/10 bg-black/35 px-3 py-1 text-sm text-white/75 hover:border-white/30"
+              >
+                close
+              </button>
+            </div>
+
+            <pre className="mt-4 max-h-52 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/35 p-4 font-sans text-sm leading-6 text-white/80">
+              {quoteMessage()}
+            </pre>
+
+            {shareFeedback && (
+              <div className="mt-3 rounded-2xl border border-[#D1B873]/25 bg-[#D1B873]/10 px-4 py-3 text-sm text-[#f3d98f]">
+                {shareFeedback}
+              </div>
+            )}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={copyMessage}
+                className="rounded-2xl border border-[#D1B873]/30 bg-black/35 px-5 py-3 text-sm font-semibold text-[#f3d98f] transition hover:bg-black/55"
+              >
+                Copy Message
+              </button>
+              <button
+                type="button"
+                onClick={shareMessage}
+                className="rounded-2xl bg-[#D1B873] px-5 py-3 text-sm font-semibold text-[#17120a] transition hover:bg-[#e6cb82]"
+              >
+                Share
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
