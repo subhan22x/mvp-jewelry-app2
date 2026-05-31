@@ -342,7 +342,6 @@ function GenerationCard({ row }: { row: GenerationRow }) {
           {quote ? (
             <SendQuoteForm
               quoteId={quote.id}
-              status={quote.status}
               quotedPriceCents={quote.quotedPriceCents}
               quoteNotes={quote.quoteNotes}
               estimatedDelivery={quote.estimatedDelivery}
@@ -350,6 +349,7 @@ function GenerationCard({ row }: { row: GenerationRow }) {
               quoteMaterialKarat={quote.quoteMaterialKarat ?? quote.plainKarat ?? row.request.plainKarat}
               quoteStoneType={quote.quoteStoneType ?? quoteStoneFromSelection(quote.stoneType ?? row.request.stoneType)}
               imageUrl={row.imageUrl}
+              customerPhone={quote.customerPhone}
               customerDetails={reviewDetails?.customerDetails ?? []}
               designDetails={reviewDetails?.designDetails ?? []}
             />

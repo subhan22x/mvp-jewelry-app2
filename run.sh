@@ -19,6 +19,20 @@ warn() {
   printf '[run] warning: %s\n' "$*" >&2
 }
 
+is_port_busy() {
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1
+    return
+  fi
+
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn "sport = :$PORT" 2>/dev/null | tail -n +2 | grep -q .
+    return
+  fi
+
+  return 1
+}
+
 has_image_api_key() {
   if [ -n "${GOOGLE_API_KEY:-}" ] || [ -n "${GEMINI_API_KEY:-}" ] || [ -n "${IMAGE_API_KEY:-}" ]; then
     return 0
@@ -53,17 +67,17 @@ kill_port_if_requested() {
   kill $pids
 }
 
-warn_if_port_is_busy() {
-  if ! command -v lsof >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "Port $PORT is already in use. Stop the old server, run KILL_PORT=1 ./run.sh, or choose another port with PORT=3001 ./run.sh."
+fail_if_port_is_busy() {
+  if is_port_busy; then
+    printf '[run] error: port %s is already in use. Stop the old server, run KILL_PORT=1 ./run.sh, or choose another port with PORT=3001 ./run.sh.\n' "$PORT" >&2
+    exit 1
   fi
 }
 
 cd "$ROOT_DIR"
+
+kill_port_if_requested
+fail_if_port_is_busy
 
 if [ "$SKIP_INSTALL" != "1" ] && [ ! -d node_modules ]; then
   log 'node_modules not found, running npm install'
@@ -93,9 +107,6 @@ fi
 if ! has_image_api_key; then
   warn 'No Google/Gemini image API key was found in the shell, .env.local, or .env. Image generation will fail until one is configured.'
 fi
-
-kill_port_if_requested
-warn_if_port_is_busy
 
 studio_pid=''
 cleanup() {
