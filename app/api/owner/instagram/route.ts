@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
 function cleanHandle(value: string | null) {
   return value?.replace(/^@+/, "").trim().toLowerCase() ?? "";
@@ -10,7 +10,7 @@ function isValidInstagramHandle(value: string) {
 }
 
 export async function GET(req: Request) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  if (!await getOwnerContext()) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

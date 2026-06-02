@@ -21,13 +21,21 @@ warn() {
 
 is_port_busy() {
   if command -v lsof >/dev/null 2>&1; then
-    lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1
-    return
+    if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+      return 0
+    fi
   fi
 
   if command -v ss >/dev/null 2>&1; then
-    ss -ltn "sport = :$PORT" 2>/dev/null | tail -n +2 | grep -q .
-    return
+    if ss -ltn "sport = :$PORT" 2>/dev/null | tail -n +2 | grep -q .; then
+      return 0
+    fi
+  fi
+
+  if command -v fuser >/dev/null 2>&1; then
+    if fuser -n tcp "$PORT" >/dev/null 2>&1; then
+      return 0
+    fi
   fi
 
   return 1
@@ -52,14 +60,16 @@ kill_port_if_requested() {
     return 0
   fi
 
-  if ! command -v lsof >/dev/null 2>&1; then
-    warn 'KILL_PORT=1 was set, but lsof is not installed. Skipping port cleanup.'
-    return 0
-  fi
-
   local pids
-  pids="$(lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+  pids=''
+  if command -v lsof >/dev/null 2>&1; then
+    pids="$(lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+  fi
+  if [ -z "$pids" ] && command -v fuser >/dev/null 2>&1; then
+    pids="$(fuser -n tcp "$PORT" 2>/dev/null || true)"
+  fi
   if [ -z "$pids" ]; then
+    warn 'KILL_PORT=1 was set, but no listener PID could be identified.'
     return 0
   fi
 

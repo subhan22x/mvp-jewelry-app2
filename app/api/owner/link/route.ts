@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
 function normalizeUrl(value: string | null) {
   const raw = value?.trim();
@@ -16,7 +16,7 @@ function isAllowedUrl(url: URL) {
 }
 
 export async function GET(req: Request) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  if (!await getOwnerContext()) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

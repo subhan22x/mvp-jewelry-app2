@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
 const CreateBody = z.object({
   pieceType: z.string().optional(),
@@ -9,9 +9,11 @@ const CreateBody = z.object({
 });
 
 export async function POST(req: Request) {
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
     const body = CreateBody.parse(await req.json());
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
 
     const shoot = await prisma.vvsStudioShoot.create({
       data: {
@@ -32,7 +34,9 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const accountId = getDefaultAccountId();
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const accountId = owner.accountId;
   const shoots = await prisma.vvsStudioShoot.findMany({
     where: { accountId },
     orderBy: { createdAt: "desc" },

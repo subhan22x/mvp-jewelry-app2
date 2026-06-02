@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { collectionForCategory } from "@/src/lib/owner-products";
 import { savePublicUpload } from "@/src/lib/storage/public-media";
 import { slugify } from "@/src/lib/slug";
@@ -39,23 +38,23 @@ function priceLabel(mode: string, raw: string | null) {
   return raw;
 }
 
-async function findProduct(productId: string) {
-  const accountId = getDefaultAccountId();
+async function findProduct(productId: string, accountId: string) {
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product || product.accountId !== accountId) return null;
   return product;
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const existing = await findProduct(params.productId);
+  const existing = await findProduct(params.productId, owner.accountId);
   if (!existing) return NextResponse.json({ error: "Piece not found." }, { status: 404 });
 
   try {
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const form = await req.formData();
     const name = text(form, "name");
     if (!name) return NextResponse.json({ error: "Piece name is required." }, { status: 400 });
@@ -93,11 +92,12 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const existing = await findProduct(params.productId);
+  const existing = await findProduct(params.productId, owner.accountId);
   if (!existing) return NextResponse.json({ error: "Piece not found." }, { status: 404 });
 
   await prisma.product.delete({ where: { id: existing.id } });

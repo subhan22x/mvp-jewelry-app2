@@ -14,6 +14,7 @@ export default async function PublicReviewPage({ params }: PageProps) {
     select: {
       slug: true,
       name: true,
+      status: true,
       StoreProfile: {
         select: {
           displayName: true,
@@ -23,7 +24,7 @@ export default async function PublicReviewPage({ params }: PageProps) {
       },
     },
   });
-  if (!account || !account.StoreProfile?.isPublished) notFound();
+  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) notFound();
 
   const displayName = account.StoreProfile.displayName || account.name;
 

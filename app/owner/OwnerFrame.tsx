@@ -6,7 +6,7 @@ type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "p
 
 const ownerNav = [
   { label: "Quotes", href: "/owner", icon: "quotes" },
-  { label: "VVS Design", href: "/", icon: "design" },
+  { label: "VVS Design", href: "/owner/design", icon: "design" },
   { label: "VVS Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Reviews", href: "/owner/reviews", icon: "reviews" },
   { label: "Collections", href: "/owner/collections", icon: "collections" },
@@ -71,9 +71,19 @@ function NavIcon({ icon }: { icon: OwnerNavIcon }) {
   );
 }
 
-export default function OwnerFrame({ active, children, hideHeader = false }: { active: string; children: ReactNode; hideHeader?: boolean }) {
+export default function OwnerFrame({
+  active,
+  children,
+  hideHeader = false,
+  flushContent = false,
+}: {
+  active: string;
+  children: ReactNode;
+  hideHeader?: boolean;
+  flushContent?: boolean;
+}) {
   return (
-    <main className={`min-h-dvh max-w-full overflow-x-hidden bg-[#101114] pb-28 text-[#e1e2ec] antialiased selection:bg-[#f7bc5f] selection:text-[#101114] lg:pl-72 ${hideHeader ? "pt-0" : "pt-20"}`}>
+    <main className={`min-h-dvh max-w-full overflow-x-hidden bg-[#101114] text-[#e1e2ec] antialiased selection:bg-[#f7bc5f] selection:text-[#101114] lg:pl-72 ${flushContent ? "pb-0" : "pb-28"} ${hideHeader ? "pt-0" : "pt-20"}`}>
       {!hideHeader && (
         <header className="fixed left-0 top-0 z-40 flex h-16 w-full max-w-full items-center justify-between gap-3 overflow-hidden border-b border-white/10 bg-[#101114] px-4 shadow-sm sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
@@ -110,6 +120,11 @@ export default function OwnerFrame({ active, children, hideHeader = false }: { a
             );
           })}
         </nav>
+        <form action="/api/auth/logout" method="post" className="mt-auto px-2">
+          <button className="w-full rounded-lg border border-white/10 px-4 py-3 text-left text-sm text-[#c2c6d6] transition hover:bg-white/5">
+            Log out
+          </button>
+        </form>
       </aside>
 
       {children}

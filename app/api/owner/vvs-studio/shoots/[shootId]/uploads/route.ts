@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { saveVvsSourceUpload } from "@/src/lib/vvs-studio/source-storage";
 
 type Ctx = { params: { shootId: string } };
@@ -11,8 +11,7 @@ type Angle = (typeof VALID_ANGLES)[number];
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
-async function findShoot(shootId: string) {
-  const accountId = getDefaultAccountId();
+async function findShoot(shootId: string, accountId: string) {
   const shoot = await prisma.vvsStudioShoot.findUnique({ where: { id: shootId } });
   if (!shoot || shoot.accountId !== accountId) return null;
   return shoot;
@@ -36,7 +35,9 @@ function isCompatibleMime(declared: string, detected: string) {
 }
 
 export async function POST(req: Request, { params }: Ctx) {
-  const shoot = await findShoot(params.shootId);
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const shoot = await findShoot(params.shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Shoot not found." }, { status: 404 });
 
   try {

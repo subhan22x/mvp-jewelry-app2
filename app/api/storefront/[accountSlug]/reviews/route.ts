@@ -24,9 +24,9 @@ export async function POST(req: Request, { params }: Ctx) {
   try {
     const account = await prisma.account.findUnique({
       where: { slug: params.accountSlug },
-      select: { id: true, StoreProfile: { select: { isPublished: true } } },
+      select: { id: true, status: true, StoreProfile: { select: { isPublished: true } } },
     });
-    if (!account || !account.StoreProfile?.isPublished) {
+    if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) {
       return NextResponse.json({ error: "Store profile not found." }, { status: 404 });
     }
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { savePublicUpload } from "@/src/lib/storage/public-media";
 
 type ExtraLink = {
@@ -45,12 +44,13 @@ function extraLinks(form: FormData) {
 }
 
 export async function PATCH(req: Request) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   try {
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const account = await prisma.account.findUnique({ where: { id: accountId }, include: { StoreProfile: true } });
     if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
 

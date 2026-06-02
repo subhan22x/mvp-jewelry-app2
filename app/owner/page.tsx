@@ -1,9 +1,6 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-import OwnerLoginForm from "./OwnerLoginForm";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import SendQuoteForm from "./SendQuoteForm";
 import GenerateVideoButton from "./GenerateVideoButton";
 import OwnerFrame from "./OwnerFrame";
@@ -125,8 +122,7 @@ function generationMatches(row: GenerationRow, query: string, filter: string) {
   return true;
 }
 
-async function getOwnerData() {
-  const accountId = getDefaultAccountId();
+async function getOwnerData(accountId: string) {
   const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, generations] = await Promise.all([
     prisma.quoteRequest.count({ where: { accountId } }),
     prisma.result.count({ where: { accountId } }),
@@ -378,14 +374,10 @@ function GenerationCard({ row }: { row: GenerationRow }) {
 }
 
 export default async function OwnerDashboardPage({ searchParams }: { searchParams: SearchParams }) {
-  const cookieValue = cookies().get(OWNER_SESSION_COOKIE)?.value;
-  if (!isOwnerSessionValue(cookieValue)) {
-    return <OwnerLoginForm />;
-  }
-
+  const { accountId } = await requireOwnerContext();
   const query = (searchParams.q ?? "").trim().toLowerCase();
   const filter = (searchParams.filter ?? "all").toLowerCase();
-  const data = await getOwnerData();
+  const data = await getOwnerData(accountId);
   const visibleGenerations = data.generations.filter(row => generationMatches(row, query, filter));
 
   const currentQuery = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";

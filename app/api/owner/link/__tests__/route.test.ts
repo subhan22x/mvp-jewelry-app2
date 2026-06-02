@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
+const mocks = vi.hoisted(() => ({ getOwnerContext: vi.fn() }));
 
 function authedRequest(url: string) {
-  return new Request(url, {
-    headers: {
-      cookie: `${OWNER_SESSION_COOKIE}=${encodeURIComponent(createOwnerSessionValue())}`,
-    },
-  });
+  return new Request(url);
 }
+
+vi.mock("@/src/lib/auth/owner-context", () => ({
+  getOwnerContext: mocks.getOwnerContext,
+}));
 
 describe("/api/owner/link", () => {
   beforeEach(() => {
-    process.env.OWNER_ACCESS_CODE = "test-owner-code";
     vi.restoreAllMocks();
+    mocks.getOwnerContext.mockResolvedValue({ accountId: "demo-account", userId: "demo", authUserId: "auth-demo", email: "demo@example.com" });
   });
 
   it("treats any real HTTP response as reachable, including Cloudflare 503 pages", async () => {

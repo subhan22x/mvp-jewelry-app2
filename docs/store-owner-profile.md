@@ -117,6 +117,8 @@ Stored in:
 - `StoreProfile.country`
 - `StoreProfile.extraLinksJson`
 
+`coverImageUrl` and related cover fields remain in the schema for compatibility, but the current public profile and owner preview intentionally do not render a cover photo.
+
 Uploaded files go through the public media storage helper. R2 is used when configured; otherwise local generated storage is used.
 
 The owner profile editor also includes best-effort verification helpers:

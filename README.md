@@ -6,17 +6,18 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 
 ## Status
 
-- **Working flow:** Name pendant only.
-- **Disabled placeholders on home:** Logo, Picture Pendants, Custom Design, Get Inspired, Draw Your Design.
-- **Single-tenant:** all requests are scoped to a hardcoded `demo` user.
+- **Working flows:** custom name pendants, picture pendants, public storefront profiles, collections, reviews, owner quote review, and VVS Studio.
+- **Current tenant mode:** owner dashboard routes resolve the signed-in owner's active account membership. Customer pendant requests still default to the seeded `demo` storefront until storefront-aware design links are completed.
 - **SaaS direction:** see `SAAS_PRODUCT_MAP.md` for the planned multi-account SaaS architecture, subscription billing, CRM, and onboarding roadmap.
 - **Data model review:** see `docs/data-model.md` for current and target ER diagrams.
 - **Production storage direction:** Supabase/Postgres for relational data; Cloudflare R2 for generated images, videos, logos, and uploads.
 - **Supabase/R2 setup notes:** see `docs/supabase-r2-setup.md`.
+- **Documentation map:** see `docs/README.md`.
 
 ## Prerequisites
 
-- Node 20 LTS
+- Node 20 LTS or newer for the application
+- Node 22 or newer when running `npm run r2:migrate-generated`
 - A Gemini API key (`GEMINI_API_KEY`)
 
 ## Setup
@@ -36,7 +37,9 @@ GEMINI_API_KEY=your_key_here
 # GENERATED_IMAGE_DIR=public/generated
 # WAVESPEED_API_KEY=your_wavespeed_key_here
 # VIDEO_ACCESS_CODE=ID8
-# OWNER_ACCESS_CODE=ID8
+# NEXT_PUBLIC_SUPABASE_URL=https://PROJECT_REF.supabase.co
+# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+# SUPABASE_SECRET_KEY=sb_secret_...
 # VIDEO_DURATION_SECONDS=7
 # APP_BASE_URL=https://your-public-app-url.example
 # Optional Cloudflare R2 media storage. If fully configured, generated media writes to R2.
@@ -47,7 +50,7 @@ GEMINI_API_KEY=your_key_here
 # R2_PUBLIC_BASE_URL=https://media.example.com
 ```
 
-Configure Supabase Postgres in `.env.local`, then initialize the database:
+Configure Supabase Postgres in `.env.local`, then initialize the development database:
 
 ```bash
 npm run prisma:generate
@@ -55,10 +58,21 @@ npm run supabase:push
 npm run db:seed   # creates the demo user
 ```
 
-Run the dev server:
+Create a real development owner login when needed:
 
 ```bash
-npm run dev
+DEV_OWNER_EMAIL="you@example.com" \
+DEV_OWNER_PASSWORD="choose-a-local-password" \
+DEV_OWNER_ACCOUNT_SLUG="dev" \
+npm run auth:provision-dev-owner
+```
+
+This provisions a real Supabase Auth identity and links it to an active Prisma owner membership. It is separate from the public-only seeded demo storefront. Keep the password in `.env.local` or pass it inline; do not commit it.
+
+Run the dev server. `run.sh` performs the Prisma generation and demo seed steps and reports a port conflict before startup:
+
+```bash
+./run.sh
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -67,8 +81,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The polished store-owner dashboard lives at `/owner`. It is separate from the customer pendant builder and the raw internal generation review page.
 
-- Set `OWNER_ACCESS_CODE` in `.env.local` or Render.
-- Visit `/owner` and enter the access code.
+- Configure Supabase Auth variables in `.env.local` or Render.
+- Visit `/login` and sign in with the email and password created during onboarding.
 - Quote requests show first with large design thumbnails and a `Send Quote` action.
 - The `Generate Video` section shows name pendant drafts as compact cards.
 - Each draft image has its own `Generate Video` button. The admin can generate more than one video from the same pendant/image, and the button shows when it has been pressed before.
@@ -82,7 +96,7 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - `/owner/collections` manages public product pieces by fixed categories. Draft pieces use `Product.isActive = false`; published pieces appear on `/s/:slug`.
 - `/owner/reviews` shows persisted `StoreReview` rows, filters/searches reviews, and includes a request-review pane for sharing `/s/:slug/review`.
 - The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
-- `Send Quote` currently saves price, note, and `status: sent` only; email delivery is intentionally not wired yet.
+- `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
 ## Render deployment
 
@@ -105,7 +119,9 @@ GENERATED_IMAGE_DIR=/var/data/generated
 GOOGLE_API_KEY=...
 WAVESPEED_API_KEY=...
 VIDEO_ACCESS_CODE=ID8
-OWNER_ACCESS_CODE=ID8
+NEXT_PUBLIC_SUPABASE_URL=https://PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 NAME_PROMPT_MODE=json
 VIDEO_DURATION_SECONDS=7
 APP_BASE_URL=https://your-render-service.onrender.com
@@ -119,12 +135,14 @@ Cloudflare R2 is the preferred production media store. The Render disk remains a
 
 | Variable               | Default                              | Purpose                                       |
 | ---------------------- | ------------------------------------ | --------------------------------------------- |
-| `GEMINI_API_KEY`       | (required)                           | Gemini auth. `IMAGE_API_KEY` is a fallback.   |
+| `GEMINI_API_KEY`       | (required)                           | Gemini auth. `GOOGLE_API_KEY` and `IMAGE_API_KEY` are accepted aliases. |
 | `GEMINI_MODEL_ID`      | `gemini-3.1-flash-image-preview`     | Model used by the connector.                  |
 | `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images and downloaded videos are written when R2 is not configured. |
 | `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for Seedance video generation. |
 | `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
-| `OWNER_ACCESS_CODE`    | (required for `/owner`)              | Store-owner dashboard access code.             |
+| `NEXT_PUBLIC_SUPABASE_URL` | (required for owner auth)        | Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | (required for owner auth) | Browser-safe Supabase publishable key. |
+| `SUPABASE_SECRET_KEY`  | (required for onboarding cleanup)     | Server-only Supabase secret key. Never expose it to the browser. |
 | `NAME_PROMPT_MODE`     | `json`                               | Fallback prompt mode for name generations: `json` or `natural_language`. `/owner` can override it in Prisma. |
 | `VIDEO_DURATION_SECONDS` | `7`                                | Seedance video duration, clamped from 4-15 seconds. |
 | `VIDEO_RESOLUTION`     | `720p`                               | Seedance output resolution: `480p`, `720p`, or `1080p`. |
@@ -143,8 +161,11 @@ Cloudflare R2 is the preferred production media store. The Render disk remains a
 | ------------------------- | ----------------------------------------------------- |
 | `npm run dev`             | Next.js dev server                                    |
 | `npm run build`           | Next.js production build                              |
+| `./run.sh`                | Generate Prisma client, seed demo data, and start local development with a port preflight |
+| `KILL_PORT=1 ./run.sh`    | Stop an existing local listener on the selected port before development startup |
+| `PORT=3001 ./run.sh`      | Start local development on another port |
 | `npm run start`           | Seed demo user and start the production server        |
-| `npm run start:next`      | Run Next.js production server without migration/seed  |
+| `npm run start:next`      | Run Next.js production server without seed            |
 | `npm run start:render`    | Alias for `npm run start`                             |
 | `npm test`                | Vitest unit tests                                     |
 | `npm run test:e2e`        | Playwright end-to-end tests (requires dev server)     |
@@ -152,8 +173,10 @@ Cloudflare R2 is the preferred production media store. The Render disk remains a
 | `npm run prisma:migrate`  | Push the current Postgres schema to Supabase           |
 | `npm run db:seed`         | Seed the `demo` user                                  |
 | `npm run supabase:push`   | Push the Postgres schema to Supabase using `.env.local` |
-| `npm run supabase:migrate-metadata` | Copy SQLite metadata rows to Supabase/Postgres |
+| `npm run supabase:migrate-metadata` | Copy archived SQLite rows to Supabase/Postgres; the historical script name is retained |
 | `npm run supabase:audit`  | Compare canonical SQLite and Supabase/Postgres table counts |
+| `npm run supabase:audit-rls` | Confirm public Prisma tables remain protected by RLS with no direct browser policies |
+| `npm run auth:provision-dev-owner` | Create or repair a real development owner login using local-only environment values |
 | `npm run r2:migrate-generated` | Upload local generated media to R2 and rewrite matching SQLite/Supabase URLs |
 | `npm run styles`          | Manage `data/pendant-styles.json` via script          |
 
@@ -193,7 +216,8 @@ Playwright browsers must be installed once: `npx playwright install chromium`.
 
 ```
 app/
-  page.tsx                   # home screen with style entry cards
+  page.tsx                   # responsive marketing landing page
+  design/page.tsx            # home screen with style entry cards
   name/page.tsx              # the 4-step name pendant flow (steps 0–2 + results)
   name/__tests__/            # Vitest unit tests for the name builder
   owner/page.tsx             # owner dashboard: quote requests + Generate Video section
@@ -205,7 +229,7 @@ app/
   owner/videos/[videoJobId]/page.tsx # video job status/player/download/share page
   s/[accountSlug]/page.tsx   # public storefront profile and collections
   s/[accountSlug]/review/    # public customer review form
-  api/requests/route.ts      # POST /api/requests — creates a Request and fires 2 async generation tasks
+  api/requests/route.ts      # POST /api/requests — creates a Request and starts async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
   api/quote-requests/route.ts # POST — persists the customer quote/admin handoff snapshot
   api/owner/video-jobs/route.ts # POST — owner starts a Wavespeed video job for one Result image
@@ -227,8 +251,11 @@ src/lib/styles/              # canonical generation system
   <style>/<templateKey>.jsonp # prompt template with {{PLACEHOLDERS}}
 
 prisma/
-  schema.prisma              # Account, StoreProfile, Product, StoreReview, Request, Result, Lead, VideoGeneration, QuoteRequest
-  migrations/
+  schema.prisma              # Postgres runtime schema
+  schema.postgres.prisma     # Postgres schema used by supabase:push
+  schema.sqlite.prisma       # archived SQLite source schema for migration utilities
+  postgres-baseline/         # clean Postgres baseline SQL for a new production project
+  migrations/                # archived SQLite migration history; do not deploy to Postgres
 
 public/
   pendants/                  # style thumbnails (also used as Gemini reference inputs)
@@ -252,4 +279,6 @@ waitUntil(Promise.all(...));
 
 ## Further reading
 
+- `docs/README.md` — documentation map and source-of-truth guide.
+- `docs/production-roadmap.md` — current production checkpoint and remaining blockers.
 - `CLAUDE.md` — architecture, style/prompt conventions, prompt-engineering rules, what not to do.

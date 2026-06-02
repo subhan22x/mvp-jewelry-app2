@@ -16,6 +16,9 @@
     "supabase:push": "node scripts/push-supabase-schema.mjs",
     "supabase:migrate-metadata": "node scripts/migrate-sqlite-to-supabase.mjs",
     "supabase:audit": "node scripts/audit-databases.mjs",
+    "supabase:audit-rls": "node scripts/audit-supabase-rls.mjs",
+    "auth:provision-dev-owner": "node scripts/provision-dev-owner.mjs",
+    "account:adopt-demo-data": "node scripts/adopt-demo-account-data.mjs",
     "r2:migrate-generated": "node --experimental-strip-types scripts/migrate-generated-media-to-r2.mjs",
     "db:seed": "node scripts/seed-demo-user.mjs"
   },
@@ -23,6 +26,8 @@
     "@aws-sdk/client-s3": "^3.1045.0",
     "@google/genai": "^1.21.0",
     "@prisma/client": "^6.16.2",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.106.2",
     "fast-glob": "^3.3.2",
     "mime": "^4.1.0",
     "next": "14.2.31",

@@ -74,7 +74,6 @@ try {
       isPublished: true
     },
     create: {
-      id: "demo-store-profile",
       accountId: "demo-account",
       displayName: "IceKing London",
       headline: "Custom jewelry, pendants, watches, and quote requests.",
@@ -97,12 +96,12 @@ try {
   });
 
   const services = [
-    { id: "demo-service-quote", title: "Get Quote", kind: "quote", ctaLabel: "Get Quote", href: "/picture-pendants", sortOrder: 0 },
-    { id: "demo-service-custom", title: "Design Custom", kind: "design_custom", ctaLabel: "Design Custom", href: "/name", sortOrder: 1 },
-    { id: "demo-service-size-guide", title: "Size Guide", kind: "size_guide", ctaLabel: "Size Guide", href: null, sortOrder: 2, isActive: false },
-    { id: "demo-service-sell-watch", title: "Sell Watch", kind: "sell_watch", ctaLabel: "Sell Watch", href: null, sortOrder: 3, isActive: false },
-    { id: "demo-service-appointment", title: "Book Appt", kind: "appointment", ctaLabel: "Book Appt", href: "tel:+15555550123", sortOrder: 4 },
-    { id: "demo-service-message", title: "Message", kind: "message", ctaLabel: "Message", href: "sms:+15555550123", sortOrder: 5 }
+    { id: "seed-demo-service-quote", title: "Get Quote", kind: "quote", ctaLabel: "Get Quote", href: "/picture-pendants", sortOrder: 0 },
+    { id: "seed-demo-service-custom", title: "Design Custom", kind: "design_custom", ctaLabel: "Design Custom", href: "/name", sortOrder: 1 },
+    { id: "seed-demo-service-size-guide", title: "Size Guide", kind: "size_guide", ctaLabel: "Size Guide", href: null, sortOrder: 2, isActive: false },
+    { id: "seed-demo-service-sell-watch", title: "Sell Watch", kind: "sell_watch", ctaLabel: "Sell Watch", href: null, sortOrder: 3, isActive: false },
+    { id: "seed-demo-service-appointment", title: "Book Appt", kind: "appointment", ctaLabel: "Book Appt", href: "tel:+15555550123", sortOrder: 4 },
+    { id: "seed-demo-service-message", title: "Message", kind: "message", ctaLabel: "Message", href: "sms:+15555550123", sortOrder: 5 }
   ];
 
   for (const service of services) {
@@ -114,10 +113,10 @@ try {
   }
 
   const collections = [
-    { id: "demo-collection-pendants", title: "Pendants", slug: "pendants", sortOrder: 0 },
-    { id: "demo-collection-watches", title: "Watches", slug: "watches", sortOrder: 1 },
-    { id: "demo-collection-chains", title: "Chains", slug: "chains", sortOrder: 2 },
-    { id: "demo-collection-rings", title: "Rings", slug: "rings", sortOrder: 3 }
+    { id: "seed-demo-collection-pendants", title: "Pendants", slug: "pendants", sortOrder: 0 },
+    { id: "seed-demo-collection-watches", title: "Watches", slug: "watches", sortOrder: 1 },
+    { id: "seed-demo-collection-chains", title: "Chains", slug: "chains", sortOrder: 2 },
+    { id: "seed-demo-collection-rings", title: "Rings", slug: "rings", sortOrder: 3 }
   ];
 
   for (const collection of collections) {
@@ -130,8 +129,8 @@ try {
 
   const products = [
     {
-      id: "demo-product-ryder",
-      collectionId: "demo-collection-pendants",
+      id: "seed-demo-product-ryder",
+      collectionId: "seed-demo-collection-pendants",
       name: "Ryder Pendant",
       slug: "ryder-pendant",
       description: "Ask for iced name pendant pricing.",
@@ -142,8 +141,8 @@ try {
       sortOrder: 0
     },
     {
-      id: "demo-product-gatti",
-      collectionId: "demo-collection-pendants",
+      id: "seed-demo-product-gatti",
+      collectionId: "seed-demo-collection-pendants",
       name: "Gatti Pendant",
       slug: "gatti-pendant",
       description: "Custom pendant design starter.",
@@ -152,8 +151,8 @@ try {
       sortOrder: 1
     },
     {
-      id: "demo-product-king",
-      collectionId: "demo-collection-pendants",
+      id: "seed-demo-product-king",
+      collectionId: "seed-demo-collection-pendants",
       name: "King Pendant",
       slug: "king-pendant",
       description: "Bold block name pendant.",
@@ -162,8 +161,8 @@ try {
       sortOrder: 2
     },
     {
-      id: "demo-product-watch-skeleton",
-      collectionId: "demo-collection-watches",
+      id: "seed-demo-product-watch-skeleton",
+      collectionId: "seed-demo-collection-watches",
       name: "Skeleton Watch",
       slug: "skeleton-watch",
       description: "Send a photo to request similar sourcing.",
