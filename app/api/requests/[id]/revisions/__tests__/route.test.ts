@@ -69,7 +69,7 @@ describe("/api/requests/[id]/revisions", () => {
         sourceResultId: "result-1",
         prompt: "Make the crown larger"
       })
-    }), { params: { id: "req-test" } });
+    }), { params: Promise.resolve({ id: "req-test" }) });
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual(expect.objectContaining({

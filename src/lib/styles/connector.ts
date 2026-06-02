@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime';
 import { resolveGenerationConfig } from '../providers';
-import { isR2Configured, uploadToR2 } from '../storage/r2';
+import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from '../storage/r2';
 
 export type GenerateArgs = {
   prompt: string;
@@ -42,6 +42,7 @@ export async function saveGeneratedImage({ buffer, mimeType, requestId, variant 
     });
   }
 
+  assertDurableMediaStorageConfigured();
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
   const filePath = path.join(OUTPUT_DIR, fileName);

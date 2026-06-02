@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import "react-international-phone/style.css";
 
 const PhoneInput = dynamic(
@@ -146,7 +147,11 @@ export default function ProfileEditor({
     setStatus(null);
 
     const form = new FormData();
-    if (imageFile) form.set("profileImage", imageFile);
+    if (imageFile) {
+      const upload = await uploadFileDirectly(imageFile, "owner-profile");
+      if (upload) form.set("profileImageUpload", JSON.stringify(upload));
+      else form.set("profileImage", imageFile);
+    }
     form.set("instagramHandle", handle);
     form.set("phone", publicPhone);
     form.set("websiteUrl", siteUrl);

@@ -1,7 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-
+import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
+  getOwnerContext: vi.fn(),
   quoteRequestFindFirst: vi.fn(),
   quoteRequestUpdate: vi.fn()
 }));
@@ -15,12 +14,13 @@ vi.mock("@/server/db/client", () => ({
   }
 }));
 
+vi.mock("@/src/lib/auth/owner-context", () => ({
+  getOwnerContext: mocks.getOwnerContext,
+}));
+
 function authedRequest(body: unknown) {
   return new Request("http://test.local/api/quote-requests/quote-test", {
     method: "PATCH",
-    headers: {
-      cookie: `${OWNER_SESSION_COOKIE}=${createOwnerSessionValue("ID8")}`
-    },
     body: JSON.stringify(body)
   });
 }
@@ -28,7 +28,7 @@ function authedRequest(body: unknown) {
 describe("/api/quote-requests/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.OWNER_ACCESS_CODE = "ID8";
+    mocks.getOwnerContext.mockResolvedValue({ accountId: "demo-account", userId: "demo", authUserId: "auth-demo", email: "demo@example.com" });
     mocks.quoteRequestFindFirst.mockResolvedValue({ id: "quote-test" });
     mocks.quoteRequestUpdate.mockResolvedValue({
       id: "quote-test",
@@ -42,17 +42,14 @@ describe("/api/quote-requests/[id]", () => {
     });
   });
 
-  afterEach(() => {
-    delete process.env.OWNER_ACCESS_CODE;
-  });
-
   it("rejects unauthenticated quote updates", async () => {
     const { PATCH } = await import("../route");
+    mocks.getOwnerContext.mockResolvedValueOnce(null);
 
     const response = await PATCH(new Request("http://test.local/api/quote-requests/quote-test", {
       method: "PATCH",
       body: JSON.stringify({ status: "sent" })
-    }), { params: { id: "quote-test" } });
+    }), { params: Promise.resolve({ id: "quote-test" }) });
     const json = await response.json();
 
     expect(response.status).toBe(401);
@@ -66,7 +63,7 @@ describe("/api/quote-requests/[id]", () => {
     const response = await PATCH(authedRequest({
       quotedPriceCents: -1,
       status: "sent"
-    }), { params: { id: "quote-test" } });
+    }), { params: Promise.resolve({ id: "quote-test" }) });
 
     expect(response.status).toBe(400);
     expect(mocks.quoteRequestUpdate).not.toHaveBeenCalled();
@@ -83,7 +80,7 @@ describe("/api/quote-requests/[id]", () => {
       quoteMaterialKarat: "14k",
       quoteStoneType: "natural_diamonds",
       status: "sent"
-    }), { params: { id: "quote-test" } });
+    }), { params: Promise.resolve({ id: "quote-test" }) });
     const json = await response.json();
 
     expect(response.status).toBe(200);

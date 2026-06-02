@@ -11,9 +11,12 @@ if (envLocal.DATABASE_URL.includes("[YOUR-PASSWORD]") || envLocal.DIRECT_URL.inc
   process.exit(1);
 }
 
+const prismaArgs = ["prisma", "db", "push", "--schema", "prisma/schema.postgres.prisma", "--skip-generate"];
+if (process.env.ACCEPT_DATA_LOSS === "1") prismaArgs.push("--accept-data-loss");
+
 const child = spawn(
   "npx",
-  ["prisma", "db", "push", "--schema", "prisma/schema.postgres.prisma", "--skip-generate"],
+  prismaArgs,
   {
     stdio: "inherit",
     env: {

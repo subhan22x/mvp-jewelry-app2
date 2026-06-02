@@ -1,15 +1,14 @@
 import { getNamePromptMode } from "@/src/lib/prompt-mode";
 import OwnerFrame from "../OwnerFrame";
-import OwnerLoginForm from "../OwnerLoginForm";
 import PromptModeForm from "../PromptModeForm";
-import { isOwnerAuthenticated } from "../_auth";
 import ThemeSettingsForm from "./ThemeSettingsForm";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function OwnerSettingsPage() {
-  if (!isOwnerAuthenticated()) return <OwnerLoginForm />;
-  const promptMode = await getNamePromptMode();
+  const owner = await requireOwnerContext();
+  const promptMode = await getNamePromptMode(owner.accountId);
 
   return (
     <OwnerFrame active="Settings">

@@ -1,20 +1,85 @@
 # Data Model Diagrams
 
-This document shows the current MVP data model and the proposed multi-account SaaS data model.
+This document explains the current Postgres runtime model and the proposed multi-account SaaS model.
 
 Format: Mermaid ER diagrams. GitHub renders these directly in Markdown, and the code blocks can also be pasted into https://mermaid.live.
 
-## Current MVP Model
+## Source Of Truth
 
-This is the model that exists in `prisma/schema.prisma` today. It is single-store and still uses a `User` row as the store/demo owner.
+The authoritative runtime schema is [`../prisma/schema.prisma`](../prisma/schema.prisma). It uses Supabase Postgres.
 
-Recent owner-profile additions are now part of the current schema:
+Related schemas:
 
-- `Account` scopes public profile, products, reviews, quote requests, generated media, and VVS Studio records.
-- `StoreProfile` stores public profile content, website URL, city/country, phone, Instagram handle, and up to two extra links in `extraLinksJson`.
-- `ProductCollection` and `Product` power the public `/s/:slug` collections grid and `/owner/collections` manager. Products use `isActive` for draft/published state.
+- [`../prisma/schema.postgres.prisma`](../prisma/schema.postgres.prisma): Postgres schema used by `npm run supabase:push`.
+- [`../prisma/schema.sqlite.prisma`](../prisma/schema.sqlite.prisma): archived SQLite schema used only by migration and audit utilities.
+- [`../prisma/postgres-baseline/0001_initial.sql`](../prisma/postgres-baseline/0001_initial.sql): clean Postgres baseline for a fresh production project.
+
+## Current Runtime Model
+
+The runtime schema is account-scoped but not yet production multi-tenant. Most records include `accountId`, while the MVP still defaults to the seeded `demo-account` until real authentication replaces demo-account resolution.
+
+Current domains:
+
+- Identity and tenant shell: `User`, `Account`, `AccountMembership`.
+- Pendant generation: `Request`, `Result`, `ResultRevision`, `VideoGeneration`, `Lead`, `QuoteRequest`.
+- Account configuration: `AppSetting`.
+- Public storefront: `StoreProfile`, `StoreService`, `ProductCollection`, `Product`, `StoreReview`.
+- VVS Studio: `VvsStudioShoot`, `VvsStudioUpload`, `VvsStudioImageGeneration`, `VvsStudioVideoGeneration`.
+
+```mermaid
+erDiagram
+  USER ||--o{ ACCOUNT_MEMBERSHIP : joins
+  ACCOUNT ||--o{ ACCOUNT_MEMBERSHIP : has
+  ACCOUNT ||--o| STORE_PROFILE : publishes
+  ACCOUNT ||--o{ STORE_SERVICE : configures
+  ACCOUNT ||--o{ PRODUCT_COLLECTION : groups
+  ACCOUNT ||--o{ PRODUCT : lists
+  ACCOUNT ||--o{ STORE_REVIEW : receives
+  ACCOUNT ||--o{ APP_SETTING : configures
+  ACCOUNT ||--o{ REQUEST : owns
+  ACCOUNT ||--o{ RESULT : owns
+  ACCOUNT ||--o{ LEAD : owns
+  ACCOUNT ||--o{ VIDEO_GENERATION : owns
+  ACCOUNT ||--o{ QUOTE_REQUEST : owns
+  ACCOUNT ||--o{ VVS_STUDIO_SHOOT : owns
+  ACCOUNT ||--o{ VVS_STUDIO_UPLOAD : owns
+  ACCOUNT ||--o{ VVS_STUDIO_IMAGE_GENERATION : owns
+  ACCOUNT ||--o{ VVS_STUDIO_VIDEO_GENERATION : owns
+  USER ||--o{ REQUEST : creates
+  REQUEST ||--o{ RESULT : produces
+  REQUEST ||--o{ RESULT_REVISION : revises
+  REQUEST ||--o{ VIDEO_GENERATION : generates
+  REQUEST ||--o{ QUOTE_REQUEST : snapshots
+  RESULT ||--o{ RESULT_REVISION : source_for
+  RESULT ||--o{ QUOTE_REQUEST : selected_for
+  VIDEO_GENERATION ||--o{ QUOTE_REQUEST : attached_to
+  PRODUCT_COLLECTION ||--o{ PRODUCT : contains
+  VVS_STUDIO_SHOOT ||--o{ VVS_STUDIO_UPLOAD : receives
+  VVS_STUDIO_SHOOT ||--o{ VVS_STUDIO_IMAGE_GENERATION : generates
+  VVS_STUDIO_IMAGE_GENERATION ||--o{ VVS_STUDIO_VIDEO_GENERATION : animates
+```
+
+Important implementation details:
+
+- `Account` scopes public profile, products, reviews, quote requests, generated media records, and VVS Studio records.
+- `StoreProfile` stores public profile content, full address, phone, Instagram handle, website, and up to two extra links in `extraLinksJson`.
+- `ProductCollection` and `Product` power the public `/s/:slug` collections grid and `/owner/collections` manager. `Product.isActive` is the draft/published switch.
 - `StoreReview` stores customer reviews submitted from `/s/:slug/review`.
-- VVS Studio records store owner-uploaded product shoots, image generations, video generations, and selected video duration.
+- `QuoteRequest` preserves customer selections and owner-adjusted quote fields such as estimated delivery, quote material, karat, and quote stone type.
+- Durable media references are currently stored as URL strings on owning rows. A centralized `MediaAsset` model remains planned.
+
+Current gaps before paid SaaS onboarding:
+
+- `User.authUserId` links the application user to Supabase Auth. Owner dashboard context resolves an active membership from the signed-in user.
+- Default account helpers still resolve the seeded demo account for customer-generation paths until storefront-aware design links are completed.
+- Subscription fields exist on `Account`, but Stripe checkout, webhooks, trial gating, and entitlement checks are not implemented.
+- `AppSetting.key` remains globally unique, so owner prompt settings use account-prefixed keys.
+- Media ownership is not centralized in `MediaAsset`.
+- `Lead.requestId` and `VideoGeneration.sourceResultId` remain scalar references instead of Prisma relations.
+
+## Legacy MVP Diagram
+
+The following diagram is retained as a historical snapshot of the earlier pendant-only model. It is not the current Prisma schema.
 
 ```mermaid
 erDiagram
@@ -120,7 +185,7 @@ erDiagram
   }
 ```
 
-Current model gaps:
+Legacy snapshot gaps:
 
 - `Lead` is not relationally connected to `Request`.
 - `VideoGeneration.sourceResultId` stores a result id but has no Prisma relation today.

@@ -5,15 +5,17 @@ import ReviewForm from "./ReviewForm";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: { accountSlug: string };
+  params: Promise<{ accountSlug: string }>;
 };
 
 export default async function PublicReviewPage({ params }: PageProps) {
+  const { accountSlug } = await params;
   const account = await prisma.account.findUnique({
-    where: { slug: params.accountSlug },
+    where: { slug: accountSlug },
     select: {
       slug: true,
       name: true,
+      status: true,
       StoreProfile: {
         select: {
           displayName: true,
@@ -23,7 +25,7 @@ export default async function PublicReviewPage({ params }: PageProps) {
       },
     },
   });
-  if (!account || !account.StoreProfile?.isPublished) notFound();
+  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) notFound();
 
   const displayName = account.StoreProfile.displayName || account.name;
 

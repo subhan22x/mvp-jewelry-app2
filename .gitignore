@@ -1,4 +1,5 @@
 node_modules/
+generated/
 .next/
 dist/
 build/
@@ -22,3 +23,4 @@ playwright-report/
 temp.txt
 temp_check.py
 *.tmp
+*.tsbuildinfo

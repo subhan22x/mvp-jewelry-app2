@@ -5,9 +5,9 @@ import StorefrontCollections from "./StorefrontCollections";
 export const dynamic = "force-dynamic";
 
 type StorefrontPageProps = {
-  params: {
+  params: Promise<{
     accountSlug: string;
-  };
+  }>;
 };
 
 function normalizeHandle(handle: string | null | undefined) {
@@ -77,9 +77,10 @@ async function getProfile(accountSlug: string) {
 }
 
 export async function generateMetadata({ params }: StorefrontPageProps) {
-  const account = await getProfile(params.accountSlug);
+  const { accountSlug } = await params;
+  const account = await getProfile(accountSlug);
   const profile = account?.StoreProfile;
-  if (!account || !profile?.isPublished) return { title: "Store profile" };
+  if (!account || account.status !== "active" || !profile?.isPublished) return { title: "Store profile" };
 
   return {
     title: `${profile.displayName} | Custom Jewelry`,
@@ -88,9 +89,10 @@ export async function generateMetadata({ params }: StorefrontPageProps) {
 }
 
 export default async function StorefrontPage({ params }: StorefrontPageProps) {
-  const account = await getProfile(params.accountSlug);
+  const { accountSlug } = await params;
+  const account = await getProfile(accountSlug);
   const profile = account?.StoreProfile;
-  if (!account || !profile?.isPublished) notFound();
+  if (!account || account.status !== "active" || !profile?.isPublished) notFound();
 
   const instagramHandle = normalizeHandle(profile.instagramHandle);
   const messageHref = whatsappHref(profile.whatsappPhone) ?? phoneHref(profile.phone, "sms");

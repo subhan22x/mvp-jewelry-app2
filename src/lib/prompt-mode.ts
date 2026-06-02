@@ -13,12 +13,16 @@ export function promptModeLabel(mode: PromptMode) {
   return mode === "natural_language" ? "Natural language" : "JSON";
 }
 
-export async function getNamePromptMode(): Promise<PromptMode> {
+function promptModeSettingKey(accountId: string) {
+  return `${accountId}:${PROMPT_MODE_SETTING_KEY}`;
+}
+
+export async function getNamePromptMode(accountId: string): Promise<PromptMode> {
   const configured = parsePromptMode(process.env.NAME_PROMPT_MODE);
 
   try {
     const setting = await prisma.appSetting.findUnique({
-      where: { key: PROMPT_MODE_SETTING_KEY }
+      where: { key: promptModeSettingKey(accountId) }
     });
     return parsePromptMode(setting?.value ?? configured);
   } catch {
@@ -27,10 +31,11 @@ export async function getNamePromptMode(): Promise<PromptMode> {
   }
 }
 
-export async function setNamePromptMode(mode: PromptMode) {
+export async function setNamePromptMode(accountId: string, mode: PromptMode) {
+  const key = promptModeSettingKey(accountId);
   return prisma.appSetting.upsert({
-    where: { key: PROMPT_MODE_SETTING_KEY },
+    where: { key },
     update: { value: mode },
-    create: { key: PROMPT_MODE_SETTING_KEY, value: mode }
+    create: { key, accountId, value: mode }
   });
 }

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-
 const mocks = vi.hoisted(() => ({
+  getOwnerContext: vi.fn(),
   productCreate: vi.fn(),
   productFindUnique: vi.fn(),
   productUpdate: vi.fn(),
@@ -30,11 +29,12 @@ vi.mock("@/src/lib/storage/public-media", () => ({
   savePublicUpload: mocks.savePublicUpload,
 }));
 
+vi.mock("@/src/lib/auth/owner-context", () => ({
+  getOwnerContext: mocks.getOwnerContext,
+}));
+
 function authedRequest(form?: FormData) {
   return {
-    headers: {
-      get: (key: string) => key.toLowerCase() === "cookie" ? `${OWNER_SESSION_COOKIE}=${encodeURIComponent(createOwnerSessionValue())}` : null,
-    },
     formData: () => Promise.resolve(form ?? new FormData()),
   } as unknown as Request;
 }
@@ -59,7 +59,7 @@ function productForm(overrides: Record<string, string | File> = {}) {
 describe("/api/owner/products", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.OWNER_ACCESS_CODE = "test-owner-code";
+    mocks.getOwnerContext.mockResolvedValue({ accountId: "demo-account", userId: "demo", authUserId: "auth-demo", email: "demo@example.com" });
     mocks.productCollectionUpsert.mockResolvedValue({});
     mocks.productCollectionFindUnique.mockResolvedValue({ id: "collection-ring", slug: "ring" });
     mocks.savePublicUpload.mockResolvedValue("/generated/accounts/demo-account/products/ring.png");
@@ -108,7 +108,7 @@ describe("/api/owner/products", () => {
     form.delete("image");
 
     const response = await PATCH(authedRequest(form), {
-      params: { productId: "product-1" },
+      params: Promise.resolve({ productId: "product-1" }),
     });
 
     expect(response.status).toBe(200);
@@ -126,7 +126,7 @@ describe("/api/owner/products", () => {
     const { DELETE } = await import("../[productId]/route");
 
     const response = await DELETE(authedRequest(), {
-      params: { productId: "product-1" },
+      params: Promise.resolve({ productId: "product-1" }),
     });
 
     expect(response.status).toBe(200);
@@ -135,6 +135,7 @@ describe("/api/owner/products", () => {
 
   it("rejects product creation without owner auth", async () => {
     const { POST } = await import("../route");
+    mocks.getOwnerContext.mockResolvedValueOnce(null);
 
     const response = await POST(new Request("http://test.local/api/owner/products", { method: "POST", body: productForm() }));
 

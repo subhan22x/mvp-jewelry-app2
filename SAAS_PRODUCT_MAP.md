@@ -136,11 +136,11 @@ These items should happen before putting real stores through Stripe.
 1. Add the `Account` tenant model.
 2. Add `accountId` to every customer/generation/quote/video/settings model.
 3. Migrate current demo data into a seed `Account`.
-4. Replace `OWNER_ACCESS_CODE` with real auth.
+4. Replace the shared owner access code with real auth. **Completed with Supabase Auth for owner routes.**
 5. Add `User` and `AccountMembership`.
 6. Enforce one store owner per account for v1.
 7. Add SaaS admin role and a separate SaaS admin dashboard route.
-8. Move from SQLite to Postgres.
+8. Move from SQLite to Postgres. **Completed for the application runtime; production migration workflow still needs to be established.**
 9. Add path-based account routing for customer storefronts.
 10. Resolve account by slug before creating any customer request.
 11. Add account-branded customer storefront URLs.

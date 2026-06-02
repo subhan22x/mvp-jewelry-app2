@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { collectionForCategory } from "@/src/lib/owner-products";
-import { savePublicUpload } from "@/src/lib/storage/public-media";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
+import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { slugify } from "@/src/lib/slug";
 
 const PRICE_MODES = new Set(["set", "range", "ask"]);
@@ -38,21 +38,25 @@ function priceLabel(mode: string, raw: string | null) {
 }
 
 export async function POST(req: Request) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   try {
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const form = await req.formData();
     const name = text(form, "name");
     if (!name) return NextResponse.json({ error: "Piece name is required." }, { status: 400 });
 
     const image = fileFromForm(form, "image");
-    if (!image) return NextResponse.json({ error: "A cover image is required." }, { status: 400 });
+    const directImage = parseDirectUploadReference(form.get("imageUpload"), "owner-product");
+    if (!image && !directImage) return NextResponse.json({ error: "A cover image is required." }, { status: 400 });
 
     const { collection, slug: category } = await collectionForCategory(accountId, text(form, "category"));
-    const imageUrl = await savePublicUpload(image, `accounts/${accountId}/products`, `${slugify(name) || "piece"}-${Date.now()}`);
+    const imageUrl = directImage
+      ? useDirectPublicUpload(directImage)
+      : await savePublicUpload(image!, `accounts/${accountId}/products`, `${slugify(name) || "piece"}-${Date.now()}`);
     const mode = priceMode(form);
 
     const product = await prisma.product.create({

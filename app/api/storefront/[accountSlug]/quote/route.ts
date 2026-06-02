@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { savePublicUpload } from "@/src/lib/storage/public-media";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
+import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,13 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function POST(req: Request, { params }: { params: { accountSlug: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ accountSlug: string }> }) {
+  const { accountSlug } = await params;
   const account = await prisma.account.findUnique({
-    where: { slug: params.accountSlug },
+    where: { slug: accountSlug },
     include: { StoreProfile: true }
   });
-  if (!account || !account.StoreProfile?.isPublished) return jsonError("Store profile not found.", 404);
+  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) return jsonError("Store profile not found.", 404);
 
   const form = await req.formData();
   const parsed = quoteSchema.safeParse({
@@ -35,9 +37,10 @@ export async function POST(req: Request, { params }: { params: { accountSlug: st
   }
 
   const images = form.getAll("images").filter((value): value is File => value instanceof File && value.size > 0).slice(0, 6);
-  if (images.length === 0) return jsonError("Upload at least one reference image.");
+  const directImages = form.getAll("imageUploads").map(value => parseDirectUploadReference(value, "storefront-quote")).filter(value => value !== null).slice(0, 6);
+  if (images.length === 0 && directImages.length === 0) return jsonError("Upload at least one reference image.");
 
-  const imageUrls: string[] = [];
+  const imageUrls = directImages.map(useDirectPublicUpload);
   for (const [index, image] of images.entries()) {
     const imageUrl = await savePublicUpload(image, `accounts/${account.id}/quote-requests`, `${Date.now()}-${index + 1}`);
     imageUrls.push(imageUrl);

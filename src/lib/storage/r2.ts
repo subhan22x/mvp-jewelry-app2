@@ -1,4 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "node:stream";
 
 type R2Config = {
@@ -40,6 +41,12 @@ export function isR2Configured() {
   return Boolean(getR2Config());
 }
 
+export function assertDurableMediaStorageConfigured() {
+  if (process.env.NODE_ENV === "production" && !isR2Configured()) {
+    throw new Error("Cloudflare R2 is required for durable media storage in production.");
+  }
+}
+
 function getClient(config: R2Config) {
   if (cachedClient) return cachedClient;
 
@@ -53,6 +60,38 @@ function getClient(config: R2Config) {
   });
 
   return cachedClient;
+}
+
+export async function createPresignedR2Upload({
+  key,
+  contentType,
+  contentLength,
+  expiresInSeconds = 10 * 60
+}: {
+  key: string;
+  contentType: string;
+  contentLength: number;
+  expiresInSeconds?: number;
+}) {
+  const config = getR2Config();
+  if (!config) throw new Error("R2 is not configured.");
+
+  const uploadUrl = await getSignedUrl(
+    getClient(config),
+    new PutObjectCommand({
+      Bucket: config.bucketName,
+      Key: key.replace(/^\/+/, ""),
+      ContentType: contentType,
+      ContentLength: contentLength,
+      CacheControl: "public, max-age=31536000, immutable"
+    }),
+    { expiresIn: expiresInSeconds }
+  );
+
+  return {
+    uploadUrl,
+    publicUrl: r2PublicUrl(key)
+  };
 }
 
 export function r2PublicUrl(key: string) {

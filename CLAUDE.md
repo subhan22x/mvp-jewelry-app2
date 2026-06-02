@@ -59,9 +59,9 @@ The customer controls only:
 
 Everything else — `deviationStrength`, `bubbleOutline`, `forceAllCaps`, `view`, prompt wording, reference images — is owned by the style system. **Never expose those as UI controls.** They exist so each style can produce four diverse-but-on-style variants without the customer prompt-engineering anything.
 
-## The four variants
+## The two variants
 
-Each style's `variantMatrix` defines exactly four entries; `buildVariants` iterates 1–4 and merges each entry over the style's `defaults`. This is the deliberate source of variety — same text, same style, four reasonable interpretations.
+Each style's `variantMatrix` defines exactly two entries; `buildVariants` iterates 1–2 and merges each entry over the style's `defaults`. This is the deliberate source of variety — same text, same style, two reasonable interpretations.
 
 ## Adding a new style
 
@@ -81,8 +81,6 @@ Each style's `variantMatrix` defines exactly four entries; `buildVariants` itera
    variantMatrix:
      - { deviationStrength: 0.25, bubbleOutline: true,  forceAllCaps: false }
      - { deviationStrength: 0.30, bubbleOutline: false, forceAllCaps: false }
-     - { deviationStrength: 0.40, bubbleOutline: true,  forceAllCaps: true  }
-     - { deviationStrength: 0.60, bubbleOutline: false, forceAllCaps: true  }
 
    assets:
      pendantRef: public/pendants/<style>.png
@@ -178,13 +176,12 @@ If you add a new placeholder, update `builder.ts` and every template that uses i
 
 ## Things not to do
 
-- **Don't run the dev server from the repo root.** The style registry resolves `process.cwd()/src/lib/styles`; only `cd mvp-jewelry-app && npm run dev` works.
-- **Don't maintain both** the root scaffold (`/package.json`, `/tsconfig.json`, `/prisma/`, `/dev.db`) and the inner one. The inner is canonical; the root scaffold is residual and should be deleted (or the inner flattened up to root).
-- **Don't add a `PendantStyle` DB table.** The root migration `prisma/migrations/0003_pendant_styles/migration.sql` is abandoned. UI style list stays as `data/pendant-styles.json`.
+- **Run the dev server from the repo root.** The flattened repository root is canonical, and the style registry resolves `process.cwd()/src/lib/styles`.
+- **Don't add a `PendantStyle` DB table.** UI style configuration stays in `data/pendant-styles.json` and `src/lib/styles/`.
 - **Don't expose advanced prompt knobs to the customer.** No `deviationStrength` slider, no "bubble outline" checkbox.
 - **Don't put long prompt text in TypeScript.** Templates are `.jsonp` for a reason.
 - **Don't replace YAML+templates with a `switch (styleId)`.**
-- **Don't add auth yet.** `userId: "demo"` stays for the MVP; the schema already supports multi-store later.
+- **Do not treat demo-account resolution as production auth.** The MVP still seeds and resolves the demo account, but real authenticated account context is required before paid SaaS onboarding.
 - **Don't make `diamondQuality` a major prompt control.** Image models won't visually distinguish VS vs VVS reliably. Store it as metadata, use it lightly in prompt wording at most.
 - **Don't trust the `lib/styles/` re-export layer to stay.** It exists only because tsconfig path aliases aren't wired through; once they are, that folder gets deleted.
 
@@ -192,7 +189,7 @@ If you add a new placeholder, update `builder.ts` and every template that uses i
 
 In order:
 
-1. **Stop treating repo root as an app.** Either flatten `mvp-jewelry-app/` up to repo root or delete the outer scaffold (`/package.json`, `/tsconfig.json`, `/prisma/`, `/dev.db`, `/package-lock.json`).
+1. ~~**Flatten the repository.**~~ **Done.** The repository root is now the canonical app root.
 2. **Fix tsconfig path aliases**, then delete the `lib/styles/` and `server/db/client.ts` re-export shims:
    ```json
    "paths": {

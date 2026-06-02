@@ -19,7 +19,7 @@ vi.mock("@/server/db/client", () => ({
 describe("/api/storefront/[accountSlug]/reviews", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.accountFindUnique.mockResolvedValue({ id: "account-1", StoreProfile: { isPublished: true } });
+    mocks.accountFindUnique.mockResolvedValue({ id: "account-1", status: "active", StoreProfile: { isPublished: true } });
     mocks.storeReviewCreate.mockResolvedValue({ id: "review-1" });
   });
 
@@ -35,7 +35,7 @@ describe("/api/storefront/[accountSlug]/reviews", () => {
         rating: 5,
         reviewText: "Great custom pendant experience.",
       }),
-    }), { params: { accountSlug: "demo" } });
+    }), { params: Promise.resolve({ accountSlug: "demo" }) });
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({ reviewId: "review-1" });
@@ -64,7 +64,7 @@ describe("/api/storefront/[accountSlug]/reviews", () => {
         rating: 5,
         reviewText: "Great custom pendant experience.",
       }),
-    }), { params: { accountSlug: "demo" } });
+    }), { params: Promise.resolve({ accountSlug: "demo" }) });
 
     expect(response.status).toBe(400);
     expect(mocks.storeReviewCreate).not.toHaveBeenCalled();

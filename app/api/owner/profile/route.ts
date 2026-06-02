@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
-import { savePublicUpload } from "@/src/lib/storage/public-media";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
+import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 
 type ExtraLink = {
   label: string;
@@ -45,18 +45,22 @@ function extraLinks(form: FormData) {
 }
 
 export async function PATCH(req: Request) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   try {
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const account = await prisma.account.findUnique({ where: { id: accountId }, include: { StoreProfile: true } });
     if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
 
     const form = await req.formData();
     const profileImage = fileFromForm(form, "profileImage");
-    const profileImageUrl = profileImage
+    const directProfileImage = parseDirectUploadReference(form.get("profileImageUpload"), "owner-profile");
+    const profileImageUrl = directProfileImage
+      ? useDirectPublicUpload(directProfileImage)
+      : profileImage
       ? await savePublicUpload(profileImage, `accounts/${accountId}/profile`, `profile-${Date.now()}`)
       : undefined;
     const links = extraLinks(form);
