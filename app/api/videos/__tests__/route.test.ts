@@ -207,7 +207,7 @@ describe("/api/videos/[id]", () => {
     });
 
     const response = await GET(new Request("http://test.local/api/videos/video-test"), {
-      params: { id: "video-test" }
+      params: Promise.resolve({ id: "video-test" })
     });
     const json = await response.json();
 

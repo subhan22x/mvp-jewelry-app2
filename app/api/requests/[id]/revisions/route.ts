@@ -6,6 +6,9 @@ import mime from "mime";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { generateImage } from "@/lib/styles/connector";
+import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+
+export const maxDuration = 300;
 
 const Body = z.object({
   sourceResultId: z.string().min(1),
@@ -70,11 +73,12 @@ async function sourceImageAttachment(imageUrl: string, requestUrl: string, revis
   return filePath;
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = Body.parse(await req.json());
     const request = await prisma.request.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         Results: true,
         ResultRevisions: { orderBy: { revisionNumber: "asc" } }
@@ -105,7 +109,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }
     });
 
-    void (async () => {
+    scheduleBackgroundTask((async () => {
       let attachmentPath: string | null = null;
       try {
         attachmentPath = await sourceImageAttachment(source.imageUrl!, req.url, revision.id);
@@ -148,7 +152,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           await fs.unlink(attachmentPath).catch(() => {});
         }
       }
-    })();
+    })(), `revision:${revision.id}`);
 
     return NextResponse.json({
       revisionId: revision.id,

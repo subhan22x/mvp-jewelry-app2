@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const next = url.searchParams.get("next");
   if (!code) return NextResponse.redirect(new URL("/login?error=missing_confirmation_code", url));
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user) return NextResponse.redirect(new URL("/login?error=invalid_confirmation_link", url));
 

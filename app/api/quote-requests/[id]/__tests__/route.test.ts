@@ -49,7 +49,7 @@ describe("/api/quote-requests/[id]", () => {
     const response = await PATCH(new Request("http://test.local/api/quote-requests/quote-test", {
       method: "PATCH",
       body: JSON.stringify({ status: "sent" })
-    }), { params: { id: "quote-test" } });
+    }), { params: Promise.resolve({ id: "quote-test" }) });
     const json = await response.json();
 
     expect(response.status).toBe(401);
@@ -63,7 +63,7 @@ describe("/api/quote-requests/[id]", () => {
     const response = await PATCH(authedRequest({
       quotedPriceCents: -1,
       status: "sent"
-    }), { params: { id: "quote-test" } });
+    }), { params: Promise.resolve({ id: "quote-test" }) });
 
     expect(response.status).toBe(400);
     expect(mocks.quoteRequestUpdate).not.toHaveBeenCalled();
@@ -80,7 +80,7 @@ describe("/api/quote-requests/[id]", () => {
       quoteMaterialKarat: "14k",
       quoteStoneType: "natural_diamonds",
       status: "sent"
-    }), { params: { id: "quote-test" } });
+    }), { params: Promise.resolve({ id: "quote-test" }) });
     const json = await response.json();
 
     expect(response.status).toBe(200);

@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { isR2Configured, uploadToR2 } from "@/src/lib/storage/r2";
+import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from "@/src/lib/storage/r2";
 
 const GENERATED_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), "public", "generated");
 
@@ -43,6 +43,7 @@ export async function saveRemoteVideoLocally(remoteVideoUrl: string, videoId: st
     });
   }
 
+  assertDurableMediaStorageConfigured();
   const filePath = path.join(GENERATED_DIR, fileName);
   await fs.mkdir(GENERATED_DIR, { recursive: true });
   await fs.writeFile(filePath, buffer);

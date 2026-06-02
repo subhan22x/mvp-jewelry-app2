@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import mime from "mime";
-import { isR2Configured, uploadToR2 } from "./r2";
+import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from "./r2";
+import { directUploadPublicUrl, type DirectUploadReference } from "./direct-upload";
 
 const GENERATED_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), "public", "generated");
 
@@ -27,8 +28,13 @@ export async function savePublicUpload(file: File, keyPrefix: string, nameSeed: 
     });
   }
 
+  assertDurableMediaStorageConfigured();
   const filePath = path.join(GENERATED_DIR, key);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, buffer);
   return `/generated/${key}`;
+}
+
+export function useDirectPublicUpload(reference: DirectUploadReference) {
+  return directUploadPublicUrl(reference);
 }

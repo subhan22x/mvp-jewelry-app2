@@ -10,10 +10,11 @@ function toSeconds(durationMs: number | null) {
   return typeof durationMs === "number" ? Number((durationMs / 1000).toFixed(2)) : null;
 }
 
-export default async function OwnerVideoJobPage({ params }: { params: { videoJobId: string } }) {
+export default async function OwnerVideoJobPage({ params }: { params: Promise<{ videoJobId: string }> }) {
+  const { videoJobId } = await params;
   const { accountId } = await requireOwnerContext();
   const video = await prisma.videoGeneration.findFirst({
-    where: { id: params.videoJobId, accountId },
+    where: { id: videoJobId, accountId },
     include: {
       request: {
         select: {

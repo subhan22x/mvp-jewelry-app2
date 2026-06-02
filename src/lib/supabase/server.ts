@@ -3,8 +3,8 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getSupabasePublishableKey, getSupabaseSecretKey, getSupabaseUrl } from "./env";
 
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
     cookies: {

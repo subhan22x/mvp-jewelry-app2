@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
-type Ctx = { params: { shootId: string } };
+type Ctx = { params: Promise<{ shootId: string }> };
 
 const PatchBody = z.object({
   pieceType: z.string().optional(),
@@ -27,9 +27,10 @@ async function findShoot(shootId: string, accountId: string) {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { shootId } = await params;
   const owner = await getOwnerContext();
   if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const shoot = await findShoot(params.shootId, owner.accountId);
+  const shoot = await findShoot(shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const [uploads, imageGenerations, videoGenerations] = await Promise.all([
@@ -42,9 +43,10 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
+  const { shootId } = await params;
   const owner = await getOwnerContext();
   if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const shoot = await findShoot(params.shootId, owner.accountId);
+  const shoot = await findShoot(shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   try {

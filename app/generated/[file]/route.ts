@@ -13,8 +13,9 @@ function safeGeneratedPath(file: string) {
   return path.join(GENERATED_DIR, fileName);
 }
 
-export async function GET(_: Request, { params }: { params: { file: string } }) {
-  const filePath = safeGeneratedPath(params.file);
+export async function GET(_: Request, { params }: { params: Promise<{ file: string }> }) {
+  const { file } = await params;
+  const filePath = safeGeneratedPath(file);
   if (!filePath) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   try {

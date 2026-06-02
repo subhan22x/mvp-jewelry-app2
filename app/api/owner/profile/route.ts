@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
-import { savePublicUpload } from "@/src/lib/storage/public-media";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
+import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 
 type ExtraLink = {
   label: string;
@@ -56,7 +57,10 @@ export async function PATCH(req: Request) {
 
     const form = await req.formData();
     const profileImage = fileFromForm(form, "profileImage");
-    const profileImageUrl = profileImage
+    const directProfileImage = parseDirectUploadReference(form.get("profileImageUpload"), "owner-profile");
+    const profileImageUrl = directProfileImage
+      ? useDirectPublicUpload(directProfileImage)
+      : profileImage
       ? await savePublicUpload(profileImage, `accounts/${accountId}/profile`, `profile-${Date.now()}`)
       : undefined;
     const links = extraLinks(form);

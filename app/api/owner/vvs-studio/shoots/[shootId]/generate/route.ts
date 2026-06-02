@@ -6,8 +6,11 @@ import { getVvsModelSettings } from "@/src/lib/vvs-studio/model-settings";
 import { buildVvsStudioImagePrompt } from "@/src/lib/vvs-studio/prompt-builder";
 import { generateVvsImage } from "@/src/lib/vvs-studio/image-generator";
 import { readVvsSourceAttachment } from "@/src/lib/vvs-studio/source-storage";
+import { scheduleBackgroundTask } from "@/src/lib/platform/background";
 
-type Ctx = { params: { shootId: string } };
+export const maxDuration = 300;
+
+type Ctx = { params: Promise<{ shootId: string }> };
 
 const Body = z.object({
   provider: z.enum(["openai", "gemini"]).optional(),
@@ -19,11 +22,12 @@ function errorMessage(err: unknown) {
 }
 
 export async function POST(req: Request, { params }: Ctx) {
+  const { shootId } = await params;
   const owner = await getOwnerContext();
   if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const accountId = owner.accountId;
   const shoot = await prisma.vvsStudioShoot.findUnique({
-    where: { id: params.shootId },
+    where: { id: shootId },
     include: { Uploads: true },
   });
   if (!shoot || shoot.accountId !== accountId) {
@@ -83,7 +87,7 @@ export async function POST(req: Request, { params }: Ctx) {
     data: { status: "generating_image", error: null, updatedAt: new Date() },
   });
 
-  void (async () => {
+  scheduleBackgroundTask((async () => {
     const startedMs = startedAt.getTime();
     try {
       const attachments = await Promise.all(orderedUploads.map(readVvsSourceAttachment));
@@ -127,7 +131,7 @@ export async function POST(req: Request, { params }: Ctx) {
         data: { status: "failed", error: errorMessage(err), updatedAt: completedAt },
       });
     }
-  })();
+  })(), `vvs-image:${generation.id}`);
 
   return NextResponse.json({ generationId: generation.id }, { status: 201 });
 }

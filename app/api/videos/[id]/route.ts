@@ -5,9 +5,10 @@ function toSeconds(durationMs: number | null) {
   return typeof durationMs === "number" ? Number((durationMs / 1000).toFixed(2)) : null;
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const video = await prisma.videoGeneration.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       request: {
         select: {

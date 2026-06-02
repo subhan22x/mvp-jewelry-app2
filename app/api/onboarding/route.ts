@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { savePublicUpload } from "@/src/lib/storage/public-media";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
+import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { slugify } from "@/src/lib/slug";
 import { createAdminClient } from "@/src/lib/supabase/server";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/src/lib/supabase/env";
@@ -88,17 +89,22 @@ export async function POST(req: Request) {
   const uploadPrefix = `accounts/${accountId}`;
   const profileImage = fileFromForm(form, "profileImage");
   const coverImage = fileFromForm(form, "coverImage");
+  const directProfileImage = parseDirectUploadReference(form.get("profileImageUpload"), "onboarding");
+  const directCoverImage = parseDirectUploadReference(form.get("coverImageUpload"), "onboarding");
 
   const [profileImageUrl, coverImageUrl] = await Promise.all([
-    profileImage ? savePublicUpload(profileImage, `${uploadPrefix}/profile`, "profile") : Promise.resolve(null),
-    coverImage ? savePublicUpload(coverImage, `${uploadPrefix}/profile`, "cover") : Promise.resolve(null)
+    directProfileImage ? Promise.resolve(useDirectPublicUpload(directProfileImage)) : profileImage ? savePublicUpload(profileImage, `${uploadPrefix}/profile`, "profile") : Promise.resolve(null),
+    directCoverImage ? Promise.resolve(useDirectPublicUpload(directCoverImage)) : coverImage ? savePublicUpload(coverImage, `${uploadPrefix}/profile`, "cover") : Promise.resolve(null)
   ]);
 
   const productImageUrls = new Map<string, string>();
   for (const product of body.products) {
     const file = fileFromForm(form, `productImage:${product.clientId}`);
-    if (!file) continue;
-    const imageUrl = await savePublicUpload(file, `${uploadPrefix}/products`, product.clientId);
+    const directFile = parseDirectUploadReference(form.get(`productImageUpload:${product.clientId}`), "onboarding");
+    if (!file && !directFile) continue;
+    const imageUrl = directFile
+      ? useDirectPublicUpload(directFile)
+      : await savePublicUpload(file!, `${uploadPrefix}/products`, product.clientId);
     productImageUrls.set(product.clientId, imageUrl);
   }
 

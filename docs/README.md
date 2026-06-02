@@ -10,6 +10,7 @@ These documents should match the running application:
 - [`data-model.md`](data-model.md): current Prisma model and the remaining SaaS data-model work.
 - [`supabase-r2-setup.md`](supabase-r2-setup.md): Supabase runtime, archived SQLite migration tooling, and R2 transition steps.
 - [`production-roadmap.md`](production-roadmap.md): checkpoint status and the remaining path to a paid deployment.
+- [`vercel-deployment.md`](vercel-deployment.md): Vercel environment variables, R2 CORS, auth URLs, preview QA, and remaining serverless hardening.
 - [`auth-and-system-handoff.md`](auth-and-system-handoff.md): detailed implementation handoff for Supabase Auth, development owner provisioning, current application flows, OAuth planning, and known gaps.
 - [`store-owner-profile.md`](store-owner-profile.md): public storefront, onboarding, profile editor, collections, and reviews.
 

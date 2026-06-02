@@ -3,8 +3,9 @@ import sharp from "sharp";
 import { prisma } from "@/server/db/client";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { saveVvsSourceUpload } from "@/src/lib/vvs-studio/source-storage";
+import { directUploadReferenceSchema, readDirectUpload } from "@/src/lib/storage/direct-upload";
 
-type Ctx = { params: { shootId: string } };
+type Ctx = { params: Promise<{ shootId: string }> };
 
 const VALID_ANGLES = ["top", "left", "right"] as const;
 type Angle = (typeof VALID_ANGLES)[number];
@@ -35,30 +36,39 @@ function isCompatibleMime(declared: string, detected: string) {
 }
 
 export async function POST(req: Request, { params }: Ctx) {
+  const { shootId } = await params;
   const owner = await getOwnerContext();
   if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const shoot = await findShoot(params.shootId, owner.accountId);
+  const shoot = await findShoot(shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Shoot not found." }, { status: 404 });
 
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const angle = formData.get("angle") as string | null;
+    const isJson = req.headers.get("content-type")?.includes("application/json");
+    const formData = isJson ? null : await req.formData();
+    const json = isJson ? await req.json() : null;
+    const file = formData?.get("file") as File | null;
+    const angle = (isJson ? json?.angle : formData?.get("angle")) as string | null;
+    const directFile = isJson ? directUploadReferenceSchema.parse(json?.fileUpload) : null;
+    if (directFile && !directFile.key.startsWith("incoming/owner-vvs-source/")) {
+      return NextResponse.json({ error: "Uploaded file purpose does not match this request." }, { status: 400 });
+    }
+    const declaredType = directFile?.contentType ?? file?.type ?? "";
+    const declaredSize = directFile?.size ?? file?.size ?? 0;
 
-    if (!file) return NextResponse.json({ error: "No file provided." }, { status: 400 });
+    if (!file && !directFile) return NextResponse.json({ error: "No file provided." }, { status: 400 });
     if (!angle || !VALID_ANGLES.includes(angle as Angle)) {
       return NextResponse.json({ error: "angle must be top, left, or right." }, { status: 400 });
     }
-    if (file.size > MAX_UPLOAD_BYTES) {
+    if (declaredSize > MAX_UPLOAD_BYTES) {
       return NextResponse.json({ error: "Image must be 15 MB or smaller." }, { status: 413 });
     }
-    if (!ALLOWED_TYPES.has(file.type)) {
+    if (!ALLOWED_TYPES.has(declaredType)) {
       return NextResponse.json({ error: "Upload must be JPEG, PNG, WebP, HEIC, or HEIF." }, { status: 415 });
     }
 
-    const originalBuffer = Buffer.from(await file.arrayBuffer());
+    const originalBuffer = directFile ? (await readDirectUpload(directFile)).buffer : Buffer.from(await file!.arrayBuffer());
     const detectedType = detectedImageType(originalBuffer);
-    if (!detectedType || !isCompatibleMime(file.type, detectedType)) {
+    if (!detectedType || !isCompatibleMime(declaredType, detectedType)) {
       return NextResponse.json({ error: "Image file type does not match its contents." }, { status: 415 });
     }
 
@@ -88,7 +98,7 @@ export async function POST(req: Request, { params }: Ctx) {
           data: {
             storageKey: stored.storageKey,
             imageUrl: stored.imageUrl,
-            originalContentType: file.type,
+            originalContentType: declaredType,
             normalizedContentType: "image/jpeg",
             fileSize: normalizedBuffer.byteLength,
             width: meta.width,
@@ -103,7 +113,7 @@ export async function POST(req: Request, { params }: Ctx) {
             angle,
             storageKey: stored.storageKey,
             imageUrl: stored.imageUrl,
-            originalContentType: file.type,
+            originalContentType: declaredType,
             normalizedContentType: "image/jpeg",
             fileSize: normalizedBuffer.byteLength,
             width: meta.width,

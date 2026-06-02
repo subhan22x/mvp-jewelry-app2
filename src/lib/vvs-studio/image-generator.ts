@@ -3,7 +3,7 @@ import path from "node:path";
 import mime from "mime";
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
-import { isR2Configured, uploadToR2 } from "../storage/r2";
+import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from "../storage/r2";
 import type { VvsGenerateImageInput, VvsGenerateImageResult } from "./types";
 
 const OUTPUT_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), "public", "generated");
@@ -29,6 +29,7 @@ async function saveBuffer(buffer: Buffer, mimeType: string, generationId: string
     return uploadToR2({ key: `vvs-studio/${fileName}`, body: buffer, contentType: mimeType });
   }
 
+  assertDurableMediaStorageConfigured();
   const dir = path.join(OUTPUT_DIR, "vvs-studio");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), buffer);

@@ -12,7 +12,7 @@ export type OwnerContext = {
 
 export async function getOwnerContext(): Promise<OwnerContext | null> {
   if (!isSupabaseAuthConfigured()) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
 

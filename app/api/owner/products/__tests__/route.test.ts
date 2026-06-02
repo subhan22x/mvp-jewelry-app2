@@ -108,7 +108,7 @@ describe("/api/owner/products", () => {
     form.delete("image");
 
     const response = await PATCH(authedRequest(form), {
-      params: { productId: "product-1" },
+      params: Promise.resolve({ productId: "product-1" }),
     });
 
     expect(response.status).toBe(200);
@@ -126,7 +126,7 @@ describe("/api/owner/products", () => {
     const { DELETE } = await import("../[productId]/route");
 
     const response = await DELETE(authedRequest(), {
-      params: { productId: "product-1" },
+      params: Promise.resolve({ productId: "product-1" }),
     });
 
     expect(response.status).toBe(200);
