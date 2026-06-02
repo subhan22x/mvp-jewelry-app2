@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
 type Ctx = { params: { generationId: string } };
 
 export async function GET(_req: Request, { params }: Ctx) {
-  const accountId = getDefaultAccountId();
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const accountId = owner.accountId;
   const gen = await prisma.vvsStudioImageGeneration.findUnique({ where: { id: params.generationId } });
   if (!gen || gen.accountId !== accountId) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });

@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
 function toSeconds(durationMs: number | null) {
   return typeof durationMs === "number" ? Number((durationMs / 1000).toFixed(2)) : null;
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const accountId = getDefaultAccountId();
+  const accountId = owner.accountId;
   const video = await prisma.videoGeneration.findFirst({
     where: { id: params.id, accountId },
     include: {

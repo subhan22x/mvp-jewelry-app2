@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: { accountSlug: st
     where: { slug: params.accountSlug },
     include: { StoreProfile: true }
   });
-  if (!account || !account.StoreProfile?.isPublished) return jsonError("Store profile not found.", 404);
+  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) return jsonError("Store profile not found.", 404);
 
   const form = await req.formData();
   const parsed = quoteSchema.safeParse({

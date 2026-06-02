@@ -4,6 +4,7 @@ CREATE SCHEMA IF NOT EXISTS "public";
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
+    "authUserId" TEXT,
     "storeName" TEXT NOT NULL,
     "email" TEXT,
     "name" TEXT,
@@ -400,6 +401,9 @@ CREATE TABLE "public"."VvsStudioVideoGeneration" (
 
     CONSTRAINT "VvsStudioVideoGeneration_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_authUserId_key" ON "public"."User"("authUserId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");

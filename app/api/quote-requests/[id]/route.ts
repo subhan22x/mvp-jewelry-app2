@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
 const Body = z.object({
   quotedPriceCents: z.number().int().nonnegative().optional(),
@@ -19,13 +18,14 @@ function cleanOptional(value: string | null | undefined) {
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   try {
     const body = Body.parse(await req.json());
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const existing = await prisma.quoteRequest.findFirst({
       where: { id: params.id, accountId },
       select: { id: true }

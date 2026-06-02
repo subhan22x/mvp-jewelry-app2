@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       }
     });
 
-    const promptMode = await getNamePromptMode();
+    const promptMode = await getNamePromptMode(accountId);
     const variants = buildVariants({
       userId: body.userId,
       styleId: body.styleId,

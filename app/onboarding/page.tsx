@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DEFAULT_THEME_KEY, THEME_OPTIONS } from "@/src/lib/theme/themes";
 
 const totalSteps = 6;
@@ -56,6 +57,7 @@ type ProductDraft = {
 };
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [businessName, setBusinessName] = useState("");
   const [city, setCity] = useState("");
@@ -158,7 +160,12 @@ export default function OnboardingPage() {
       return;
     }
 
-    setPublishedUrl(json.profileUrl);
+    if (json.requiresEmailConfirmation) {
+      router.push(`/auth/check-email?email=${encodeURIComponent(json.email ?? email)}`);
+      return;
+    }
+
+    router.push(json.ownerUrl ?? "/owner");
     setIsSubmitting(false);
   }
 

@@ -19,7 +19,7 @@ vi.mock("@/server/db/client", () => ({
 describe("/api/storefront/[accountSlug]/reviews", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.accountFindUnique.mockResolvedValue({ id: "account-1", StoreProfile: { isPublished: true } });
+    mocks.accountFindUnique.mockResolvedValue({ id: "account-1", status: "active", StoreProfile: { isPublished: true } });
     mocks.storeReviewCreate.mockResolvedValue({ id: "review-1" });
   });
 

@@ -10,6 +10,7 @@ generator client {
 
 model User {
   id           String              @id @default(cuid())
+  authUserId   String?             @unique
   storeName    String
   email        String?             @unique
   name         String?

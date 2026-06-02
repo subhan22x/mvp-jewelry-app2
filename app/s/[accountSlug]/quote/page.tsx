@@ -10,7 +10,7 @@ export default async function StoreQuotePage({ params }: { params: { accountSlug
     where: { slug: params.accountSlug },
     include: { StoreProfile: true }
   });
-  if (!account || !account.StoreProfile?.isPublished) notFound();
+  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) notFound();
 
   return (
     <main className="min-h-screen bg-[#151311] text-[#F5F0E8]">

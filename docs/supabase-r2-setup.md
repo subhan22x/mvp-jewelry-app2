@@ -6,6 +6,13 @@ The application runtime uses Supabase/Postgres in `prisma/schema.prisma`.
 
 The archived SQLite schema remains in `prisma/schema.sqlite.prisma` for migration and audit utilities. The canonical archived local source defaults to `prisma/dev.db`.
 
+Schema file roles:
+
+- `prisma/schema.prisma`: canonical runtime Prisma schema.
+- `prisma/schema.postgres.prisma`: Postgres mirror consumed by `npm run supabase:push`.
+- `prisma/schema.sqlite.prisma`: SQLite mirror used to generate the archived-source client.
+- `src/server/db/schema.prisma` and `src/server/db/schema.sqlite.prisma`: retained mirrors for compatibility with earlier code paths. Keep them synchronized until they are removed deliberately.
+
 Supabase connection strings belong in `.env.local`. Do not paste database passwords into tracked docs or chat.
 
 ## Important Migration Note
@@ -25,17 +32,20 @@ This repo currently supports the early Supabase testing path with:
 npm run supabase:push
 npm run supabase:migrate-metadata
 npm run supabase:audit
+npm run supabase:audit-rls
 ```
 
 `supabase:push` creates/updates the schema from `prisma/schema.postgres.prisma`.
 
-`supabase:migrate-metadata` copies SQLite metadata rows into Supabase/Postgres in dependency order, including revisions, reviews, and VVS Studio rows. The copy runs in a transaction and verifies every migrated source key before committing. It does not upload generated media to R2.
+`supabase:migrate-metadata` copies archived SQLite rows into Supabase/Postgres in dependency order, including revisions, reviews, and VVS Studio rows. The historical script name is retained even though it copies application rows, not only metadata. The copy runs in a transaction and verifies every migrated source key before committing. It does not upload generated media to R2.
 
 `supabase:audit` compares table row counts between the canonical local SQLite source and Supabase/Postgres. By default, migration scripts read SQLite from `prisma/dev.db`. Override that only when needed:
 
 ```env
 SQLITE_SOURCE_DATABASE_URL="file:/absolute/path/to/source.db"
 ```
+
+`supabase:audit-rls` verifies that public application tables keep Row Level Security enabled without direct browser-access policies. The current application reads and writes through server-side Prisma routes rather than Supabase PostgREST, so browser roles should not receive table policies.
 
 The clean Postgres baseline SQL generated from the current schema lives at:
 
@@ -44,6 +54,17 @@ prisma/postgres-baseline/0001_initial.sql
 ```
 
 Use the baseline for a fresh production Supabase project. `supabase:push` remains useful while iterating against an early development project.
+
+Regenerate the baseline after intentional schema changes:
+
+```bash
+npx prisma migrate diff \
+  --from-empty \
+  --to-schema-datamodel prisma/schema.prisma \
+  --script > prisma/postgres-baseline/0001_initial.sql
+```
+
+Review the generated SQL before using it on a fresh project.
 
 After R2 is configured, run:
 
@@ -93,9 +114,22 @@ For Prisma:
 - Replace the password placeholder in both strings before running the scripts.
 - If the password contains special URL characters like `@`, `#`, `%`, `/`, `?`, or `:`, URL-encode it before placing it in the connection string.
 
-## Target Prisma Datasource
+Supabase Auth also requires:
 
-When the migration history is ready for Postgres, the datasource should become:
+```env
+NEXT_PUBLIC_SUPABASE_URL="https://PROJECT_REF.supabase.co"
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
+SUPABASE_SECRET_KEY="sb_secret_..."
+```
+
+- The publishable key is browser-safe and is used for signup and login.
+- The secret key is server-only and must never use a `NEXT_PUBLIC_` prefix.
+- Configure the Supabase Authentication URL settings so confirmation emails can return to `/auth/callback`.
+- Add both local and deployed callback URLs before testing onboarding in each environment.
+
+## Runtime Prisma Datasource
+
+The runtime datasource is already:
 
 ```prisma
 datasource db {
@@ -118,7 +152,7 @@ R2_ENDPOINT=""
 R2_PUBLIC_BASE_URL=""
 ```
 
-The database should store R2 metadata in `MediaAsset`, not raw files.
+The current schema stores public media URLs on the owning rows. A later production-hardening pass should add a `MediaAsset` model so storage keys and metadata are managed centrally.
 
 - `R2_ACCOUNT_ID` is your Cloudflare account ID.
 - `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` come from an R2 API token with object read/write access to the bucket.
@@ -133,3 +167,13 @@ generated/<file-name>
 ```
 
 The current implementation stores public R2 URLs directly on `Result.imageUrl`, `VideoGeneration.videoUrl`, and quote snapshot URL fields. The longer-term data model should move this into `MediaAsset` rows with `provider = r2`, `storageKey`, content metadata, and owner references.
+
+## Remaining Production Blockers
+
+The Postgres runtime switch is complete, but production hardening is not:
+
+1. Replace remaining durable local filesystem writes with R2-backed storage.
+2. Keep local filesystem use only for temporary `sharp` processing on the Render Node host.
+3. Configure a custom R2 media domain instead of an `r2.dev` URL.
+4. Establish normal Postgres migrations before onboarding paid production accounts. The current `supabase:push` workflow is for early development only.
+5. Complete password reset and remove remaining seeded-demo defaults from customer-generation routes.

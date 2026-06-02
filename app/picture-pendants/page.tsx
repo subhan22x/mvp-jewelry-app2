@@ -125,7 +125,7 @@ export default function PicturePendantsBuilder() {
   const handleBack = () => {
     if (step === 2 && !confirmDiscardGeneration()) return;
     if (step === 0) {
-      router.push("/");
+      router.push("/design");
       return;
     }
     if (step === 2) {

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { assertPublicImageUrl, toPublicImageUrl } from "@/src/lib/video/public-url";
 import { saveRemoteVideoLocally } from "@/src/lib/video/storage";
 import { buildJewelryVideoPrompt, generateSeedanceVideo } from "@/lib/video/wavespeed";
@@ -16,13 +15,14 @@ function getGenerationErrorMessage(err: unknown) {
 }
 
 export async function POST(req: Request) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   try {
     const body = Body.parse(await req.json());
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const result = await prisma.result.findUnique({
       where: { id: body.resultId },
       include: { request: true }

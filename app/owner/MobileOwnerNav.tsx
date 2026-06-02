@@ -7,7 +7,7 @@ type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "p
 
 const ownerNav = [
   { label: "Quotes", href: "/owner", icon: "quotes" },
-  { label: "VVS Design", href: "/", icon: "design" },
+  { label: "VVS Design", href: "/owner/design", icon: "design" },
   { label: "VVS Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Reviews", href: "/owner/reviews", icon: "reviews" },
   { label: "Collections", href: "/owner/collections", icon: "collections" },
@@ -110,6 +110,11 @@ export default function MobileOwnerNav({ active }: { active: string }) {
                 </Link>
               );
             })}
+            <form action="/api/auth/logout" method="post">
+              <button className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-semibold text-[#c2c6d6] transition hover:bg-white/5 hover:text-[#e1e2ec]">
+                Log out
+              </button>
+            </form>
           </nav>
         </>
       )}

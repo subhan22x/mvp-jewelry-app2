@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { hashPassword } from "@/src/lib/auth/password";
 import { savePublicUpload } from "@/src/lib/storage/public-media";
 import { slugify } from "@/src/lib/slug";
+import { createAdminClient } from "@/src/lib/supabase/server";
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/src/lib/supabase/env";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
   if (existingAccount) return jsonError("That profile URL is already taken.");
   if (existingUser) return jsonError("An account with that email already exists.");
 
+  const admin = createAdminClient();
   const accountId = crypto.randomUUID();
   const uploadPrefix = `accounts/${accountId}`;
   const profileImage = fileFromForm(form, "profileImage");
@@ -99,76 +102,98 @@ export async function POST(req: Request) {
     productImageUrls.set(product.clientId, imageUrl);
   }
 
-  const passwordHash = await hashPassword(body.password);
   const now = new Date();
+  const supabase = createSupabaseClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+  const callbackUrl = new URL("/auth/callback?next=/owner", req.url).toString();
+  const { data: signupData, error: signupError } = await supabase.auth.signUp({
+    email: body.email.toLowerCase(),
+    password: body.password,
+    options: { emailRedirectTo: callbackUrl }
+  });
+  if (signupError || !signupData.user) {
+    return jsonError(signupError?.message ?? "Unable to create your login.");
+  }
 
-  const account = await prisma.account.create({
-    data: {
-      id: accountId,
-      name: body.businessName,
-      slug,
-      logoUrl: profileImageUrl,
-      themeKey: body.themeKey,
-      StoreProfile: {
-        create: {
-          displayName: body.businessName,
-          headline: body.headline || null,
-          bio: body.bio || null,
-          profileImageUrl,
-          coverImageUrl,
-          coverPreset: body.coverPreset || null,
-          coverOverlayOpacity: body.coverOverlayOpacity,
-          coverTextColor: body.coverTextColor,
-          phone: body.phone || null,
-          whatsappPhone: body.whatsappPhone || null,
-          websiteUrl: null,
-          extraLinksJson: null,
-          instagramHandle: cleanHandle(body.instagramHandle),
-          city: body.city || null,
-          country: body.country || null,
-          yearStarted: body.yearStarted || null,
-          statusLabel: "Taking Orders",
-          verificationLabel: "VVS Verified",
-          isPublished: true
-        }
-      },
-      Memberships: {
-        create: {
-          role: "owner",
-          status: "active",
-          user: {
-            create: {
-              storeName: body.businessName,
-              email: body.email.toLowerCase(),
-              name: body.businessName,
-              phone: body.phone || body.whatsappPhone || null,
-              passwordHash,
-              role: "store_owner"
+  let account;
+  try {
+    account = await prisma.account.create({
+      data: {
+        id: accountId,
+        name: body.businessName,
+        slug,
+        logoUrl: profileImageUrl,
+        themeKey: body.themeKey,
+        status: signupData.session ? "active" : "pending_verification",
+        StoreProfile: {
+          create: {
+            displayName: body.businessName,
+            headline: body.headline || null,
+            bio: body.bio || null,
+            profileImageUrl,
+            coverImageUrl,
+            coverPreset: body.coverPreset || null,
+            coverOverlayOpacity: body.coverOverlayOpacity,
+            coverTextColor: body.coverTextColor,
+            phone: body.phone || null,
+            whatsappPhone: body.whatsappPhone || null,
+            websiteUrl: null,
+            extraLinksJson: null,
+            instagramHandle: cleanHandle(body.instagramHandle),
+            city: body.city || null,
+            country: body.country || null,
+            yearStarted: body.yearStarted || null,
+            statusLabel: "Taking Orders",
+            verificationLabel: "VVS Verified",
+            isPublished: Boolean(signupData.session)
+          }
+        },
+        Memberships: {
+          create: {
+            role: "owner",
+            status: signupData.session ? "active" : "pending_verification",
+            user: {
+              create: {
+                authUserId: signupData.user.id,
+                storeName: body.businessName,
+                email: body.email.toLowerCase(),
+                name: body.businessName,
+                phone: body.phone || body.whatsappPhone || null,
+                role: "store_owner"
+              }
             }
           }
+        },
+        StoreServices: {
+          create: body.services.map(service => ({
+            title: service.title,
+            description: service.description || null,
+            kind: service.kind,
+            ctaLabel: service.ctaLabel,
+            href: service.href || null,
+            sortOrder: service.sortOrder,
+            isActive: service.isActive
+          }))
+        },
+        ProductCollections: {
+          create: ["chain", "pendant", "ring", "bracelet", "watch", "grillz", "earrings", "trophy", "other"].map((category, index) => ({
+            title: category.replace(/\b\w/g, char => char.toUpperCase()),
+            slug: category,
+            sortOrder: index,
+            isActive: true
+          }))
         }
-      },
-      StoreServices: {
-        create: body.services.map(service => ({
-          title: service.title,
-          description: service.description || null,
-          kind: service.kind,
-          ctaLabel: service.ctaLabel,
-          href: service.href || null,
-          sortOrder: service.sortOrder,
-          isActive: service.isActive
-        }))
-      },
-      ProductCollections: {
-        create: ["chain", "pendant", "ring", "bracelet", "watch", "grillz", "earrings", "trophy", "other"].map((category, index) => ({
-          title: category.replace(/\b\w/g, char => char.toUpperCase()),
-          slug: category,
-          sortOrder: index,
-          isActive: true
-        }))
       }
+    });
+  } catch (error) {
+    try {
+      await admin.auth.admin.deleteUser(signupData.user.id);
+    } catch {
+      // Preserve the original database error if auth cleanup is unavailable.
     }
-  });
+    throw error;
+  }
 
   for (const [index, product] of body.products.entries()) {
     const imageUrl = productImageUrls.get(product.clientId);
@@ -206,6 +231,8 @@ export async function POST(req: Request) {
     accountId: account.id,
     slug: account.slug,
     profileUrl: `/s/${account.slug}`,
-    ownerUrl: "/owner"
+    ownerUrl: "/owner",
+    requiresEmailConfirmation: !signupData.session,
+    email: body.email.toLowerCase()
   });
 }

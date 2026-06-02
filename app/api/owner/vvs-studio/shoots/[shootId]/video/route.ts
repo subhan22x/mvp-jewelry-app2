@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { getVvsModelSettings } from "@/src/lib/vvs-studio/model-settings";
 import { buildVvsStudioVideoPrompt } from "@/src/lib/vvs-studio/prompt-builder";
 import { generateVvsVideo } from "@/src/lib/vvs-studio/video-generator";
@@ -22,7 +22,9 @@ function requestedVideoDuration(value: number | null | undefined) {
 }
 
 export async function POST(req: Request, { params }: Ctx) {
-  const accountId = getDefaultAccountId();
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const accountId = owner.accountId;
   const shoot = await prisma.vvsStudioShoot.findUnique({ where: { id: params.shootId } });
   if (!shoot || shoot.accountId !== accountId) {
     return NextResponse.json({ error: "Shoot not found." }, { status: 404 });
