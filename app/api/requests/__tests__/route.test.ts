@@ -269,7 +269,7 @@ describe("/api/requests/[id]", () => {
     });
 
     const response = await GET(new Request("http://test.local/api/requests/req-test"), {
-      params: { id: "req-test" }
+      params: Promise.resolve({ id: "req-test" })
     });
     const json = await response.json();
 

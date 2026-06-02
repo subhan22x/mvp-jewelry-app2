@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerRequestAuthenticated } from "@/src/lib/owner-auth";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { collectionForCategory } from "@/src/lib/owner-products";
-import { savePublicUpload } from "@/src/lib/storage/public-media";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
+import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { slugify } from "@/src/lib/slug";
 
-type Ctx = { params: { productId: string } };
+type Ctx = { params: Promise<{ productId: string }> };
 
 const PRICE_MODES = new Set(["set", "range", "ask"]);
 
@@ -39,30 +39,34 @@ function priceLabel(mode: string, raw: string | null) {
   return raw;
 }
 
-async function findProduct(productId: string) {
-  const accountId = getDefaultAccountId();
+async function findProduct(productId: string, accountId: string) {
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product || product.accountId !== accountId) return null;
   return product;
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const { productId } = await params;
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const existing = await findProduct(params.productId);
+  const existing = await findProduct(productId, owner.accountId);
   if (!existing) return NextResponse.json({ error: "Piece not found." }, { status: 404 });
 
   try {
-    const accountId = getDefaultAccountId();
+    const accountId = owner.accountId;
     const form = await req.formData();
     const name = text(form, "name");
     if (!name) return NextResponse.json({ error: "Piece name is required." }, { status: 400 });
 
     const { collection, slug: category } = await collectionForCategory(accountId, text(form, "category"));
     const image = fileFromForm(form, "image");
-    const imageUrl = image
+    const directImage = parseDirectUploadReference(form.get("imageUpload"), "owner-product");
+    const imageUrl = directImage
+      ? useDirectPublicUpload(directImage)
+      : image
       ? await savePublicUpload(image, `accounts/${accountId}/products`, `${slugify(name) || "piece"}-${Date.now()}`)
       : existing.imageUrl;
     const mode = priceMode(form);
@@ -93,11 +97,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {
-  if (!isOwnerRequestAuthenticated(req)) {
+  const { productId } = await params;
+  const owner = await getOwnerContext();
+  if (!owner) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const existing = await findProduct(params.productId);
+  const existing = await findProduct(productId, owner.accountId);
   if (!existing) return NextResponse.json({ error: "Piece not found." }, { status: 404 });
 
   await prisma.product.delete({ where: { id: existing.id } });

@@ -380,16 +380,16 @@ Fields captured for admin use:
 
 ## Render Deployment Notes
 
-Render MVP deployment uses the local SQLite app architecture with a persistent disk:
+Render MVP deployment now uses Supabase Postgres for relational data and a persistent disk only as a temporary generated-media fallback:
 
-- `render.yaml` defines a web service rooted at `mvp-jewelry-app`.
+- `render.yaml` defines the Node web service.
 - The persistent disk mounts at `/var/data`.
-- `DATABASE_URL=file:/var/data/dev.db` stores SQLite on that disk.
+- `DATABASE_URL` and `DIRECT_URL` connect Prisma to Supabase Postgres.
 - `GENERATED_IMAGE_DIR=/var/data/generated` stores generated images on that disk.
-- `npm run start` runs `prisma migrate deploy`, seeds the demo user, then starts Next.
+- `npm run start` seeds the demo user and starts Next.
 - `/generated/:file` is handled by `app/generated/[file]/route.ts`, so generated files can live outside `public/generated`.
 
-This is meant as the quick internal MVP path. For heavier production usage, migrate Prisma to Postgres and move generated files to object storage.
+Cloudflare R2 is the preferred durable media store. Some generation paths still use local filesystem fallbacks, so keep the Render disk until the R2 hardening work is complete. See `docs/supabase-r2-setup.md`.
 
 ## Testing Notes
 

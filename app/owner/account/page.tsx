@@ -1,19 +1,13 @@
-import { cookies } from "next/headers";
-import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
 import { getNamePromptMode } from "@/src/lib/prompt-mode";
-import OwnerLoginForm from "../OwnerLoginForm";
 import PromptModeForm from "../PromptModeForm";
 import OwnerFrame from "../OwnerFrame";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function OwnerAccountPage() {
-  const cookieValue = cookies().get(OWNER_SESSION_COOKIE)?.value;
-  if (!isOwnerSessionValue(cookieValue)) {
-    return <OwnerLoginForm />;
-  }
-
-  const promptMode = await getNamePromptMode();
+  const owner = await requireOwnerContext();
+  const promptMode = await getNamePromptMode(owner.accountId);
 
   return (
     <OwnerFrame active="Settings">

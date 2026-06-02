@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import OwnerFrame from "../OwnerFrame";
-import OwnerLoginForm from "../OwnerLoginForm";
-import { isOwnerAuthenticated } from "../_auth";
 import ProfileEditor from "./ProfileEditor";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +20,7 @@ function parseExtraLinks(value?: string | null) {
 }
 
 export default async function OwnerProfilePage() {
-  if (!isOwnerAuthenticated()) return <OwnerLoginForm />;
-
-  const accountId = getDefaultAccountId();
+  const { accountId } = await requireOwnerContext();
   const account = await prisma.account.findUnique({
     where: { id: accountId },
     include: { StoreProfile: true, StoreServices: { orderBy: [{ sortOrder: "asc" }] } }

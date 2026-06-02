@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-
 const mocks = vi.hoisted(() => ({
+  getOwnerContext: vi.fn(),
   accountFindUnique: vi.fn(),
   accountUpdate: vi.fn(),
   storeProfileUpsert: vi.fn(),
@@ -24,11 +23,12 @@ vi.mock("@/src/lib/storage/public-media", () => ({
   savePublicUpload: mocks.savePublicUpload,
 }));
 
+vi.mock("@/src/lib/auth/owner-context", () => ({
+  getOwnerContext: mocks.getOwnerContext,
+}));
+
 function authedRequest(form: FormData) {
   return {
-    headers: {
-      get: (key: string) => key.toLowerCase() === "cookie" ? `${OWNER_SESSION_COOKIE}=${encodeURIComponent(createOwnerSessionValue())}` : null,
-    },
     formData: () => Promise.resolve(form),
   } as unknown as Request;
 }
@@ -36,7 +36,7 @@ function authedRequest(form: FormData) {
 describe("/api/owner/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.OWNER_ACCESS_CODE = "test-owner-code";
+    mocks.getOwnerContext.mockResolvedValue({ accountId: "demo-account", userId: "demo", authUserId: "auth-demo", email: "demo@example.com" });
     mocks.accountFindUnique.mockResolvedValue({
       id: "demo-account",
       name: "Ice King",
@@ -88,6 +88,7 @@ describe("/api/owner/profile", () => {
 
   it("rejects unauthenticated profile updates", async () => {
     const { PATCH } = await import("../route");
+    mocks.getOwnerContext.mockResolvedValueOnce(null);
 
     const response = await PATCH(new Request("http://test.local/api/owner/profile", { method: "PATCH", body: new FormData() }));
 

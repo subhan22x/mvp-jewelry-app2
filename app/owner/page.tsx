@@ -1,9 +1,6 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-import OwnerLoginForm from "./OwnerLoginForm";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import SendQuoteForm from "./SendQuoteForm";
 import GenerateVideoButton from "./GenerateVideoButton";
 import OwnerFrame from "./OwnerFrame";
@@ -125,8 +122,7 @@ function generationMatches(row: GenerationRow, query: string, filter: string) {
   return true;
 }
 
-async function getOwnerData() {
-  const accountId = getDefaultAccountId();
+async function getOwnerData(accountId: string) {
   const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, generations] = await Promise.all([
     prisma.quoteRequest.count({ where: { accountId } }),
     prisma.result.count({ where: { accountId } }),
@@ -377,18 +373,15 @@ function GenerationCard({ row }: { row: GenerationRow }) {
   );
 }
 
-export default async function OwnerDashboardPage({ searchParams }: { searchParams: SearchParams }) {
-  const cookieValue = cookies().get(OWNER_SESSION_COOKIE)?.value;
-  if (!isOwnerSessionValue(cookieValue)) {
-    return <OwnerLoginForm />;
-  }
-
-  const query = (searchParams.q ?? "").trim().toLowerCase();
-  const filter = (searchParams.filter ?? "all").toLowerCase();
-  const data = await getOwnerData();
+export default async function OwnerDashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const { accountId } = await requireOwnerContext();
+  const params = await searchParams;
+  const query = (params.q ?? "").trim().toLowerCase();
+  const filter = (params.filter ?? "all").toLowerCase();
+  const data = await getOwnerData(accountId);
   const visibleGenerations = data.generations.filter(row => generationMatches(row, query, filter));
 
-  const currentQuery = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
+  const currentQuery = params.q ? `&q=${encodeURIComponent(params.q)}` : "";
   const chipHref = (nextFilter: string) => `/owner?filter=${nextFilter}${currentQuery}`;
 
   return (
@@ -411,7 +404,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
             <span className="mr-3 flex-shrink-0 text-[#8c909f]" aria-hidden>search</span>
             <input
               name="q"
-              defaultValue={searchParams.q ?? ""}
+              defaultValue={params.q ?? ""}
               className="min-w-0 flex-1 border-none bg-transparent text-base text-[#e1e2ec] outline-none placeholder:text-white/30 focus:ring-0"
               placeholder="Search customer, text, or style"
             />

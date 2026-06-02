@@ -1,17 +1,15 @@
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import OwnerFrame from "../OwnerFrame";
-import OwnerLoginForm from "../OwnerLoginForm";
-import { isOwnerAuthenticated } from "../_auth";
 import ReviewsDashboard from "./ReviewsDashboard";
 
 export const dynamic = "force-dynamic";
 
 export default async function OwnerReviewsPage() {
-  if (!isOwnerAuthenticated()) return <OwnerLoginForm />;
+  const { accountId } = await requireOwnerContext();
 
   const account = await prisma.account.findUnique({
-    where: { id: getDefaultAccountId() },
+    where: { id: accountId },
     select: {
       slug: true,
       StoreReviews: {

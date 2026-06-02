@@ -1,5 +1,3 @@
-// Demo-public by product decision: /owner/vvs-studio does not require owner auth.
-// To gate later, add: if (!isOwnerAuthenticated()) return <OwnerLoginForm />;
 import OwnerFrame from "../OwnerFrame";
 import VvsStudioWizard from "./VvsStudioWizard";
 

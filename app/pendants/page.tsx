@@ -32,7 +32,7 @@ export default function PendantsPage() {
       <div className="mx-auto w-full max-w-4xl px-4 pb-14 pt-3 sm:px-6 md:px-12 md:pt-10">
         <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
           <Link
-            href="/"
+            href="/design"
             aria-label="Back"
             className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-xl leading-none text-white transition hover:border-white/45"
           >

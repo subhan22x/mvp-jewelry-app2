@@ -1,17 +1,13 @@
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import { ensureProductCollections } from "@/src/lib/owner-products";
 import OwnerFrame from "../OwnerFrame";
-import OwnerLoginForm from "../OwnerLoginForm";
-import { isOwnerAuthenticated } from "../_auth";
 import CollectionsManager from "./CollectionsManager";
 
 export const dynamic = "force-dynamic";
 
 export default async function OwnerCollectionsPage() {
-  if (!isOwnerAuthenticated()) return <OwnerLoginForm />;
-
-  const accountId = getDefaultAccountId();
+  const { accountId } = await requireOwnerContext();
   await ensureProductCollections(accountId);
   const products = await prisma.product.findMany({
     where: { accountId },

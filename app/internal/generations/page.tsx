@@ -52,8 +52,9 @@ function isRemoteUrl(value: string) {
 export default async function InternalGenerationsPage({
   searchParams
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const filters = await searchParams;
   const [rows, videos, quoteRequests, generatedFiles] = await Promise.all([
     prisma.result.findMany({
       orderBy: [{ createdAt: "desc" }, { variant: "asc" }],
@@ -100,10 +101,10 @@ export default async function InternalGenerationsPage({
     listGeneratedFiles()
   ]);
 
-  const normalizedStatus = searchParams.status?.toLowerCase();
-  const normalizedModel = searchParams.model?.toLowerCase();
-  const normalizedRequest = searchParams.request?.toLowerCase();
-  const normalizedProduct = searchParams.product?.toLowerCase();
+  const normalizedStatus = filters.status?.toLowerCase();
+  const normalizedModel = filters.model?.toLowerCase();
+  const normalizedRequest = filters.request?.toLowerCase();
+  const normalizedProduct = filters.product?.toLowerCase();
   const fileSet = new Set(generatedFiles);
   const imageUrlsInDb = new Set(rows.map(row => row.imageUrl).filter(Boolean));
   const orphanFiles = generatedFiles.filter(file => !imageUrlsInDb.has(file));
@@ -152,7 +153,7 @@ export default async function InternalGenerationsPage({
             <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Status</span>
             <select
               name="status"
-              defaultValue={searchParams.status ?? "all"}
+              defaultValue={filters.status ?? "all"}
               className="w-full rounded border border-white/10 bg-[#17191f] px-3 py-2 text-sm text-zinc-100"
             >
               <option value="all">All</option>
@@ -165,7 +166,7 @@ export default async function InternalGenerationsPage({
             <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Product</span>
             <select
               name="product"
-              defaultValue={searchParams.product ?? "all"}
+              defaultValue={filters.product ?? "all"}
               className="w-full rounded border border-white/10 bg-[#17191f] px-3 py-2 text-sm text-zinc-100"
             >
               <option value="all">All</option>
@@ -177,7 +178,7 @@ export default async function InternalGenerationsPage({
             <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Model contains</span>
             <input
               name="model"
-              defaultValue={searchParams.model ?? ""}
+              defaultValue={filters.model ?? ""}
               placeholder="gemini-3"
               className="w-full rounded border border-white/10 bg-[#17191f] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
             />
@@ -186,7 +187,7 @@ export default async function InternalGenerationsPage({
             <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Request id contains</span>
             <input
               name="request"
-              defaultValue={searchParams.request ?? ""}
+              defaultValue={filters.request ?? ""}
               placeholder="cmom..."
               className="w-full rounded border border-white/10 bg-[#17191f] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
             />

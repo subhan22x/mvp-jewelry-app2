@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { getVvsModelSettings, patchVvsModelSettings } from "@/src/lib/vvs-studio/model-settings";
 
 const PatchBody = z.object({
@@ -12,13 +12,17 @@ const PatchBody = z.object({
 });
 
 export async function GET() {
-  const accountId = getDefaultAccountId();
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const accountId = owner.accountId;
   const settings = await getVvsModelSettings(accountId);
   return NextResponse.json({ settings });
 }
 
 export async function PATCH(req: Request) {
-  const accountId = getDefaultAccountId();
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const accountId = owner.accountId;
   try {
     const body = PatchBody.parse(await req.json());
     await patchVvsModelSettings(accountId, body);

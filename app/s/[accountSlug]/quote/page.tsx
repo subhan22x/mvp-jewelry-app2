@@ -5,12 +5,13 @@ import QuoteForm from "./QuoteForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function StoreQuotePage({ params }: { params: { accountSlug: string } }) {
+export default async function StoreQuotePage({ params }: { params: Promise<{ accountSlug: string }> }) {
+  const { accountSlug } = await params;
   const account = await prisma.account.findUnique({
-    where: { slug: params.accountSlug },
+    where: { slug: accountSlug },
     include: { StoreProfile: true }
   });
-  if (!account || !account.StoreProfile?.isPublished) notFound();
+  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) notFound();
 
   return (
     <main className="min-h-screen bg-[#151311] text-[#F5F0E8]">

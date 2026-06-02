@@ -8,6 +8,10 @@ import { prisma } from '@/server/db/client';
 import { composePicturePendant, preparePictureComposite } from '@/lib/picture-styles/compositor';
 import { saveGeneratedImage } from '@/lib/styles/connector';
 import { getDefaultAccountId } from '@/src/lib/account';
+import { scheduleBackgroundTask } from '@/src/lib/platform/background';
+import { directUploadReferenceSchema, readDirectUpload } from '@/src/lib/storage/direct-upload';
+
+export const maxDuration = 300;
 
 const MAX_UPLOAD_BYTES = Number(process.env.PICTURE_UPLOAD_MAX_BYTES ?? 10 * 1024 * 1024);
 
@@ -37,7 +41,7 @@ function getGenerationErrorMessage(err: unknown): string {
   }
 }
 
-function uploadExtension(file: File) {
+function uploadExtension(file: { name: string; type: string }) {
   const fromMime = mime.getExtension(file.type);
   if (fromMime) return fromMime;
 
@@ -54,40 +58,50 @@ export async function POST(req: Request) {
   let tempDir: string | null = null;
 
   try {
-    const form = await req.formData();
-    const parsed = Fields.parse({
-      userId: form.get('userId'),
-      styleId: form.get('styleId'),
-      primaryMetal: form.get('primaryMetal')
+    const isJson = req.headers?.get?.('content-type')?.includes('application/json');
+    const form = isJson ? null : await req.formData();
+    const json = isJson ? await req.json() : null;
+    const parsed = Fields.parse(isJson ? json : {
+      userId: form!.get('userId'),
+      styleId: form!.get('styleId'),
+      primaryMetal: form!.get('primaryMetal')
     });
     const accountId = getDefaultAccountId();
 
-    const imageValue = form.get('image');
-    if (!imageValue || typeof imageValue === 'string') {
+    const imageValue = form?.get('image');
+    const directImage = isJson ? directUploadReferenceSchema.parse(json?.imageUpload) : null;
+    if (directImage && !directImage.key.startsWith('incoming/picture-pendant/')) {
+      return jsonError('Uploaded file purpose does not match this request.');
+    }
+    if (!directImage && (!imageValue || typeof imageValue === 'string')) {
       return jsonError('Please upload an image for the picture pendant.');
     }
 
-    const image = imageValue as File;
-    if (!image.type.startsWith('image/')) {
+    const image = imageValue as File | undefined;
+    const imageType = directImage?.contentType ?? image!.type;
+    const imageSize = directImage?.size ?? image!.size;
+    const imageName = directImage?.originalName ?? image!.name;
+    if (!imageType.startsWith('image/')) {
       return jsonError('Uploaded file must be an image.');
     }
-    if (image.size <= 0) {
+    if (imageSize <= 0) {
       return jsonError('Uploaded image is empty.');
     }
-    if (image.size > MAX_UPLOAD_BYTES) {
+    if (imageSize > MAX_UPLOAD_BYTES) {
       return jsonError(`Uploaded image must be ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB or smaller.`);
     }
 
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'picture-pendant-'));
-    const tempImagePath = path.join(tempDir, `upload.${uploadExtension(image)}`);
-    await fs.writeFile(tempImagePath, Buffer.from(await image.arrayBuffer()));
+    const tempImagePath = path.join(tempDir, `upload.${uploadExtension({ name: imageName, type: imageType })}`);
+    const imageBuffer = directImage ? (await readDirectUpload(directImage)).buffer : Buffer.from(await image!.arrayBuffer());
+    await fs.writeFile(tempImagePath, imageBuffer);
 
     const prepared = preparePictureComposite({
       userId: parsed.userId,
       styleId: parsed.styleId,
       primaryMetal: parsed.primaryMetal,
       uploadedImagePath: tempImagePath,
-      uploadFileName: image.name
+      uploadFileName: imageName
     });
 
     const request = await prisma.request.create({
@@ -96,12 +110,12 @@ export async function POST(req: Request) {
         userId: parsed.userId,
         productType: 'picture',
         styleId: parsed.styleId,
-        text: image.name || 'Picture pendant image',
+        text: imageName || 'Picture pendant image',
         twoTone: false,
         primaryMetal: parsed.primaryMetal,
         secondaryMetal: null,
         emblem: 'none',
-        uploadFileName: image.name || null
+        uploadFileName: imageName || null
       }
     });
 
@@ -120,7 +134,7 @@ export async function POST(req: Request) {
     const tempDirForGeneration = tempDir;
     tempDir = null;
 
-    void (async () => {
+    scheduleBackgroundTask((async () => {
       const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
         const { buffer, mimeType } = await composePicturePendant(prepared);
@@ -157,7 +171,7 @@ export async function POST(req: Request) {
       } finally {
         await removeTempDir(tempDirForGeneration);
       }
-    })();
+    })(), `picture-request:${request.id}`);
 
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {

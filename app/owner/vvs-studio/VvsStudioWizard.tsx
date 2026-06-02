@@ -21,6 +21,7 @@ import type {
   VvsVideoDurationSeconds,
   VvsUploadedFile,
 } from "./types";
+import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import { DEFAULT_STATE } from "./types";
 
 // ── design tokens ────────────────────────────────────────────────
@@ -611,10 +612,21 @@ export default function VvsStudioWizard() {
           (["top", "left", "right"] as const)
             .filter(a => state.uploads[a]?.localFile)
             .map(async (angle) => {
+              const localFile = state.uploads[angle]!.localFile!;
+              const upload = await uploadFileDirectly(localFile, "owner-vvs-source");
               const fd = new FormData();
-              fd.append("file", state.uploads[angle]!.localFile!);
+              fd.append("file", localFile);
               fd.append("angle", angle);
-              const uploadRes = await fetch(`/api/owner/vvs-studio/shoots/${shootId}/uploads`, { method: "POST", body: fd, signal });
+              const uploadRes = await fetch(`/api/owner/vvs-studio/shoots/${shootId}/uploads`, {
+                method: "POST",
+                ...(upload
+                  ? {
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ angle, fileUpload: upload })
+                    }
+                  : { body: fd }),
+                signal
+              });
               if (!uploadRes.ok) throw new Error(`Failed to upload ${angle} photo.`);
             })
         );

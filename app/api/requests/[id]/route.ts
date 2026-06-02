@@ -6,9 +6,10 @@ const EXPECTED_GENERATION_COUNT = 2;
 const toSeconds = (durationMs: number | null) =>
   typeof durationMs === 'number' ? Number((durationMs / 1000).toFixed(2)) : null;
 
-export async function GET(_: Request, { params }: { params: { id: string }}) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }>}) {
+  const { id } = await params;
   const reqRow = await prisma.request.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { Results: { orderBy: { variant: 'asc' } } }
   });
   if (!reqRow) return NextResponse.json({ error: 'not_found' }, { status: 404 });

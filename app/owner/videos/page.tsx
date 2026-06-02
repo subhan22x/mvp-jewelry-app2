@@ -1,9 +1,6 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-import OwnerLoginForm from "../OwnerLoginForm";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +21,7 @@ function statusClass(status: string) {
 }
 
 export default async function OwnerVideosPage() {
-  const cookieValue = cookies().get(OWNER_SESSION_COOKIE)?.value;
-  if (!isOwnerSessionValue(cookieValue)) {
-    return <OwnerLoginForm />;
-  }
-
-  const accountId = getDefaultAccountId();
+  const { accountId } = await requireOwnerContext();
   const videos = await prisma.videoGeneration.findMany({
     where: { accountId },
     orderBy: [{ createdAt: "desc" }],

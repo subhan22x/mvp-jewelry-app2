@@ -7,7 +7,7 @@ export default function ComingSoonPage() {
       <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-8 sm:px-6 md:px-12">
         <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
           <Link
-            href="/"
+            href="/design"
             aria-label="Back"
             className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--theme-border)] bg-black/35 text-xl leading-none text-[var(--theme-text)] transition hover:border-[var(--theme-border-hover)]"
           >

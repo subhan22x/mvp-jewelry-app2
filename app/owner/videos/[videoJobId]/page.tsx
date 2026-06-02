@@ -1,10 +1,7 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
-import { isOwnerSessionValue, OWNER_SESSION_COOKIE } from "@/src/lib/owner-auth";
-import OwnerLoginForm from "../../OwnerLoginForm";
+import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import VideoJobStatus from "../VideoJobStatus";
 
 export const dynamic = "force-dynamic";
@@ -13,15 +10,11 @@ function toSeconds(durationMs: number | null) {
   return typeof durationMs === "number" ? Number((durationMs / 1000).toFixed(2)) : null;
 }
 
-export default async function OwnerVideoJobPage({ params }: { params: { videoJobId: string } }) {
-  const cookieValue = cookies().get(OWNER_SESSION_COOKIE)?.value;
-  if (!isOwnerSessionValue(cookieValue)) {
-    return <OwnerLoginForm />;
-  }
-
-  const accountId = getDefaultAccountId();
+export default async function OwnerVideoJobPage({ params }: { params: Promise<{ videoJobId: string }> }) {
+  const { videoJobId } = await params;
+  const { accountId } = await requireOwnerContext();
   const video = await prisma.videoGeneration.findFirst({
-    where: { id: params.videoJobId, accountId },
+    where: { id: videoJobId, accountId },
     include: {
       request: {
         select: {

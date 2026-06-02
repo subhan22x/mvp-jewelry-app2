@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { getDefaultAccountId } from "@/src/lib/account";
+import { getOwnerContext } from "@/src/lib/auth/owner-context";
 
-type Ctx = { params: { shootId: string } };
+type Ctx = { params: Promise<{ shootId: string }> };
 
 const PatchBody = z.object({
   pieceType: z.string().optional(),
@@ -20,15 +20,17 @@ const PatchBody = z.object({
   status: z.string().optional(),
 });
 
-async function findShoot(shootId: string) {
-  const accountId = getDefaultAccountId();
+async function findShoot(shootId: string, accountId: string) {
   const shoot = await prisma.vvsStudioShoot.findUnique({ where: { id: shootId } });
   if (!shoot || shoot.accountId !== accountId) return null;
   return shoot;
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
-  const shoot = await findShoot(params.shootId);
+  const { shootId } = await params;
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const shoot = await findShoot(shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const [uploads, imageGenerations, videoGenerations] = await Promise.all([
@@ -41,7 +43,10 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const shoot = await findShoot(params.shootId);
+  const { shootId } = await params;
+  const owner = await getOwnerContext();
+  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const shoot = await findShoot(shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   try {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
 
-type Ctx = { params: { accountSlug: string } };
+type Ctx = { params: Promise<{ accountSlug: string }> };
 
 const reviewSchema = z.object({
   reviewerName: z.string().trim().min(1, "Name is required.").max(120),
@@ -21,12 +21,13 @@ function optional(value?: string) {
 }
 
 export async function POST(req: Request, { params }: Ctx) {
+  const { accountSlug } = await params;
   try {
     const account = await prisma.account.findUnique({
-      where: { slug: params.accountSlug },
-      select: { id: true, StoreProfile: { select: { isPublished: true } } },
+      where: { slug: accountSlug },
+      select: { id: true, status: true, StoreProfile: { select: { isPublished: true } } },
     });
-    if (!account || !account.StoreProfile?.isPublished) {
+    if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) {
       return NextResponse.json({ error: "Store profile not found." }, { status: 404 });
     }
 
