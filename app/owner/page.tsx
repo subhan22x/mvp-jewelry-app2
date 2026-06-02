@@ -373,14 +373,15 @@ function GenerationCard({ row }: { row: GenerationRow }) {
   );
 }
 
-export default async function OwnerDashboardPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function OwnerDashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accountId } = await requireOwnerContext();
-  const query = (searchParams.q ?? "").trim().toLowerCase();
-  const filter = (searchParams.filter ?? "all").toLowerCase();
+  const params = await searchParams;
+  const query = (params.q ?? "").trim().toLowerCase();
+  const filter = (params.filter ?? "all").toLowerCase();
   const data = await getOwnerData(accountId);
   const visibleGenerations = data.generations.filter(row => generationMatches(row, query, filter));
 
-  const currentQuery = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
+  const currentQuery = params.q ? `&q=${encodeURIComponent(params.q)}` : "";
   const chipHref = (nextFilter: string) => `/owner?filter=${nextFilter}${currentQuery}`;
 
   return (
@@ -403,7 +404,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
             <span className="mr-3 flex-shrink-0 text-[#8c909f]" aria-hidden>search</span>
             <input
               name="q"
-              defaultValue={searchParams.q ?? ""}
+              defaultValue={params.q ?? ""}
               className="min-w-0 flex-1 border-none bg-transparent text-base text-[#e1e2ec] outline-none placeholder:text-white/30 focus:ring-0"
               placeholder="Search customer, text, or style"
             />

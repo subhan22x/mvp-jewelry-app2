@@ -159,6 +159,9 @@ The current schema stores public media URLs on the owning rows. A later producti
 - `R2_BUCKET_NAME` is the bucket that stores generated media.
 - `R2_ENDPOINT` is optional if `R2_ACCOUNT_ID` is present. When omitted, the app uses `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`.
 - `R2_PUBLIC_BASE_URL` must be a public bucket URL or custom domain with no trailing slash.
+- Production requests fail closed when R2 is not configured. Local development may still use `GENERATED_IMAGE_DIR`.
+- Browser uploads use short-lived signed `PUT` URLs so larger images bypass Vercel function request-body limits. Configure the R2 CORS policy in [`vercel-deployment.md`](vercel-deployment.md).
+- New direct browser uploads are stored under `incoming/`. Add lifecycle cleanup for abandoned keys before broad public traffic.
 
 When R2 is fully configured, new generated images and downloaded videos are stored at keys like:
 
@@ -172,8 +175,9 @@ The current implementation stores public R2 URLs directly on `Result.imageUrl`, 
 
 The Postgres runtime switch is complete, but production hardening is not:
 
-1. Replace remaining durable local filesystem writes with R2-backed storage.
-2. Keep local filesystem use only for temporary `sharp` processing on the Render Node host.
-3. Configure a custom R2 media domain instead of an `r2.dev` URL.
+1. Run `npm run r2:migrate-generated` before production cutover.
+2. Configure a custom R2 media domain instead of an `r2.dev` URL.
+3. Add cleanup for abandoned `incoming/` uploads and replaced media.
 4. Establish normal Postgres migrations before onboarding paid production accounts. The current `supabase:push` workflow is for early development only.
-5. Complete password reset and remove remaining seeded-demo defaults from customer-generation routes.
+5. Complete password reset and replace `DEFAULT_ACCOUNT_ID` with storefront-aware customer-generation links.
+6. Add a persistent generation queue before higher-volume paid usage.

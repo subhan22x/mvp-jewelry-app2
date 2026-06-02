@@ -8,6 +8,7 @@ import ThemedOptionButton from "../components/ThemedOptionButton";
 import LeadCaptureModal from "../name/components/LeadCaptureModal";
 import { picturePendantStyles, type PicturePendantStyle } from "@/lib/assets";
 import { cx, panelClass, styleOptionFrameClass, themeRadius } from "@/src/lib/theme/ui-classes";
+import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 
 type Step = 0 | 1 | 2;
 type GoldColor = "yellow_gold" | "white_gold" | "rose_gold";
@@ -146,12 +147,6 @@ export default function PicturePendantsBuilder() {
   const handleGenerate = async () => {
     if (isGenerating || !imageFile || !activeStyle) return;
 
-    const form = new FormData();
-    form.append("userId", "demo");
-    form.append("styleId", activeStyle.id);
-    form.append("primaryMetal", goldColor);
-    form.append("image", imageFile);
-
     setGeneration(null);
     setGenerationError(null);
     setQuoteStatus("idle");
@@ -161,9 +156,20 @@ export default function PicturePendantsBuilder() {
     const epoch = ++generationEpochRef.current;
 
     try {
+      const upload = await uploadFileDirectly(imageFile, "picture-pendant");
+      const form = new FormData();
+      form.append("userId", "demo");
+      form.append("styleId", activeStyle.id);
+      form.append("primaryMetal", goldColor);
+      form.append("image", imageFile);
       const response = await fetch("/api/picture-requests", {
         method: "POST",
-        body: form
+        ...(upload
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: "demo", styleId: activeStyle.id, primaryMetal: goldColor, imageUpload: upload })
+            }
+          : { body: form })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error ?? "Failed to start picture pendant generation.");

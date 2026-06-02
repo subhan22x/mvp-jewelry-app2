@@ -17,7 +17,8 @@ function cleanOptional(value: string | null | undefined) {
   return value?.trim() || null;
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const owner = await getOwnerContext();
   if (!owner) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const body = Body.parse(await req.json());
     const accountId = owner.accountId;
     const existing = await prisma.quoteRequest.findFirst({
-      where: { id: params.id, accountId },
+      where: { id, accountId },
       select: { id: true }
     });
     if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -43,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     };
 
     const quoteRequest = await prisma.quoteRequest.update({
-      where: { id: params.id },
+      where: { id },
       data
     });
 

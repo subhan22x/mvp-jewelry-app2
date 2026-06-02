@@ -6,8 +6,11 @@ import { getVvsModelSettings } from "@/src/lib/vvs-studio/model-settings";
 import { buildVvsStudioVideoPrompt } from "@/src/lib/vvs-studio/prompt-builder";
 import { generateVvsVideo } from "@/src/lib/vvs-studio/video-generator";
 import { toPublicImageUrl, assertPublicImageUrl } from "@/src/lib/video/public-url";
+import { scheduleBackgroundTask } from "@/src/lib/platform/background";
 
-type Ctx = { params: { shootId: string } };
+export const maxDuration = 300;
+
+type Ctx = { params: Promise<{ shootId: string }> };
 
 const Body = z.object({
   sourceImageGenerationId: z.string().min(1),
@@ -22,10 +25,11 @@ function requestedVideoDuration(value: number | null | undefined) {
 }
 
 export async function POST(req: Request, { params }: Ctx) {
+  const { shootId } = await params;
   const owner = await getOwnerContext();
   if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const accountId = owner.accountId;
-  const shoot = await prisma.vvsStudioShoot.findUnique({ where: { id: params.shootId } });
+  const shoot = await prisma.vvsStudioShoot.findUnique({ where: { id: shootId } });
   if (!shoot || shoot.accountId !== accountId) {
     return NextResponse.json({ error: "Shoot not found." }, { status: 404 });
   }
@@ -71,7 +75,7 @@ export async function POST(req: Request, { params }: Ctx) {
       },
     });
 
-    void (async () => {
+    scheduleBackgroundTask((async () => {
       const startedMs = startedAt.getTime();
       try {
         const result = await generateVvsVideo({
@@ -116,7 +120,7 @@ export async function POST(req: Request, { params }: Ctx) {
           data: { status: "failed", error: errorMessage(err), updatedAt: completedAt },
         });
       }
-    })();
+    })(), `vvs-video:${videoGen.id}`);
 
     return NextResponse.json({ videoGenerationId: videoGen.id }, { status: 201 });
   } catch (err) {

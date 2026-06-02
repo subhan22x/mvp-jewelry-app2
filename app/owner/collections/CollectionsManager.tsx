@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
+import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import { PRODUCT_CATEGORIES, categoryLabel, normalizeProductCategory } from "@/src/lib/storefront-categories";
 
 type ProductRow = {
@@ -138,7 +139,11 @@ export default function CollectionsManager({ products }: { products: ProductRow[
     form.set("category", draft.category);
     form.set("name", draft.name);
     form.set("description", draft.description);
-    if (draft.imageFile) form.set("image", draft.imageFile);
+    if (draft.imageFile) {
+      const upload = await uploadFileDirectly(draft.imageFile, "owner-product");
+      if (upload) form.set("imageUpload", JSON.stringify(upload));
+      else form.set("image", draft.imageFile);
+    }
     form.set("priceMode", "range");
     form.set("priceLabel", priceLabelFromRange(draft.priceMin, draft.priceMax));
     form.set("material", draft.material);

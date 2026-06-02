@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { isR2Configured, readFromR2, uploadToR2 } from "../storage/r2";
+import { assertDurableMediaStorageConfigured, isR2Configured, readFromR2, uploadToR2 } from "../storage/r2";
 
 const OUTPUT_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), "public", "generated");
 const R2_PREFIX = "r2://";
@@ -43,6 +43,7 @@ export async function saveVvsSourceUpload({
     return { storageKey: key, imageUrl: `${R2_PREFIX}${key}` };
   }
 
+  assertDurableMediaStorageConfigured();
   const dir = path.join(OUTPUT_DIR, "vvs-studio", "uploads");
   const fileName = `${stamp}-${shootId}-${angle}-${uploadId}.jpg`;
   await fs.mkdir(dir, { recursive: true });

@@ -4,6 +4,9 @@ import { prisma } from "@/server/db/client";
 import { assertPublicImageUrl, toPublicImageUrl } from "@/src/lib/video/public-url";
 import { saveRemoteVideoLocally } from "@/src/lib/video/storage";
 import { buildJewelryVideoPrompt, generateSeedanceVideo } from "@/lib/video/wavespeed";
+import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+
+export const maxDuration = 300;
 
 const Body = z.object({
   requestId: z.string().min(1),
@@ -66,7 +69,7 @@ export async function POST(req: Request) {
       }
     });
 
-    void (async () => {
+    scheduleBackgroundTask((async () => {
       const startedMs = startedAt.getTime();
       try {
         const result = await generateSeedanceVideo({ imageUrl: sourceImageUrl, prompt });
@@ -98,7 +101,7 @@ export async function POST(req: Request) {
           }
         });
       }
-    })();
+    })(), `customer-video:${video.id}`);
 
     return NextResponse.json({ videoId: video.id }, { status: 201 });
   } catch (err) {

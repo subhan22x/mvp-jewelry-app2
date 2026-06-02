@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import { DEFAULT_THEME_KEY, THEME_OPTIONS } from "@/src/lib/theme/themes";
 
 const totalSteps = 6;
@@ -146,10 +147,18 @@ export default function OnboardingPage() {
     };
 
     form.set("payload", JSON.stringify(payload));
-    if (coverImage) form.set("coverImage", coverImage);
-    if (profileImage) form.set("profileImage", profileImage);
-    products.forEach(product => {
-      if (product.image) form.set(`productImage:${product.clientId}`, product.image);
+    const uploads = await Promise.all([
+      coverImage ? uploadFileDirectly(coverImage, "onboarding") : null,
+      profileImage ? uploadFileDirectly(profileImage, "onboarding") : null,
+      ...products.map(product => product.image ? uploadFileDirectly(product.image, "onboarding") : null)
+    ]);
+    if (coverImage) uploads[0] ? form.set("coverImageUpload", JSON.stringify(uploads[0])) : form.set("coverImage", coverImage);
+    if (profileImage) uploads[1] ? form.set("profileImageUpload", JSON.stringify(uploads[1])) : form.set("profileImage", profileImage);
+    products.forEach((product, index) => {
+      if (!product.image) return;
+      const upload = uploads[index + 2];
+      if (upload) form.set(`productImageUpload:${product.clientId}`, JSON.stringify(upload));
+      else form.set(`productImage:${product.clientId}`, product.image);
     });
 
     const response = await fetch("/api/onboarding", { method: "POST", body: form });

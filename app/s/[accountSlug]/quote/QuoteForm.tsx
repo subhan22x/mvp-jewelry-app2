@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 
 type QuoteFormProps = {
   accountSlug: string;
@@ -20,7 +21,12 @@ export default function QuoteForm({ accountSlug, storeName }: QuoteFormProps) {
     setError(null);
 
     const form = new FormData(event.currentTarget);
-    files.forEach(file => form.append("images", file));
+    const uploads = await Promise.all(files.map(file => uploadFileDirectly(file, "storefront-quote")));
+    files.forEach((file, index) => {
+      const upload = uploads[index];
+      if (upload) form.append("imageUploads", JSON.stringify(upload));
+      else form.append("images", file);
+    });
 
     const response = await fetch(`/api/storefront/${accountSlug}/quote`, {
       method: "POST",

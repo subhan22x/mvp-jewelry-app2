@@ -12,6 +12,7 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 - **Data model review:** see `docs/data-model.md` for current and target ER diagrams.
 - **Production storage direction:** Supabase/Postgres for relational data; Cloudflare R2 for generated images, videos, logos, and uploads.
 - **Supabase/R2 setup notes:** see `docs/supabase-r2-setup.md`.
+- **Vercel deployment:** see `docs/vercel-deployment.md`.
 - **Documentation map:** see `docs/README.md`.
 
 ## Prerequisites
@@ -42,7 +43,9 @@ GEMINI_API_KEY=your_key_here
 # SUPABASE_SECRET_KEY=sb_secret_...
 # VIDEO_DURATION_SECONDS=7
 # APP_BASE_URL=https://your-public-app-url.example
-# Optional Cloudflare R2 media storage. If fully configured, generated media writes to R2.
+# NEXT_PUBLIC_APP_URL=https://your-public-app-url.example
+# DEFAULT_ACCOUNT_ID=your-public-wizard-account-id
+# Required in production: Cloudflare R2 durable media storage.
 # R2_ACCOUNT_ID=...
 # R2_ACCESS_KEY_ID=...
 # R2_SECRET_ACCESS_KEY=...
@@ -98,9 +101,15 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
 - `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
+## Vercel deployment
+
+The app is prepared for Vercel with Supabase Postgres and Cloudflare R2. Production durable writes fail closed when R2 is missing, large browser uploads use signed direct-to-R2 `PUT` URLs, and async generation routes use Vercel `waitUntil()` with a five-minute function duration.
+
+Use [`docs/vercel-deployment.md`](docs/vercel-deployment.md) for the environment checklist, required R2 CORS policy, Supabase Auth callback URLs, preview QA steps, and the remaining durable-queue work.
+
 ## Render deployment
 
-The repo includes `render.yaml` for a Render Node deployment using Supabase Postgres plus a persistent disk fallback for generated media. Configure R2 to store generated media outside the app server.
+The repo still includes `render.yaml` as an alternative Node deployment. Configure R2 for production even when Render has a disk fallback.
 
 Render settings:
 
@@ -127,9 +136,7 @@ VIDEO_DURATION_SECONDS=7
 APP_BASE_URL=https://your-render-service.onrender.com
 ```
 
-Generated files are served through `/generated/:file`, so `GENERATED_IMAGE_DIR` can point at Render's persistent disk instead of `public/generated`.
-
-Cloudflare R2 is the preferred production media store. The Render disk remains a fallback while the remaining local-write paths are hardened.
+Generated files are served through `/generated/:file` during local development. Production media belongs in R2.
 
 ## Environment variables
 
@@ -148,10 +155,12 @@ Cloudflare R2 is the preferred production media store. The Render disk remains a
 | `VIDEO_RESOLUTION`     | `720p`                               | Seedance output resolution: `480p`, `720p`, or `1080p`. |
 | `VIDEO_PROMPT`         | built-in fallback                    | Optional exact prompt sent to Seedance.       |
 | `APP_BASE_URL`         | (required for videos)                | Public base URL used so Wavespeed can fetch generated images. |
-| `R2_ACCOUNT_ID`        | (optional)                           | Cloudflare account ID for R2 media storage. |
-| `R2_ACCESS_KEY_ID`     | (optional)                           | R2 access key ID. |
-| `R2_SECRET_ACCESS_KEY` | (optional)                           | R2 secret access key. |
-| `R2_BUCKET_NAME`       | (optional)                           | R2 bucket for generated media. |
+| `NEXT_PUBLIC_APP_URL`  | (recommended in production)         | Browser-visible deployed application URL. |
+| `DEFAULT_ACCOUNT_ID`   | (required in production)            | Account receiving root design-wizard requests until storefront-aware links replace this fallback. |
+| `R2_ACCOUNT_ID`        | (required in production)            | Cloudflare account ID for R2 media storage. |
+| `R2_ACCESS_KEY_ID`     | (required in production)            | R2 access key ID. |
+| `R2_SECRET_ACCESS_KEY` | (required in production)            | R2 secret access key. |
+| `R2_BUCKET_NAME`       | (required in production)            | R2 bucket for generated media. |
 | `R2_ENDPOINT`          | derived from `R2_ACCOUNT_ID`         | Optional explicit R2 S3 endpoint. |
 | `R2_PUBLIC_BASE_URL`   | (required for R2)                    | Public base URL or custom domain for R2 objects. |
 
@@ -164,9 +173,9 @@ Cloudflare R2 is the preferred production media store. The Render disk remains a
 | `./run.sh`                | Generate Prisma client, seed demo data, and start local development with a port preflight |
 | `KILL_PORT=1 ./run.sh`    | Stop an existing local listener on the selected port before development startup |
 | `PORT=3001 ./run.sh`      | Start local development on another port |
-| `npm run start`           | Seed demo user and start the production server        |
+| `npm run start`           | Start the production server without mutating database state |
 | `npm run start:next`      | Run Next.js production server without seed            |
-| `npm run start:render`    | Alias for `npm run start`                             |
+| `npm run start:render`    | Start the Render production server                    |
 | `npm test`                | Vitest unit tests                                     |
 | `npm run test:e2e`        | Playwright end-to-end tests (requires dev server)     |
 | `npm run prisma:generate` | Generate Prisma client                                |
@@ -267,15 +276,9 @@ The folders `lib/styles/` and `server/db/client.ts` are currently re-export shim
 
 ## Production notes
 
-**Generated media** — `public/generated/` is local-only. Vercel/Netlify filesystems are ephemeral; production deployments should use Cloudflare R2 for generated images, videos, logos, and uploads. Render uses `GENERATED_IMAGE_DIR=/var/data/generated` with a persistent disk for the MVP.
+**Generated media** — `public/generated/` is local-only. Vercel filesystems are ephemeral. Production deployments require Cloudflare R2 for generated images, videos, logos, and uploads.
 
-**Background tasks on Vercel** — the POST route fires generation tasks with `void Promise.all(...)` so it can return immediately. In a Vercel Lambda, the function may terminate after the response is sent before all tasks complete. Use `waitUntil` from `@vercel/functions` to keep the Lambda alive:
-
-```ts
-import { waitUntil } from '@vercel/functions';
-// replace: void Promise.all(...)
-waitUntil(Promise.all(...));
-```
+**Background tasks on Vercel** — asynchronous generation routes register work with `waitUntil()` and persist polling state in Postgres. This is sufficient for preview and controlled initial traffic. A durable queue worker remains required before higher-volume paid usage.
 
 ## Further reading
 

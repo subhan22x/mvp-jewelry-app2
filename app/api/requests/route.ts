@@ -5,6 +5,9 @@ import { buildVariants } from '@/lib/styles/builder';
 import { generateImage } from '@/lib/styles/connector';
 import { getDefaultAccountId } from '@/src/lib/account';
 import { getNamePromptMode } from '@/src/lib/prompt-mode';
+import { scheduleBackgroundTask } from '@/src/lib/platform/background';
+
+export const maxDuration = 300;
 
 const Body = z.object({
   userId: z.string(),
@@ -112,10 +115,7 @@ export async function POST(req: Request) {
       });
     }));
 
-    // Fire all generation tasks in parallel without blocking the response.
-    // Note: in a Vercel production deploy, use `waitUntil` from @vercel/functions
-    // to ensure the Lambda stays alive until all tasks complete.
-    void Promise.all(variants.map(async (v, index) => {
+    scheduleBackgroundTask(Promise.all(variants.map(async (v, index) => {
       const attempt = attemptRows[index];
       const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
           }
         });
       }
-    }));
+    })), `name-request:${request.id}`);
 
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {

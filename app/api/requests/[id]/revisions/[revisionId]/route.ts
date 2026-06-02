@@ -5,12 +5,13 @@ function toSeconds(durationMs: number | null) {
   return typeof durationMs === "number" ? Number((durationMs / 1000).toFixed(2)) : null;
 }
 
-export async function GET(_: Request, { params }: { params: { id: string; revisionId: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string; revisionId: string }> }) {
+  const { id, revisionId } = await params;
   const revision = await prisma.resultRevision.findUnique({
-    where: { id: params.revisionId }
+    where: { id: revisionId }
   });
 
-  if (!revision || revision.requestId !== params.id) {
+  if (!revision || revision.requestId !== id) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 

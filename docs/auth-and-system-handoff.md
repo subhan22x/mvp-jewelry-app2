@@ -4,7 +4,7 @@ This document is the implementation handoff for the current application. It is i
 
 ## Executive Summary
 
-The application is a Next.js 14 App Router project for jewelry-store owners and their customers.
+The application is a Next.js 15 App Router project for jewelry-store owners and their customers.
 
 It currently has:
 
@@ -25,7 +25,7 @@ The application is not fully production SaaS-ready yet. The most important remai
 
 | Area | Current implementation |
 | --- | --- |
-| Web framework | Next.js 14 App Router, React 18, TypeScript |
+| Web framework | Next.js 15 App Router, React 18, TypeScript |
 | Database ORM | Prisma 6 |
 | Runtime database | Supabase Postgres |
 | Authentication | Supabase Auth with cookie-backed SSR sessions |
@@ -35,7 +35,7 @@ The application is not fully production SaaS-ready yet. The most important remai
 | Image processing | `sharp` |
 | Durable media target | Cloudflare R2 |
 | Development media fallback | Local `public/generated` or `GENERATED_IMAGE_DIR` |
-| Production host direction | Render Node service, Cloudflare DNS, Supabase Postgres, R2 |
+| Production host direction | Vercel Node functions, Cloudflare DNS and R2, Supabase Postgres |
 
 ## Route Map
 
@@ -457,7 +457,7 @@ The following customer-generation endpoints still use `getDefaultAccountId()` an
 - `POST /api/picture-requests`
 - `POST /api/leads` when no linked request determines the account
 
-This means owner auth is tenant-aware, but customer design links are not fully storefront-aware yet.
+This means owner auth is tenant-aware, but customer design links are not fully storefront-aware yet. Production fails closed unless `DEFAULT_ACCOUNT_ID` is configured explicitly.
 
 Before paid SaaS launch:
 
