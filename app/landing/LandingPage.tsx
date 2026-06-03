@@ -76,16 +76,16 @@ export default function LandingPage() {
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <h1>stop losing your <em>highest paying</em> customers</h1>
+          <h1>Design Custom<br />Jewelry orders <em>in minutes</em></h1>
           <p>The Jewelry Design Software that turns curiosity into sales. Give your customers a design to say yes to, in minutes.</p>
         </div>
         <div className={styles.heroImage}>
-          <Image src="/landing/hero-bg.jpg" alt="Custom Mojo and MANA diamond pendants displayed in a jewelry studio" fill sizes="(max-width: 880px) 100vw, 55vw" priority />
+          <Image src="/landing/hero-bg-transparent-5.png" alt="Custom pendant design app displayed in a jewelry studio case" fill sizes="(max-width: 880px) 100vw, 55vw" priority />
         </div>
       </section>
 
       <aside className={styles.orderBanner}>
-        <p>Book <em>3x</em> more customer orders using AI</p>
+        <p>Book <em>3x</em> more custom orders using AI</p>
       </aside>
       <p className={styles.howIntro}>
         <span>here&apos;s how</span>
