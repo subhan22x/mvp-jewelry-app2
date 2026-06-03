@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { slugify } from "@/src/lib/slug";
-import { createAdminClient } from "@/src/lib/supabase/server";
-import { getSupabasePublishableKey, getSupabaseUrl } from "@/src/lib/supabase/env";
+import { createClient } from "@/src/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +42,6 @@ const onboardingSchema = z.object({
   coverPreset: z.string().optional(),
   coverOverlayOpacity: z.number().int().min(0).max(85).default(27),
   coverTextColor: z.enum(["light", "dark"]).default("light"),
-  email: z.string().email(),
-  password: z.string().min(6),
   services: z.array(serviceSchema).default([]),
   products: z.array(productSchema).max(2).default([])
 });
@@ -64,6 +60,11 @@ function cleanHandle(handle?: string | null) {
 }
 
 export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data, error: authError } = await supabase.auth.getUser();
+  if (authError || !data.user) return jsonError("Sign up or log in before publishing your profile.", 401);
+  const authEmail = data.user.email?.toLowerCase() ?? null;
+
   const form = await req.formData();
   const rawPayload = form.get("payload");
   if (typeof rawPayload !== "string") return jsonError("Missing onboarding payload.");
@@ -77,14 +78,15 @@ export async function POST(req: Request) {
   const slug = slugify(body.slug);
   if (!slug) return jsonError("Choose a valid profile URL.");
 
-  const [existingAccount, existingUser] = await Promise.all([
+  const [existingAccount, existingUser, existingEmailUser] = await Promise.all([
     prisma.account.findUnique({ where: { slug } }),
-    prisma.user.findUnique({ where: { email: body.email.toLowerCase() } })
+    prisma.user.findUnique({ where: { authUserId: data.user.id } }),
+    authEmail ? prisma.user.findUnique({ where: { email: authEmail } }) : Promise.resolve(null)
   ]);
   if (existingAccount) return jsonError("That profile URL is already taken.");
-  if (existingUser) return jsonError("An account with that email already exists.");
+  if (existingUser) return jsonError("This login already has a store profile.");
+  if (existingEmailUser) return jsonError("An account with this email already exists.");
 
-  const admin = createAdminClient();
   const accountId = crypto.randomUUID();
   const uploadPrefix = `accounts/${accountId}`;
   const profileImage = fileFromForm(form, "profileImage");
@@ -109,97 +111,76 @@ export async function POST(req: Request) {
   }
 
   const now = new Date();
-  const supabase = createSupabaseClient(getSupabaseUrl(), getSupabasePublishableKey(), {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
-  const callbackUrl = new URL("/auth/callback?next=/owner", req.url).toString();
-  const { data: signupData, error: signupError } = await supabase.auth.signUp({
-    email: body.email.toLowerCase(),
-    password: body.password,
-    options: { emailRedirectTo: callbackUrl }
-  });
-  if (signupError || !signupData.user) {
-    return jsonError(signupError?.message ?? "Unable to create your login.");
-  }
 
   let account;
-  try {
-    account = await prisma.account.create({
-      data: {
-        id: accountId,
-        name: body.businessName,
-        slug,
-        logoUrl: profileImageUrl,
-        themeKey: body.themeKey,
-        status: signupData.session ? "active" : "pending_verification",
-        StoreProfile: {
-          create: {
-            displayName: body.businessName,
-            headline: body.headline || null,
-            bio: body.bio || null,
-            profileImageUrl,
-            coverImageUrl,
-            coverPreset: body.coverPreset || null,
-            coverOverlayOpacity: body.coverOverlayOpacity,
-            coverTextColor: body.coverTextColor,
-            phone: body.phone || null,
-            whatsappPhone: body.whatsappPhone || null,
-            websiteUrl: null,
-            extraLinksJson: null,
-            instagramHandle: cleanHandle(body.instagramHandle),
-            city: body.city || null,
-            country: body.country || null,
-            yearStarted: body.yearStarted || null,
-            statusLabel: "Taking Orders",
-            verificationLabel: "VVS Verified",
-            isPublished: Boolean(signupData.session)
-          }
-        },
-        Memberships: {
-          create: {
-            role: "owner",
-            status: signupData.session ? "active" : "pending_verification",
-            user: {
-              create: {
-                authUserId: signupData.user.id,
-                storeName: body.businessName,
-                email: body.email.toLowerCase(),
-                name: body.businessName,
-                phone: body.phone || body.whatsappPhone || null,
-                role: "store_owner"
-              }
+  account = await prisma.account.create({
+    data: {
+      id: accountId,
+      name: body.businessName,
+      slug,
+      logoUrl: profileImageUrl,
+      themeKey: body.themeKey,
+      status: "active",
+      StoreProfile: {
+        create: {
+          displayName: body.businessName,
+          headline: body.headline || null,
+          bio: body.bio || null,
+          profileImageUrl,
+          coverImageUrl,
+          coverPreset: body.coverPreset || null,
+          coverOverlayOpacity: body.coverOverlayOpacity,
+          coverTextColor: body.coverTextColor,
+          phone: body.phone || null,
+          whatsappPhone: body.whatsappPhone || null,
+          websiteUrl: null,
+          extraLinksJson: null,
+          instagramHandle: cleanHandle(body.instagramHandle),
+          city: body.city || null,
+          country: body.country || null,
+          yearStarted: body.yearStarted || null,
+          statusLabel: "Taking Orders",
+          verificationLabel: "VVS Verified",
+          isPublished: true
+        }
+      },
+      Memberships: {
+        create: {
+          role: "owner",
+          status: "active",
+          user: {
+            create: {
+              authUserId: data.user.id,
+              storeName: body.businessName,
+              email: authEmail,
+              name: body.businessName,
+              phone: body.phone || body.whatsappPhone || null,
+              role: "store_owner"
             }
           }
-        },
-        StoreServices: {
-          create: body.services.map(service => ({
-            title: service.title,
-            description: service.description || null,
-            kind: service.kind,
-            ctaLabel: service.ctaLabel,
-            href: service.href || null,
-            sortOrder: service.sortOrder,
-            isActive: service.isActive
-          }))
-        },
-        ProductCollections: {
-          create: ["chain", "pendant", "ring", "bracelet", "watch", "grillz", "earrings", "trophy", "other"].map((category, index) => ({
-            title: category.replace(/\b\w/g, char => char.toUpperCase()),
-            slug: category,
-            sortOrder: index,
-            isActive: true
-          }))
         }
+      },
+      StoreServices: {
+        create: body.services.map(service => ({
+          title: service.title,
+          description: service.description || null,
+          kind: service.kind,
+          ctaLabel: service.ctaLabel,
+          href: service.href || null,
+          sortOrder: service.sortOrder,
+          isActive: service.isActive
+        }))
+      },
+      ProductCollections: {
+        create: ["chain", "pendant", "ring", "bracelet", "watch", "grillz", "earrings", "trophy", "other"].map((category, index) => ({
+          title: category.replace(/\b\w/g, char => char.toUpperCase()),
+          slug: category,
+          sortOrder: index,
+          isActive: true
+        }))
       }
-    });
-  } catch (error) {
-    try {
-      await admin.auth.admin.deleteUser(signupData.user.id);
-    } catch {
-      // Preserve the original database error if auth cleanup is unavailable.
     }
-    throw error;
-  }
+  });
 
   for (const [index, product] of body.products.entries()) {
     const imageUrl = productImageUrls.get(product.clientId);
@@ -237,8 +218,6 @@ export async function POST(req: Request) {
     accountId: account.id,
     slug: account.slug,
     profileUrl: `/s/${account.slug}`,
-    ownerUrl: "/owner",
-    requiresEmailConfirmation: !signupData.session,
-    email: body.email.toLowerCase()
+    ownerUrl: "/owner"
   });
 }

@@ -7,6 +7,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next");
+  const nextPath = safeInternalPath(next);
   if (!code) return NextResponse.redirect(new URL("/login?error=missing_confirmation_code", url));
 
   const supabase = await createClient();
@@ -22,7 +23,10 @@ export async function GET(req: Request) {
       }
     }
   });
-  if (!appUser) return NextResponse.redirect(new URL("/login?error=owner_account_not_found", url));
+  if (!appUser) {
+    if (nextPath === "/onboarding") return NextResponse.redirect(new URL("/onboarding", url));
+    return NextResponse.redirect(new URL("/login?error=owner_account_not_found", url));
+  }
 
   const membershipIds = appUser.Memberships.map(membership => membership.id);
   const accountIds = appUser.Memberships.map(membership => membership.accountId);
@@ -43,5 +47,5 @@ export async function GET(req: Request) {
     ]);
   }
 
-  return NextResponse.redirect(new URL(safeInternalPath(next), url));
+  return NextResponse.redirect(new URL(nextPath, url));
 }
