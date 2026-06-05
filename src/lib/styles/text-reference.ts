@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import opentype from 'opentype.js';
+import * as opentype from 'opentype.js';
 import sharp from 'sharp';
 import type { StyleConfig } from './_types';
 
