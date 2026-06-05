@@ -140,6 +140,25 @@ describe("buildVariants", () => {
     }
   });
 
+  it("builds SAMOA with a typography reference descriptor and omits emblem copy for none", () => {
+    const variants = buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      text: "Sky",
+      emblem: "none"
+    }, { promptMode: "natural_language" });
+
+    expect(variants).toHaveLength(2);
+    for (const variant of variants) {
+      expect(variant.prompt).toContain('changing the main text to "Sky"');
+      expect(variant.prompt).toContain("An additional typography reference image is attached");
+      expect(variant.prompt).not.toContain("Add a none");
+      expect(variant.prompt).not.toContain("above the lettering where the pendant bail normally sits");
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/samoa.png`);
+      expect(variant.attachments.some(attachment => attachment.endsWith(".style-text-reference.json"))).toBe(true);
+    }
+  });
+
   it("builds plain pendant prompts with selected color, metal, and karat", () => {
     const variants = buildVariants({
       userId: "demo",

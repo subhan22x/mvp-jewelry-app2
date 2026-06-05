@@ -33,13 +33,14 @@ export async function GET(_req: Request, { params }: Ctx) {
   const shoot = await findShoot(shootId, owner.accountId);
   if (!shoot) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const [uploads, imageGenerations, videoGenerations] = await Promise.all([
+  const [uploads, imageGenerations, videoGenerations, jobs] = await Promise.all([
     prisma.vvsStudioUpload.findMany({ where: { shootId: shoot.id }, orderBy: { createdAt: "asc" } }),
     prisma.vvsStudioImageGeneration.findMany({ where: { shootId: shoot.id }, orderBy: { createdAt: "desc" } }),
     prisma.vvsStudioVideoGeneration.findMany({ where: { shootId: shoot.id }, orderBy: { createdAt: "desc" } }),
+    prisma.vvsStudioJob.findMany({ where: { shootId: shoot.id }, orderBy: { createdAt: "desc" } }),
   ]);
 
-  return NextResponse.json({ shoot, uploads, imageGenerations, videoGenerations });
+  return NextResponse.json({ shoot, uploads, imageGenerations, videoGenerations, jobs });
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {

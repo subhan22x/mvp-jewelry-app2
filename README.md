@@ -38,6 +38,9 @@ GEMINI_API_KEY=your_key_here
 # GENERATED_IMAGE_DIR=public/generated
 # WAVESPEED_API_KEY=your_wavespeed_key_here
 # VIDEO_ACCESS_CODE=ID8
+# VVS_WORKER_SECRET=long_random_secret
+# CRON_SECRET=long_random_secret
+# VVS_INTERNAL_ADMIN_EMAILS=you@example.com
 # NEXT_PUBLIC_SUPABASE_URL=https://PROJECT_REF.supabase.co
 # NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 # SUPABASE_SECRET_KEY=sb_secret_...
@@ -145,8 +148,11 @@ Generated files are served through `/generated/:file` during local development. 
 | `GEMINI_API_KEY`       | (required)                           | Gemini auth. `GOOGLE_API_KEY` and `IMAGE_API_KEY` are accepted aliases. |
 | `GEMINI_MODEL_ID`      | `gemini-3.1-flash-image-preview`     | Model used by the connector.                  |
 | `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images and downloaded videos are written when R2 is not configured. |
-| `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for Seedance video generation. |
+| `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for VVS Studio image/video and Seedance video generation. |
 | `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
+| `VVS_WORKER_SECRET`    | (required in production)             | Secret accepted by the VVS Studio durable job worker. |
+| `CRON_SECRET`          | (recommended on Vercel)              | Vercel cron secret. Also accepted by the VVS Studio worker. |
+| `VVS_INTERNAL_ADMIN_EMAILS` | empty                            | Comma-separated owner emails allowed to edit VVS Studio model, prompt, and style settings. |
 | `NEXT_PUBLIC_SUPABASE_URL` | (required for owner auth)        | Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | (required for owner auth) | Browser-safe Supabase publishable key. |
 | `SUPABASE_SECRET_KEY`  | (required for onboarding cleanup)     | Server-only Supabase secret key. Never expose it to the browser. |
@@ -278,7 +284,7 @@ The folders `lib/styles/` and `server/db/client.ts` are currently re-export shim
 
 **Generated media** — `public/generated/` is local-only. Vercel filesystems are ephemeral. Production deployments require Cloudflare R2 for generated images, videos, logos, and uploads.
 
-**Background tasks on Vercel** — asynchronous generation routes register work with `waitUntil()` and persist polling state in Postgres. This is sufficient for preview and controlled initial traffic. A durable queue worker remains required before higher-volume paid usage.
+**Background tasks on Vercel** — VVS Studio video generation uses a Postgres-backed job table plus the cron worker at `/api/internal/vvs-studio/jobs/process`. The owner route nudges the worker immediately after queueing, while Vercel Cron keeps polling provider jobs. Older pendant video routes still use request-scoped `waitUntil()` and should be migrated before high-volume paid traffic.
 
 ## Further reading
 

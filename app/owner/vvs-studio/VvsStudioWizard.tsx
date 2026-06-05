@@ -32,7 +32,7 @@ const BD = "#35353d";
 const TX = "#eaeaf0";
 const SOFT = "#c0c0c8";
 const DIM = "#606068";
-const MOCK_VVS_GENERATION = true;
+const MOCK_VVS_GENERATION = process.env.NEXT_PUBLIC_MOCK_VVS_GENERATION === "true";
 const MOCK_VIDEO_URL = "/vvs-studio/style-videos/style-1.mp4";
 
 // ── reducer ──────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ type Action =
   | { type: "SET_FIELD"; field: string; value: unknown }
   | { type: "SET_GENERATED_IMAGE"; url: string; generationId?: string }
   | { type: "SET_GENERATED_VIDEO"; url: string; videoGenerationId?: string }
+  | { type: "SET_PIPELINE"; jobId: string; stage?: string }
   | { type: "SET_ERROR"; error: string }
   | { type: "RESET" };
 
@@ -63,6 +64,8 @@ function reducer(state: VvsWizardState, action: Action): VvsWizardState {
       return { ...state, generatedImageUrl: action.url, imageGenerationId: action.generationId, step: "imageResult" };
     case "SET_GENERATED_VIDEO":
       return { ...state, generatedVideoUrl: action.url, videoGenerationId: action.videoGenerationId, step: "videoResult" };
+    case "SET_PIPELINE":
+      return { ...state, jobId: action.jobId, jobStage: action.stage };
     case "SET_ERROR":
       return { ...state, error: action.error };
     case "RESET":
@@ -74,19 +77,14 @@ function reducer(state: VvsWizardState, action: Action): VvsWizardState {
 
 // ── helpers ──────────────────────────────────────────────────────
 const STYLE_LABELS: { value: VvsVisualStyle; label: string; videoSrc?: string }[] = [
-  { value: "dark", label: "Dark", videoSrc: "/vvs-studio/style-videos/style-1.mp4" },
-  { value: "marble", label: "Marble", videoSrc: "/vvs-studio/style-videos/style-2.mp4" },
-  { value: "street", label: "Street", videoSrc: "/vvs-studio/style-videos/style-3.mp4" },
-  { value: "velvet", label: "Velvet", videoSrc: "/vvs-studio/style-videos/style-4.mp4" },
-  { value: "ice", label: "Ice" },
+  { value: "prisma", label: "Prisma", videoSrc: "/vvs-studio/style-videos/style-1.mp4" },
+  { value: "noir", label: "Noir", videoSrc: "/vvs-studio/style-videos/style-2.mp4" },
+  { value: "glacier", label: "Glacier", videoSrc: "/vvs-studio/style-videos/style-3.mp4" },
+  { value: "gold_marble", label: "Gold Marble", videoSrc: "/vvs-studio/style-videos/style-4.mp4" },
 ];
 
 const PIECE_TYPES: { value: VvsPieceType; label: string }[] = [
   { value: "pendant", label: "Pendant" },
-  { value: "ring", label: "Ring" },
-  { value: "chainz", label: "Chainz" },
-  { value: "grills", label: "Grills" },
-  { value: "band", label: "Band" },
 ];
 
 const METAL_TYPES: { value: VvsMetalType; label: string }[] = [
@@ -370,6 +368,77 @@ function SecondaryBtn({ label, onClick }: { label: string; onClick: () => void }
   );
 }
 
+function UploadedPreviewStrip({ uploads }: { uploads: VvsWizardState["uploads"] }) {
+  const entries = ([
+    ["top", "Top View"],
+    ["left", "Left Angle"],
+    ["right", "Right Angle"],
+  ] as const)
+    .map(([angle, label]) => ({ angle, label, upload: uploads[angle] }))
+    .filter(entry => entry.upload?.previewUrl || entry.upload?.normalizedImageUrl);
+
+  if (!entries.length) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.08em" }}>
+          UPLOADED PHOTO{entries.length > 1 ? "S" : ""}
+        </span>
+        <span style={{ fontSize: 10, color: G, fontFamily: "'DM Sans', sans-serif" }}>{entries.length} attached</span>
+      </div>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
+        {entries.map(({ angle, label, upload }) => (
+          <div
+            key={angle}
+            style={{
+              flex: entries.length === 1 ? "1 1 100%" : "0 0 112px",
+              minWidth: 0,
+              borderRadius: 11,
+              border: `1px solid ${BD}`,
+              background: PANEL,
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ position: "relative", aspectRatio: entries.length === 1 ? "16/9" : "1/1", background: BG }}>
+              <img
+                src={upload?.previewUrl ?? upload?.normalizedImageUrl}
+                alt={`${label} upload`}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+              {angle === "top" && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 7,
+                    left: 7,
+                    borderRadius: 999,
+                    background: G,
+                    color: "#050505",
+                    padding: "3px 7px",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    fontFamily: "'DM Sans', sans-serif",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  SOURCE
+                </span>
+              )}
+            </div>
+            <div style={{ padding: "7px 9px" }}>
+              <span style={{ display: "block", fontSize: 11, color: TX, fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>{label}</span>
+              <span style={{ display: "block", marginTop: 2, fontSize: 10, color: DIM, fontFamily: "'DM Sans', sans-serif" }}>
+                {upload?.status === "uploaded" ? "Uploaded" : "Ready"}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FieldLabel({ label, optional }: { label: string; optional?: boolean }) {
   return (
     <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>
@@ -578,18 +647,31 @@ export default function VvsStudioWizard() {
       ?? "/vvs-studio/guide-top.jpg";
   }
 
+  type ShootPollResponse = {
+    jobs?: Array<{ id: string; status: string; currentStage: string; error?: string | null }>;
+    imageGenerations?: Array<{ id: string; stage?: string | null; status: string; imageUrl?: string | null; error?: string | null }>;
+    videoGenerations?: Array<{ id: string; status: string; videoUrl?: string | null; error?: string | null }>;
+  };
+
+  function pipelineKindForStage(stage?: string) {
+    return stage === "video" || stage === "save_video" || stage === "complete" ? "video" : "image";
+  }
+
   async function runImageGeneration(existingShootId?: string) {
     const signal = cancelPending();
     setStep("generatingImage");
     try {
       if (MOCK_VVS_GENERATION) {
-        await mockDelay(signal);
+        await mockDelay(signal, 2800);
         if (signal.aborted) return;
         dispatch({ type: "SET_FIELD", field: "shootId", value: existingShootId ?? "mock-vvs-shoot" });
+        setStep("generatingVideo");
+        await mockDelay(signal, 2800);
+        if (signal.aborted) return;
         dispatch({
-          type: "SET_GENERATED_IMAGE",
-          url: getMockImageUrl(),
-          generationId: "mock-vvs-image-generation",
+          type: "SET_GENERATED_VIDEO",
+          url: MOCK_VIDEO_URL,
+          videoGenerationId: "mock-vvs-video-generation",
         });
         return;
       }
@@ -649,27 +731,45 @@ export default function VvsStudioWizard() {
         });
       }
 
-      // Kick off generation
-      const genRes = await fetch(`/api/owner/vvs-studio/shoots/${shootId}/generate`, {
+      const startRes = await fetch(`/api/owner/vvs-studio/shoots/${shootId}/start-video-pipeline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: state.imageProvider, modelId: state.imageModelId }),
         signal,
       });
-      if (!genRes.ok) {
-        const { error } = await genRes.json() as { error?: string };
-        throw new Error(error ?? "Failed to start generation.");
+      if (!startRes.ok) {
+        const { error } = await startRes.json() as { error?: string };
+        throw new Error(error ?? "Failed to start video generation.");
       }
-      const { generationId } = await genRes.json() as { generationId: string };
-      dispatch({ type: "SET_FIELD", field: "imageGenerationId", value: generationId });
+      const { jobId, currentStage } = await startRes.json() as { jobId: string; currentStage?: string };
+      dispatch({ type: "SET_PIPELINE", jobId, stage: currentStage });
 
-      // Poll until done
-      await pollStatus(`/api/owner/vvs-studio/generations/${generationId}`, signal, (data) => {
-        if (data.status === "succeeded") {
-          dispatch({ type: "SET_GENERATED_IMAGE", url: data.imageUrl as string, generationId });
+      await pollStatus(`/api/owner/vvs-studio/shoots/${shootId}`, signal, (raw) => {
+        const data = raw as ShootPollResponse;
+        const job = data.jobs?.find(item => item.id === jobId) ?? data.jobs?.[0];
+        const styledImage = data.imageGenerations?.find(item => item.stage === "style_composite" && item.status === "succeeded" && item.imageUrl);
+        const video = data.videoGenerations?.find(item => item.status === "succeeded" && item.videoUrl);
+
+        if (styledImage?.imageUrl) {
+          dispatch({ type: "SET_FIELD", field: "generatedImageUrl", value: styledImage.imageUrl });
+          dispatch({ type: "SET_FIELD", field: "imageGenerationId", value: styledImage.id });
+        }
+
+        if (job?.currentStage) {
+          dispatch({ type: "SET_PIPELINE", jobId: job.id, stage: job.currentStage });
+          if (pipelineKindForStage(job.currentStage) === "video") setStep("generatingVideo");
+        }
+
+        if (video?.videoUrl) {
+          dispatch({ type: "SET_GENERATED_VIDEO", url: video.videoUrl, videoGenerationId: video.id });
           return true;
         }
-        if (data.status === "failed") throw new Error((data.error as string) || "Image generation failed.");
+
+        if (job?.status === "failed") throw new Error(job.error || "VVS video generation failed.");
+        const failedImage = data.imageGenerations?.find(item => item.status === "failed");
+        if (failedImage) throw new Error(failedImage.error || "VVS image generation failed.");
+        const failedVideo = data.videoGenerations?.find(item => item.status === "failed");
+        if (failedVideo) throw new Error(failedVideo.error || "VVS video generation failed.");
+
         return false;
       });
     } catch (err) {
@@ -755,6 +855,49 @@ export default function VvsStudioWizard() {
     reset();
   }
 
+  async function retryFailedPipeline() {
+    const jobId = state.jobId;
+    const shootId = state.shootId;
+    if (!jobId || !shootId) return;
+    const signal = cancelPending();
+    setStep(pipelineKindForStage(state.jobStage) === "video" ? "generatingVideo" : "generatingImage");
+    try {
+      const retryRes = await fetch(`/api/owner/vvs-studio/jobs/${jobId}/retry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal,
+      });
+      if (!retryRes.ok) {
+        const { error } = await retryRes.json() as { error?: string };
+        throw new Error(error ?? "Failed to retry VVS job.");
+      }
+      await pollStatus(`/api/owner/vvs-studio/shoots/${shootId}`, signal, (raw) => {
+        const data = raw as ShootPollResponse;
+        const job = data.jobs?.find(item => item.id === jobId) ?? data.jobs?.[0];
+        const styledImage = data.imageGenerations?.find(item => item.stage === "style_composite" && item.status === "succeeded" && item.imageUrl);
+        const video = data.videoGenerations?.find(item => item.status === "succeeded" && item.videoUrl);
+        if (styledImage?.imageUrl) {
+          dispatch({ type: "SET_FIELD", field: "generatedImageUrl", value: styledImage.imageUrl });
+          dispatch({ type: "SET_FIELD", field: "imageGenerationId", value: styledImage.id });
+        }
+        if (job?.currentStage) {
+          dispatch({ type: "SET_PIPELINE", jobId: job.id, stage: job.currentStage });
+          if (pipelineKindForStage(job.currentStage) === "video") setStep("generatingVideo");
+        }
+        if (video?.videoUrl) {
+          dispatch({ type: "SET_GENERATED_VIDEO", url: video.videoUrl, videoGenerationId: video.id });
+          return true;
+        }
+        if (job?.status === "failed") throw new Error(job.error || "VVS video generation failed.");
+        return false;
+      });
+    } catch (err) {
+      if (signal.aborted) return;
+      dispatch({ type: "SET_ERROR", error: err instanceof Error ? err.message : "Retry failed." });
+      setStep("theme");
+    }
+  }
+
   function handleFile(angle: "top" | "left" | "right", file: File) {
     const existing = state.uploads[angle];
     if (existing?.previewUrl) URL.revokeObjectURL(existing.previewUrl);
@@ -772,7 +915,7 @@ export default function VvsStudioWizard() {
     dispatch({ type: "REMOVE_UPLOAD", angle });
   }
 
-  const hasUpload = Boolean(state.uploads.top || state.uploads.left || state.uploads.right);
+  const hasUpload = Boolean(state.uploads.top);
   const canProceedCapture = hasUpload && Boolean(state.visualStyle);
   const canProceedDetails = Boolean(state.pieceType);
   const canGenerate = Boolean(state.mood) && Boolean(state.aspectRatio);
@@ -833,9 +976,9 @@ export default function VvsStudioWizard() {
         <div style={{ height: 1, background: BD }} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TX }}>Capture 3 Angles</span>
+          <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TX }}>Capture Pendant</span>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: DIM, lineHeight: 1.5 }}>
-            Flat surface, even lighting. Tap each zone to upload.
+            Top view is required for v1. Extra angles are saved for reference.
           </span>
           <div style={{ display: "flex", justifyContent: "space-around" }}>
             <AngleUploadCard angle="top" label="Top View" sub="Straight down" guideSrc="/vvs-studio/guide-top.jpg" upload={state.uploads.top} onFile={handleFile} onRemove={handleRemove} />
@@ -855,14 +998,17 @@ export default function VvsStudioWizard() {
   function renderDetails() {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
+        <UploadedPreviewStrip uploads={state.uploads} />
+
+        <div style={{ height: 1, background: BD }} />
+
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TX }}>Select Piece</span>
-          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", overflowX: "auto" }}>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
             {PIECE_TYPES.map(p => (
               <Chip
                 key={p.value}
                 label={p.label}
-                small
                 active={state.pieceType === p.value}
                 onClick={() => dispatch({ type: "SET_FIELD", field: "pieceType", value: p.value })}
               />
@@ -1044,7 +1190,7 @@ export default function VvsStudioWizard() {
   function renderGeneratingImage() {
     return (
       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-        <GenerationProgress kind="image" />
+        <GenerationProgress kind="image" stage={state.jobStage} />
       </div>
     );
   }
@@ -1073,7 +1219,7 @@ export default function VvsStudioWizard() {
   function renderGeneratingVideo() {
     return (
       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-        <GenerationProgress kind="video" thumbnailUrl={state.generatedImageUrl} />
+        <GenerationProgress kind="video" stage={state.jobStage} thumbnailUrl={state.generatedImageUrl} />
       </div>
     );
   }
@@ -1146,8 +1292,26 @@ export default function VvsStudioWizard() {
           }}
         >
           {state.error && (
-            <div style={{ margin: "8px 0", padding: "8px 12px", borderRadius: 8, background: "#3d1818", border: "1px solid #7a2b2b", color: "#f08080", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-              {state.error}
+            <div style={{ margin: "8px 0", padding: "8px 12px", borderRadius: 8, background: "#3d1818", border: "1px solid #7a2b2b", color: "#f08080", fontSize: 13, fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column", gap: 8 }}>
+              <span>{state.error}</span>
+              {state.jobId && (
+                <button
+                  type="button"
+                  onClick={() => void retryFailedPipeline()}
+                  style={{
+                    alignSelf: "flex-start",
+                    border: `1px solid ${G}`,
+                    background: G + "22",
+                    color: G,
+                    borderRadius: 999,
+                    padding: "5px 10px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Retry failed step
+                </button>
+              )}
             </div>
           )}
 

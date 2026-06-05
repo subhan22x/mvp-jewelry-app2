@@ -18,6 +18,11 @@ export type StyleConfig = {
   templateKey: string;        // filename without extension
   naturalLanguageTemplateKey?: string; // filename without extension
   naturalLanguageSnippetsKey?: string; // filename without extension
+  fontReference?: {
+    family: string;
+    file: string;
+    transform?: 'uppercase' | 'none';
+  };
   emblemsAllowed: Emblem[];
   defaults: (Required<VariantConfig> & { view: string }) & { font?: string; schemeType?: string };
   variantMatrix: [VariantConfig, VariantConfig];

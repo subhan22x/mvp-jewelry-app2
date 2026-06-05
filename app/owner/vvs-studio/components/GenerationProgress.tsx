@@ -5,26 +5,36 @@ import { useEffect, useState } from "react";
 type Props = {
   kind: "image" | "video";
   thumbnailUrl?: string;
+  stage?: string;
 };
 
 const IMAGE_STEPS = [
-  "Analyzing jewelry geometry",
-  "Removing background",
-  "Applying selected theme",
-  "Compositing studio lighting",
+  "Preparing source pendant",
+  "Refining jewelry geometry",
+  "Styling pendant scene",
+  "Creating final camera angle",
 ];
 
 const VIDEO_STEPS = [
-  "Applying camera motion path",
+  "Creating final camera angle",
+  "Submitting motion reel",
   "Animating light reflections",
-  "Rendering frames",
-  "Encoding for social media",
+  "Saving final video",
 ];
 
-export default function GenerationProgress({ kind, thumbnailUrl }: Props) {
+const STAGE_INDEX: Record<string, number> = {
+  source_refine: 1,
+  style_composite: 2,
+  last_shot: 3,
+  video: 1,
+  save_video: 3,
+  complete: 3,
+};
+
+export default function GenerationProgress({ kind, thumbnailUrl, stage }: Props) {
   const steps = kind === "image" ? IMAGE_STEPS : VIDEO_STEPS;
   const [progress, setProgress] = useState(0);
-  const activeStep = Math.min(steps.length - 1, Math.floor((progress / 100) * steps.length));
+  const activeStep = Math.min(steps.length - 1, stage && stage in STAGE_INDEX ? STAGE_INDEX[stage] : Math.floor((progress / 100) * steps.length));
 
   useEffect(() => {
     const totalMs = kind === "image" ? 18000 : 45000;
@@ -131,7 +141,7 @@ export default function GenerationProgress({ kind, thumbnailUrl }: Props) {
         {kind === "image" ? "Generating..." : "Generating Video..."}
       </span>
       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#606068", marginTop: 6, textAlign: "center" }}>
-        {kind === "image" ? "Creating your studio asset" : "Creating your motion reel"}
+        {kind === "image" ? "Building the pendant scene" : "Creating your motion reel"}
       </span>
 
       <div style={{ width: "100%", marginTop: 28, display: "flex", flexDirection: "column", gap: 7 }}>
@@ -200,7 +210,7 @@ export default function GenerationProgress({ kind, thumbnailUrl }: Props) {
 
       <div style={{ flex: 1, minHeight: 24 }} />
       <span style={{ fontSize: 11, color: "#606068", fontFamily: "'DM Sans', sans-serif", textAlign: "center" }}>
-        {kind === "image" ? "Usually takes 10–20 seconds" : "Usually takes 30–60 seconds"}
+        {kind === "image" ? "This can take a few minutes with provider processing" : "This can take several minutes depending on queue time"}
       </span>
     </div>
   );

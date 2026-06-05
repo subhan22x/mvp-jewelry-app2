@@ -31,6 +31,9 @@ DEFAULT_ACCOUNT_ID="your-public-wizard-account-id"
 GOOGLE_API_KEY="..."
 WAVESPEED_API_KEY="..."
 VIDEO_ACCESS_CODE="..."
+VVS_WORKER_SECRET="..."
+CRON_SECRET="..."
+VVS_INTERNAL_ADMIN_EMAILS="admin@example.com"
 R2_ACCOUNT_ID="..."
 R2_ACCESS_KEY_ID="..."
 R2_SECRET_ACCESS_KEY="..."
@@ -75,7 +78,15 @@ In Supabase Authentication URL Configuration:
 
 Generation routes return immediately and the UI polls persisted status rows. On Vercel, those routes now register the existing async work with `waitUntil()` and set `maxDuration = 300`.
 
-This is suitable for the first preview and controlled production traffic. It is not a durable job queue. Before higher-volume paid usage, move provider jobs into a persistent queue and worker so generation survives deploys, duration limits, and transient function termination.
+VVS Studio video generation uses a persisted Postgres job table and the cron route in `vercel.json`:
+
+```txt
+/api/internal/vvs-studio/jobs/process
+```
+
+Set `CRON_SECRET` or `VVS_WORKER_SECRET` in Vercel so the worker endpoint is protected. The owner route nudges the worker after a job is created, and cron continues polling Wavespeed until the job is complete. Local development can manually invoke the worker route when no cron is running.
+
+The older pendant video-generation routes still use request-scoped background work. Before higher-volume paid usage, move all provider jobs into the durable worker pattern.
 
 ## Deployment Checklist
 

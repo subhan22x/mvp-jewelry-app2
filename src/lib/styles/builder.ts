@@ -4,6 +4,7 @@ import { z } from 'zod';
 import YAML from 'yaml';
 import { getSnippetPath, getStyle, getTemplatePath } from './registry';
 import { renderTemplate } from './utils';
+import { createTextReferenceDescriptorPath } from './text-reference';
 import type { BuiltVariant, CustomerInput, Emblem, PlainChain, PlainColor, PlainKarat, PlainMetal } from './_types';
 import type { PromptMode } from '../prompt-mode';
 
@@ -223,7 +224,6 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
     if (emblemRef) attachments.push(path.join(process.cwd(), emblemRef));
   }
 
-  const uniqueAttachments = Array.from(new Set(attachments));
   return [1, 2].map((variant) => {
     const v = style.variantMatrix[variant - 1];
     const merged = {
@@ -268,6 +268,12 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
           BUBBLE_OUTLINE_ENABLED: merged.bubble,
           VIEW: merged.view
         });
+
+    const textReferencePath = createTextReferenceDescriptorPath(style, finalLines.join(' '));
+    const uniqueAttachments = Array.from(new Set([
+      ...attachments,
+      ...(textReferencePath ? [textReferencePath] : [])
+    ]));
 
     return { variant: variant as 1|2, prompt: addVariantCompositionGuidance(prompt, variant), attachments: uniqueAttachments };
   });

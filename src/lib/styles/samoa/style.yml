@@ -1,0 +1,30 @@
+id: samoa
+label: Samoa
+templateKey: block_baguette_v1
+naturalLanguageTemplateKey: samoa-natural-language
+naturalLanguageSnippetsKey: samoa-natural-language-snippets
+emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
+
+fontReference:
+  family: Cristone
+  file: public/style-fonts/samoa/Cristone.ttf
+  transform: none
+
+defaults:
+  bubbleOutline: true
+  forceAllCaps: false
+  deviationStrength: 0.30
+  view: front_view
+
+variantMatrix:
+  - { deviationStrength: 0.30, bubbleOutline: false, forceAllCaps: false }
+  - { deviationStrength: 0.50, bubbleOutline: true,  forceAllCaps: false }
+
+assets:
+  pendantRef: public/pendants/samoa.png
+  emblemRefs:
+    crown: public/emblems/CROWN EMBLEM.png
+    heart: public/emblems/heart emblem.png
+    spade: public/emblems/SPADE EMBLEM.png
+    butterfly: public/emblems/BUTTERFLY EMBLEM.png
+    moneybag: public/emblems/moneybag emblem.png
