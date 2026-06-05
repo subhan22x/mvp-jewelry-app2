@@ -76,7 +76,7 @@ export default function ReviewsDashboard({ accountSlug, reviews }: { accountSlug
         </button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3">
         <div className="flex min-h-28 items-center justify-between rounded-xl border border-white/5 bg-[#17191F] p-5">
           <div className="flex items-center gap-4">
             <IconBubble><StarIcon /></IconBubble>
@@ -92,19 +92,6 @@ export default function ReviewsDashboard({ accountSlug, reviews }: { accountSlug
             className={`relative h-7 w-12 rounded-full transition ${enabled ? "bg-[#f7bc5f]" : "bg-white/10"}`}
           >
             <span className={`absolute top-1 h-5 w-5 rounded-full bg-black transition ${enabled ? "right-1" : "left-1"}`} />
-          </button>
-        </div>
-
-        <div className="flex min-h-28 items-center justify-between rounded-xl border border-white/5 bg-[#17191F] p-5">
-          <div className="flex items-center gap-4">
-            <IconBubble><ShieldIcon /></IconBubble>
-            <div>
-              <h2 className="font-bold text-white">Approve Before Publishing</h2>
-              <p className="mt-1 text-sm text-[#8c909f]">Upgrade to PRO to moderate reviews.</p>
-            </div>
-          </div>
-          <button className="rounded-full border border-[#f7bc5f]/40 px-4 py-2 text-xs font-black text-[#f7bc5f] hover:bg-[#f7bc5f]/10">
-            PRO - Upgrade →
           </button>
         </div>
       </div>
@@ -314,10 +301,6 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
 
 function StarIcon() {
   return <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5"><path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9L12 3Z" /></svg>;
-}
-
-function ShieldIcon() {
-  return <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5"><path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 3 5 6v5c0 4.5 2.7 8.3 7 10 4.3-1.7 7-5.5 7-10V6l-7-3Z" /></svg>;
 }
 
 function SearchIcon() {

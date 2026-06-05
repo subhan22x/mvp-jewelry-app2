@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import mime from 'mime';
 import { resolveGenerationConfig } from '../providers';
 import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from '../storage/r2';
+import { isTextReferenceDescriptorPath, renderTextReferenceDescriptor } from './text-reference';
 
 export type GenerateArgs = {
   prompt: string;
@@ -51,11 +52,22 @@ export async function saveGeneratedImage({ buffer, mimeType, requestId, variant 
   return `/generated/${fileName}`;
 }
 
+async function prepareProviderAttachments(attachments: string[]) {
+  return Promise.all(
+    attachments.map((attachment) => (
+      isTextReferenceDescriptorPath(attachment)
+        ? renderTextReferenceDescriptor(attachment)
+        : attachment
+    ))
+  );
+}
+
 export async function generateImage({ prompt, attachments = [], requestId, variant, modelVariant }: GenerateArgs): Promise<{ imageUrl: string; modelId: string }> {
   const { provider, modelId, imageSize, aspectRatio } = resolveGenerationConfig(modelVariant ?? variant);
+  const providerAttachments = await prepareProviderAttachments(attachments);
 
   const { buffer, mimeType } = await withTimeout(
-    provider.generate({ prompt, attachments, modelId, imageSize, aspectRatio }),
+    provider.generate({ prompt, attachments: providerAttachments, modelId, imageSize, aspectRatio }),
     GENERATION_TIMEOUT_MS
   );
 

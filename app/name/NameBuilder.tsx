@@ -792,6 +792,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                                   src={style.src}
                                   label={`${style.label} pendant style`}
                                   className={styleOptionFrameClass}
+                                  imageClassName={style.thumbnailClassName}
                                 />
                               );
                             })}

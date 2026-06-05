@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import MobileOwnerNav from "./MobileOwnerNav";
 
@@ -88,8 +89,9 @@ export default function OwnerFrame({
         <header className="fixed left-0 top-0 z-40 flex h-16 w-full max-w-full items-center justify-between gap-3 overflow-hidden border-b border-white/10 bg-[#101114] px-4 shadow-sm sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <MobileOwnerNav active={active} />
-            <span className="text-[#f7bc5f]" aria-hidden>*</span>
-            <span className="truncate text-base font-bold tracking-tight text-[#f7bc5f] sm:text-lg">Jewelry Design Studio</span>
+            <Link href="/owner" className="flex h-10 min-w-0 items-center">
+              <Image src="/landing/flawless-lettering-logo.png" alt="Flawless" width={150} height={60} className="h-10 w-auto object-contain" priority />
+            </Link>
           </div>
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-[#17191F] text-xs font-bold text-[#D1B873]">
             JS

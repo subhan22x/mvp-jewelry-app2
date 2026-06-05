@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -13,9 +14,9 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [oauthSubmitting, setOauthSubmitting] = useState<"google" | "apple" | null>(null);
+  const [oauthSubmitting, setOauthSubmitting] = useState<"google" | null>(null);
 
-  async function signInWithOAuth(provider: "google" | "apple") {
+  async function signInWithOAuth(provider: "google") {
     setOauthSubmitting(provider);
     setError(null);
     const next = safeInternalPath(searchParams.get("next"));
@@ -56,62 +57,51 @@ export default function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#101114] px-4 py-10 text-[#e1e2ec]">
+    <main className="flex min-h-dvh items-center justify-center bg-[#050504] px-4 py-10 text-[#ede4d4]">
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#D1B873]">Jewelry Design Studio</p>
+          <Image src="/landing/flawless-lettering-logo.png" alt="Flawless" width={199} height={79} className="h-auto w-32 object-contain" priority />
           <h1 className="mt-3 text-4xl font-bold text-white">Owner login</h1>
-          <p className="mt-2 text-sm leading-6 text-[#c2c6d6]">Review quotes, update your storefront, and generate studio assets.</p>
+          <p className="mt-2 text-sm leading-6 text-[#91877b]">Review quotes, update your storefront, and generate studio assets.</p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[#17191F] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+        <div className="rounded-2xl border border-[rgba(237,228,212,.09)] bg-[#15120d] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
           <div className="grid gap-3">
             <button
               type="button"
               disabled={submitting || oauthSubmitting !== null}
               onClick={() => void signInWithOAuth("google")}
-              className="h-12 rounded-xl border border-white/10 bg-black/35 px-4 text-sm font-bold text-white disabled:opacity-60"
+              className="flex h-12 items-center justify-center gap-3 rounded-xl border border-[rgba(237,228,212,.14)] bg-[#090706] px-4 text-sm font-bold text-[#ede4d4] transition hover:border-[rgba(235,180,103,.44)] hover:bg-[#100c08] disabled:opacity-60"
             >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-black text-[#4285F4]">G</span>
               {oauthSubmitting === "google" ? "Opening Google..." : "Continue with Google"}
-            </button>
-            <button
-              type="button"
-              disabled={submitting || oauthSubmitting !== null}
-              onClick={() => void signInWithOAuth("apple")}
-              className="h-12 rounded-xl border border-white/10 bg-black/35 px-4 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {oauthSubmitting === "apple" ? "Opening Apple..." : "Continue with Apple"}
             </button>
           </div>
 
-          <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#8c909f]">
-            <span className="h-px flex-1 bg-white/10" />
+          <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#91877b]">
+            <span className="h-px flex-1 bg-[rgba(237,228,212,.09)]" />
             <span>Email</span>
-            <span className="h-px flex-1 bg-white/10" />
+            <span className="h-px flex-1 bg-[rgba(237,228,212,.09)]" />
           </div>
 
           <form onSubmit={submit}>
-          <div className="mb-5 flex rounded-xl border border-white/10 bg-black/25 p-1 text-sm">
-            <span className="flex-1 rounded-lg bg-[#D1B873] px-3 py-2 text-center font-bold text-black">Email</span>
-            <span className="flex-1 px-3 py-2 text-center text-[#8c909f]">Phone OTP - coming soon</span>
-          </div>
-          <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">
+          <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#91877b]">
             Email
-            <input type="email" value={email} onChange={event => setEmail(event.target.value)} required className="mt-2 w-full rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-base normal-case tracking-normal text-white outline-none focus:border-[#D1B873]" />
+            <input type="email" value={email} onChange={event => setEmail(event.target.value)} required className="mt-2 w-full rounded-xl border border-[rgba(237,228,212,.12)] bg-[#090706] px-4 py-3 text-base normal-case tracking-normal text-white outline-none focus:border-[#ebb467]" />
           </label>
-          <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.18em] text-[#8c909f]">
+          <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.18em] text-[#91877b]">
             Password
-            <input type="password" value={password} onChange={event => setPassword(event.target.value)} required className="mt-2 w-full rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-base normal-case tracking-normal text-white outline-none focus:border-[#D1B873]" />
+            <input type="password" value={password} onChange={event => setPassword(event.target.value)} required className="mt-2 w-full rounded-xl border border-[rgba(237,228,212,.12)] bg-[#090706] px-4 py-3 text-base normal-case tracking-normal text-white outline-none focus:border-[#ebb467]" />
           </label>
           {error ? <p className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
-          <button disabled={submitting} className="mt-5 w-full rounded-xl bg-[#D1B873] px-4 py-3 font-bold text-black disabled:opacity-60">
+          <button disabled={submitting} className="mt-5 w-full rounded-xl bg-[linear-gradient(165deg,#ebb467,#d4924a)] px-4 py-3 font-bold text-[#1b1006] shadow-[0_10px_24px_-12px_rgba(212,146,74,.8)] disabled:opacity-60">
             {submitting ? "Signing in..." : "Login"}
           </button>
           </form>
         </div>
 
-        <p className="mt-5 text-center text-sm text-[#8c909f]">
-          New store? <Link href="/onboarding" className="font-semibold text-[#D1B873]">Create your profile</Link>
+        <p className="mt-5 text-center text-sm text-[#91877b]">
+          New store? <Link href="/onboarding" className="font-semibold text-[#ebb467]">Create your profile</Link>
         </p>
       </div>
     </main>
