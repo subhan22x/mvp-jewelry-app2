@@ -9,7 +9,10 @@ import type { StyleConfig } from './_types';
 
 const REFERENCE_DIR = path.join(os.tmpdir(), 'flawless-style-text-references');
 const DESCRIPTOR_EXTENSION = '.style-text-reference.json';
-const RENDER_VERSION = 'outline-v1';
+const RENDER_VERSION = 'browser-canvas-v1';
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 520;
+const OPENTYPE_BROWSER_SCRIPT = path.join(process.cwd(), 'node_modules', 'opentype.js', 'dist', 'opentype.min.js');
 const DEFAULT_RENDER_OPTIONS = {
   backgroundColor: '#ffffff',
   fillColor: '#050505',
@@ -25,12 +28,18 @@ type TextReferenceDescriptor = {
   text: string;
 };
 
+type TextReferenceRenderer = 'playwright' | 'svg-path';
+
 export type TextReferenceRenderOptions = {
   backgroundColor?: string;
   fillColor?: string;
   outlineColor?: string;
   outlineWidth?: number;
 };
+
+let playwrightBrowserPromise: Promise<any> | null = null;
+let opentypeBrowserScriptPromise: Promise<string> | null = null;
+const inFlightRenders = new Map<string, Promise<string>>();
 
 function ensureReferenceDir() {
   fs.mkdirSync(REFERENCE_DIR, { recursive: true });
@@ -42,6 +51,14 @@ function escapeXml(value: string) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function browserEscape(value: string) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${')
+    .replace(/<\/script/gi, '<\\/script');
 }
 
 function normalizeColor(value: string | undefined, fallback: string) {
@@ -61,16 +78,42 @@ function normalizeRenderOptions(options?: TextReferenceRenderOptions) {
   };
 }
 
+function activeRenderer(): TextReferenceRenderer {
+  if (process.env.TEXT_REFERENCE_RENDERER === 'svg-path') return 'svg-path';
+  return 'playwright';
+}
+
 function hashDescriptor(input: Omit<TextReferenceDescriptor, 'kind'>, options?: TextReferenceRenderOptions) {
   return crypto
     .createHash('sha256')
     .update(JSON.stringify({
       ...input,
       renderOptions: normalizeRenderOptions(options),
+      renderer: activeRenderer(),
       renderVersion: RENDER_VERSION
     }))
     .digest('hex')
     .slice(0, 24);
+}
+
+async function getOpentypeBrowserScript() {
+  opentypeBrowserScriptPromise ??= fsp.readFile(OPENTYPE_BROWSER_SCRIPT, 'utf8');
+  return opentypeBrowserScriptPromise;
+}
+
+async function getPlaywrightBrowser() {
+  playwrightBrowserPromise ??= import('playwright').then(({ chromium }) => (
+    chromium.launch({ headless: true })
+  ));
+  return playwrightBrowserPromise;
+}
+
+export function prewarmTextReferenceRenderer() {
+  if (activeRenderer() !== 'playwright') return Promise.resolve();
+  return Promise.all([
+    getOpentypeBrowserScript(),
+    getPlaywrightBrowser()
+  ]).then(() => undefined);
 }
 
 export function isTextReferenceDescriptorPath(filePath: string) {
@@ -103,8 +146,8 @@ export function createTextReferenceDescriptorPath(style: StyleConfig, text: stri
 
 function buildSvgPathReference(descriptor: TextReferenceDescriptor, options?: TextReferenceRenderOptions) {
   const renderOptions = normalizeRenderOptions(options);
-  const width = 1200;
-  const height = 520;
+  const width = CANVAS_WIDTH;
+  const height = CANVAS_HEIGHT;
   const padding = 72;
   const fontBuffer = fs.readFileSync(descriptor.fontPath);
   const fontBytes = fontBuffer.buffer.slice(
@@ -139,6 +182,117 @@ function buildSvgPathReference(descriptor: TextReferenceDescriptor, options?: Te
 </svg>`;
 }
 
+async function renderWithSvgPath(
+  descriptor: TextReferenceDescriptor,
+  outputPath: string,
+  options?: TextReferenceRenderOptions
+) {
+  const svg = buildSvgPathReference(descriptor, options);
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  await fsp.writeFile(outputPath, png);
+}
+
+async function renderWithPlaywright(
+  descriptor: TextReferenceDescriptor,
+  outputPath: string,
+  options?: TextReferenceRenderOptions
+) {
+  const renderOptions = normalizeRenderOptions(options);
+  const [browser, opentypeScript] = await Promise.all([
+    getPlaywrightBrowser(),
+    getOpentypeBrowserScript()
+  ]);
+  const page = await browser.newPage({
+    viewport: {
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT
+    }
+  });
+
+  try {
+    const fontData = (await fsp.readFile(descriptor.fontPath)).toString('base64');
+    await page.setContent(`<!doctype html>
+<meta charset="utf-8" />
+<canvas id="reference" width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}"></canvas>
+<script>${opentypeScript}</script>
+<script>
+  function fontFromBase64(data) {
+    const bin = atob(data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    return opentype.parse(bytes.buffer);
+  }
+
+  window.renderTextReference = function renderTextReference() {
+    const canvas = document.getElementById('reference');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const text = \`${browserEscape(descriptor.text.trim() || 'Name')}\`;
+    const family = \`${browserEscape(descriptor.family)}\`;
+    const font = fontFromBase64(\`${fontData}\`);
+    const outlineWidth = ${renderOptions.outlineWidth};
+    const topLabelHeight = 92;
+    const padding = 72 + outlineWidth;
+    const fontSize = 260;
+    const baseline = 330;
+    const glyphPath = font.getPath(text, 0, baseline, fontSize, {
+      kerning: true,
+      features: {
+        calt: true,
+        liga: true,
+        rlig: true
+      }
+    });
+    const box = glyphPath.getBoundingBox();
+    const textWidth = Math.max(1, box.x2 - box.x1);
+    const textHeight = Math.max(1, box.y2 - box.y1);
+    const scale = Math.min(
+      (width - padding * 2) / textWidth,
+      (height - topLabelHeight - padding * 2) / textHeight,
+      1
+    );
+    const x = (width - textWidth * scale) / 2 - box.x1 * scale;
+    const y = topLabelHeight + (height - topLabelHeight - textHeight * scale) / 2 - box.y1 * scale;
+
+    ctx.fillStyle = '${renderOptions.backgroundColor}';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#555555';
+    ctx.font = '22px Arial, Helvetica, sans-serif';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TYPOGRAPHY REFERENCE ONLY', 36, 50);
+    ctx.letterSpacing = '0px';
+    ctx.fillStyle = '#777777';
+    ctx.font = '18px Arial, Helvetica, sans-serif';
+    ctx.fillText('Style: ' + family + '. Use letter shapes, outline envelope, spacing, and silhouette; ignore flat color/background.', 36, 82);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    if (outlineWidth > 0) {
+      ctx.lineWidth = outlineWidth;
+      ctx.strokeStyle = '${renderOptions.outlineColor}';
+      glyphPath.draw(ctx);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '${renderOptions.fillColor}';
+    glyphPath.draw(ctx);
+    ctx.fill();
+    ctx.restore();
+
+    return canvas.toDataURL('image/png');
+  };
+</script>`);
+    const dataUrl = await page.evaluate(() => (window as any).renderTextReference());
+    const png = Buffer.from(dataUrl.split(',')[1] ?? '', 'base64');
+    await fsp.writeFile(outputPath, png);
+  } finally {
+    await page.close().catch(() => undefined);
+  }
+}
+
 async function renderTextReferenceToFile(descriptor: TextReferenceDescriptor, options?: TextReferenceRenderOptions) {
   const hash = hashDescriptor({
     styleId: descriptor.styleId,
@@ -150,10 +304,29 @@ async function renderTextReferenceToFile(descriptor: TextReferenceDescriptor, op
   const outputPath = path.join(REFERENCE_DIR, `${descriptor.styleId}-${hash}.png`);
   if (fs.existsSync(outputPath)) return outputPath;
 
-  const svg = buildSvgPathReference(descriptor, options);
-  const png = await sharp(Buffer.from(svg)).png().toBuffer();
-  await fsp.writeFile(outputPath, png);
-  return outputPath;
+  const inFlight = inFlightRenders.get(outputPath);
+  if (inFlight) return inFlight;
+
+  const render = (async () => {
+    if (activeRenderer() === 'playwright') {
+      try {
+        await renderWithPlaywright(descriptor, outputPath, options);
+        return outputPath;
+      } catch (error) {
+        console.warn(`Playwright text reference render failed for ${descriptor.styleId}; falling back to SVG path renderer.`, error);
+      }
+    }
+
+    await renderWithSvgPath(descriptor, outputPath, options);
+    return outputPath;
+  })();
+
+  inFlightRenders.set(outputPath, render);
+  try {
+    return await render;
+  } finally {
+    inFlightRenders.delete(outputPath);
+  }
 }
 
 export async function renderTextReferenceDescriptor(
