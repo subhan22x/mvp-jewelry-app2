@@ -3,6 +3,11 @@ label: Mojo
 templateKey: block_baguette_v1
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Campana Script
+  file: public/style-fonts/deja/CampanaScript.otf
+  transform: none
+
 defaults:
   bubbleOutline: false
   forceAllCaps: false

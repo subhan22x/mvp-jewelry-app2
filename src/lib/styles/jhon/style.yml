@@ -3,6 +3,11 @@ label: Jhon
 templateKey: block_baguette_v1
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Carnivalee Freakshow
+  file: public/style-fonts/jhon/Carnivalee-Freakshow.ttf
+  transform: none
+
 defaults:
   bubbleOutline: false
   forceAllCaps: false

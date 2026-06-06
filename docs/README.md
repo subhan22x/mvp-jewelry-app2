@@ -18,6 +18,7 @@ These documents should match the running application:
 
 - [`../CLAUDE.md`](../CLAUDE.md): implementation conventions and prompt-generation architecture.
 - [`../styles.md`](../styles.md): pendant style registry, prompt templates, and generation details.
+- [`prompting-architecture.md`](prompting-architecture.md): current style prompt flow, typography reference attachments, and font-to-style mapping.
 - [`../SAAS_PRODUCT_MAP.md`](../SAAS_PRODUCT_MAP.md): SaaS roadmap. Treat this as planning material; confirm implementation status against the Prisma schema and operational docs.
 
 ## Historical Reference Files

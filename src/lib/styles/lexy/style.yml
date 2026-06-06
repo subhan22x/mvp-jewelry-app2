@@ -3,6 +3,11 @@ label: Lexy
 templateKey: block_baguette_v1
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Birds of Paradise
+  file: public/style-fonts/lexy/Birds-of-Paradise.ttf
+  transform: none
+
 defaults:
   bubbleOutline: true
   forceAllCaps: false

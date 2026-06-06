@@ -3,6 +3,11 @@ label: MANA
 templateKey: block_baguette_v1
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Helvetica Neue Black Italic
+  file: public/style-fonts/king/Helvetica-Neue-Black-Italic.ttf
+  transform: uppercase
+
 defaults:
   bubbleOutline: false
   forceAllCaps: true

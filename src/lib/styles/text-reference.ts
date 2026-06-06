@@ -9,6 +9,13 @@ import type { StyleConfig } from './_types';
 
 const REFERENCE_DIR = path.join(os.tmpdir(), 'flawless-style-text-references');
 const DESCRIPTOR_EXTENSION = '.style-text-reference.json';
+const RENDER_VERSION = 'outline-v1';
+const DEFAULT_RENDER_OPTIONS = {
+  backgroundColor: '#ffffff',
+  fillColor: '#050505',
+  outlineColor: '#b8924a',
+  outlineWidth: 34
+};
 
 type TextReferenceDescriptor = {
   kind: 'style-text-reference';
@@ -16,6 +23,13 @@ type TextReferenceDescriptor = {
   family: string;
   fontPath: string;
   text: string;
+};
+
+export type TextReferenceRenderOptions = {
+  backgroundColor?: string;
+  fillColor?: string;
+  outlineColor?: string;
+  outlineWidth?: number;
 };
 
 function ensureReferenceDir() {
@@ -30,10 +44,31 @@ function escapeXml(value: string) {
     .replace(/"/g, '&quot;');
 }
 
-function hashDescriptor(input: Omit<TextReferenceDescriptor, 'kind'>) {
+function normalizeColor(value: string | undefined, fallback: string) {
+  return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+function normalizeRenderOptions(options?: TextReferenceRenderOptions) {
+  const outlineWidth = Number.isFinite(options?.outlineWidth)
+    ? Math.max(0, Math.min(96, Math.round(options!.outlineWidth!)))
+    : DEFAULT_RENDER_OPTIONS.outlineWidth;
+
+  return {
+    backgroundColor: normalizeColor(options?.backgroundColor, DEFAULT_RENDER_OPTIONS.backgroundColor),
+    fillColor: normalizeColor(options?.fillColor, DEFAULT_RENDER_OPTIONS.fillColor),
+    outlineColor: normalizeColor(options?.outlineColor, DEFAULT_RENDER_OPTIONS.outlineColor),
+    outlineWidth
+  };
+}
+
+function hashDescriptor(input: Omit<TextReferenceDescriptor, 'kind'>, options?: TextReferenceRenderOptions) {
   return crypto
     .createHash('sha256')
-    .update(JSON.stringify(input))
+    .update(JSON.stringify({
+      ...input,
+      renderOptions: normalizeRenderOptions(options),
+      renderVersion: RENDER_VERSION
+    }))
     .digest('hex')
     .slice(0, 24);
 }
@@ -66,7 +101,8 @@ export function createTextReferenceDescriptorPath(style: StyleConfig, text: stri
   return descriptorPath;
 }
 
-function buildSvgPathReference(descriptor: TextReferenceDescriptor) {
+function buildSvgPathReference(descriptor: TextReferenceDescriptor, options?: TextReferenceRenderOptions) {
+  const renderOptions = normalizeRenderOptions(options);
   const width = 1200;
   const height = 520;
   const padding = 72;
@@ -93,34 +129,64 @@ function buildSvgPathReference(descriptor: TextReferenceDescriptor) {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100%" height="100%" fill="#ffffff"/>
+  <rect width="100%" height="100%" fill="${renderOptions.backgroundColor}"/>
   <text x="36" y="50" fill="#555555" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="3">TYPOGRAPHY REFERENCE ONLY</text>
-  <text x="36" y="82" fill="#777777" font-family="Arial, Helvetica, sans-serif" font-size="18">Style: ${escapeXml(descriptor.family)}. Use letter shapes and silhouette, not flat color or background.</text>
+  <text x="36" y="82" fill="#777777" font-family="Arial, Helvetica, sans-serif" font-size="18">Style: ${escapeXml(descriptor.family)}. Use letter shapes, outline envelope, spacing, and silhouette; ignore flat color/background.</text>
   <g transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(5)})">
-    <path d="${glyphPath.toPathData(2)}" fill="#050505"/>
+    ${renderOptions.outlineWidth > 0 ? `<path d="${glyphPath.toPathData(2)}" fill="none" stroke="${renderOptions.outlineColor}" stroke-width="${renderOptions.outlineWidth}" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+    <path d="${glyphPath.toPathData(2)}" fill="${renderOptions.fillColor}"/>
   </g>
 </svg>`;
 }
 
-export async function renderTextReferenceDescriptor(descriptorPath: string) {
+async function renderTextReferenceToFile(descriptor: TextReferenceDescriptor, options?: TextReferenceRenderOptions) {
+  const hash = hashDescriptor({
+    styleId: descriptor.styleId,
+    family: descriptor.family,
+    fontPath: descriptor.fontPath,
+    text: descriptor.text
+  }, options);
+  ensureReferenceDir();
+  const outputPath = path.join(REFERENCE_DIR, `${descriptor.styleId}-${hash}.png`);
+  if (fs.existsSync(outputPath)) return outputPath;
+
+  const svg = buildSvgPathReference(descriptor, options);
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  await fsp.writeFile(outputPath, png);
+  return outputPath;
+}
+
+export async function renderTextReferenceDescriptor(
+  descriptorPath: string,
+  options?: TextReferenceRenderOptions
+) {
   const raw = await fsp.readFile(descriptorPath, 'utf8');
   const descriptor = JSON.parse(raw) as TextReferenceDescriptor;
   if (descriptor.kind !== 'style-text-reference') {
     throw new Error(`Unsupported text reference descriptor: ${descriptorPath}`);
   }
 
-  const hash = hashDescriptor({
-    styleId: descriptor.styleId,
-    family: descriptor.family,
-    fontPath: descriptor.fontPath,
-    text: descriptor.text
-  });
-  ensureReferenceDir();
-  const outputPath = path.join(REFERENCE_DIR, `${descriptor.styleId}-${hash}.png`);
-  if (fs.existsSync(outputPath)) return outputPath;
+  return renderTextReferenceToFile(descriptor, options);
+}
 
-  const svg = buildSvgPathReference(descriptor);
-  const png = await sharp(Buffer.from(svg)).png().toBuffer();
-  await fsp.writeFile(outputPath, png);
-  return outputPath;
+export async function renderTextReferencePreview(input: {
+  styleId: string;
+  family: string;
+  fontPath: string;
+  text: string;
+  transform?: 'uppercase' | 'none';
+  options?: TextReferenceRenderOptions;
+}) {
+  const renderedText = input.transform === 'uppercase'
+    ? input.text.toUpperCase()
+    : input.text;
+  const descriptor: TextReferenceDescriptor = {
+    kind: 'style-text-reference',
+    styleId: input.styleId,
+    family: input.family,
+    fontPath: input.fontPath,
+    text: renderedText.trim() || 'Name'
+  };
+
+  return renderTextReferenceToFile(descriptor, input.options);
 }

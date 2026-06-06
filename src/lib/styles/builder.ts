@@ -5,7 +5,7 @@ import YAML from 'yaml';
 import { getSnippetPath, getStyle, getTemplatePath } from './registry';
 import { renderTemplate } from './utils';
 import { createTextReferenceDescriptorPath } from './text-reference';
-import type { BuiltVariant, CustomerInput, Emblem, PlainChain, PlainColor, PlainKarat, PlainMetal } from './_types';
+import type { BuiltVariant, CustomerInput, Emblem, Metal, PlainChain, PlainColor, PlainKarat, PlainMetal, StyleConfig } from './_types';
 import type { PromptMode } from '../prompt-mode';
 
 const InputSchema = z.object({
@@ -51,6 +51,46 @@ type NaturalLanguageSnippets = {
     two_tone: string;
   };
 };
+
+const COLORED_EMBLEM_DIR = 'public/emblems/colored';
+const METAL_EMBLEM_SUFFIX: Record<Metal, string> = {
+  rose_gold: 'rose-gold',
+  white_gold: 'white-gold',
+  yellow_gold: 'yellow-gold'
+};
+const EMBLEM_ASSET_SLUG: Record<Exclude<Emblem, 'none'>, string> = {
+  crown: 'crown',
+  heart: 'heart',
+  spade: 'spade',
+  butterfly: 'butterfly',
+  moneybag: 'moneybag'
+};
+
+function resolveEmblemRef({
+  style,
+  emblem,
+  pendantFinish,
+  primaryMetal
+}: {
+  style: StyleConfig;
+  emblem: Emblem;
+  pendantFinish: CustomerInput['pendantFinish'];
+  primaryMetal?: Metal;
+}) {
+  if (pendantFinish !== 'icedout' || emblem === 'none') return null;
+
+  if (primaryMetal) {
+    const coloredRef = path.join(
+      process.cwd(),
+      COLORED_EMBLEM_DIR,
+      `${EMBLEM_ASSET_SLUG[emblem]}-${METAL_EMBLEM_SUFFIX[primaryMetal]}.png`
+    );
+    if (fs.existsSync(coloredRef)) return coloredRef;
+  }
+
+  const fallbackRef = style.assets?.emblemRefs?.[emblem];
+  return fallbackRef ? path.join(process.cwd(), fallbackRef) : null;
+}
 
 function addVariantCompositionGuidance(prompt: string, variant: number) {
   if (variant !== 1) return prompt;
@@ -219,10 +259,13 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
   const primaryMetal = data.primaryMetal!;
   const twoTone = data.twoTone ?? false;
 
-  if (emblem !== 'none') {
-    const emblemRef = style.assets?.emblemRefs?.[emblem];
-    if (emblemRef) attachments.push(path.join(process.cwd(), emblemRef));
-  }
+  const emblemRef = resolveEmblemRef({
+    style,
+    emblem,
+    pendantFinish: data.pendantFinish,
+    primaryMetal
+  });
+  if (emblemRef) attachments.push(emblemRef);
 
   return [1, 2].map((variant) => {
     const v = style.variantMatrix[variant - 1];

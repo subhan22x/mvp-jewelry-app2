@@ -5,6 +5,11 @@ naturalLanguageTemplateKey: jaida-natural-language
 naturalLanguageSnippetsKey: jaida-natural-language-snippets
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Great Vibes
+  file: public/style-fonts/jaida/GreatVibes-Regular.ttf
+  transform: none
+
 defaults:
   bubbleOutline: true
   forceAllCaps: false

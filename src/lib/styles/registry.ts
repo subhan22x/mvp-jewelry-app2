@@ -24,6 +24,18 @@ export function getStyle(styleId: string): StyleConfig {
   return cfg;
 }
 
+export function getAllStyles(): StyleConfig[] {
+  const matches = fg.sync(`**/style.yml`, { cwd: STYLES_DIR, onlyFiles: true, absolute: true });
+  return matches
+    .map(match => {
+      const dir = path.dirname(match);
+      const cfg = loadStyle(dir);
+      cache.set(cfg.id, cfg);
+      return cfg;
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export function getTemplatePath(styleId: string, templateKey: string): string {
   const matches = fg.sync(`**/${styleId}/${templateKey}.{jsonp,prompt}`, { cwd: STYLES_DIR, onlyFiles: true, absolute: true });
   if (!matches.length) throw new Error(`Template not found: ${styleId}/${templateKey}.jsonp or .prompt`);
