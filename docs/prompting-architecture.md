@@ -52,8 +52,9 @@ Typography references are generated without changing prompt templates.
 
 When a style config has `fontReference`, `buildVariants()` adds a small descriptor file to the attachment list. The descriptor is not sent directly to the provider. Right before provider submission, `src/lib/styles/text-reference.ts` renders it into a PNG using:
 
-- `opentype.js` to convert font glyphs into SVG path geometry
-- `sharp` to rasterize the SVG into a PNG
+- Playwright/Chromium canvas as the default renderer.
+- `opentype.js` in the browser context to draw font glyphs directly onto the canvas.
+- a legacy `opentype.js -> SVG path -> sharp` fallback if browser rendering fails or `TEXT_REFERENCE_RENDERER=svg-path` is set.
 
 The PNG is cached in the OS temp directory:
 
@@ -62,6 +63,14 @@ The PNG is cached in the OS temp directory:
 ```
 
 This keeps generated helper images out of the repo, avoids durable storage bloat, and reuses the same rendered PNG when the same style/font/text combination is requested again.
+
+Browser-canvas rendering is used because some decorative fonts, including Cristone and Campana Script, render incorrectly when serialized through `Path.toPathData()` and then rasterized as SVG paths. Direct canvas drawing matches the behavior of the opentype.js font inspector more closely.
+
+The customer review step calls `/api/text-reference/prewarm` for iced-out styles. This warms the Playwright browser and renders the exact selected style/text before the customer clicks `accept`, so provider submission can reuse the cached PNG.
+
+### Production Hosting Notes
+
+Playwright works well for local development and Node hosts that allow a bundled Chromium runtime. On Vercel serverless, this should be tested in preview with real generation traffic because browser binaries increase bundle/runtime cost and cold-start risk. If preview shows slow cold starts, missing browser binaries, or memory pressure, keep the same descriptor API but move `renderTextReferenceDescriptor()` to a small Node worker service on Render/Railway/Fly and call it before provider submission.
 
 ## Iced-Out Emblem References
 

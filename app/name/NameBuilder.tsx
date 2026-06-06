@@ -222,6 +222,30 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     .sort((a, b) => (a.revisionNumber ?? 0) - (b.revisionNumber ?? 0));
   const selectedGeneration = generations.find(generation => generation.id === selectedGenerationId) ?? highQualityGeneration;
   const canCreateRevision = revisionGenerations.length < 2;
+  const prewarmTextReferenceKey = !isPlain && step === 2 && activeStyle && hasPrimaryName
+    ? `${activeStyle.id}:${lines.map(entry => entry.trim()).filter(Boolean).join(" ")}`
+    : "";
+
+  useEffect(() => {
+    if (!prewarmTextReferenceKey || !activeStyle) return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void fetch("/api/text-reference/prewarm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          styleId: activeStyle.id,
+          text: lines.map(entry => entry.trim()).filter(Boolean).join(" ")
+        }),
+        signal: controller.signal
+      }).catch(() => undefined);
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [activeStyle, lines, prewarmTextReferenceKey]);
 
   const updateLine = (value: string, index: number) => {
     setLines(prev => prev.map((entry, idx) => (idx === index ? value : entry)));
