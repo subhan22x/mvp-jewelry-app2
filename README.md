@@ -13,6 +13,7 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 - **Production storage direction:** Supabase/Postgres for relational data; Cloudflare R2 for generated images, videos, logos, and uploads.
 - **Supabase/R2 setup notes:** see `docs/supabase-r2-setup.md`.
 - **Vercel deployment:** see `docs/vercel-deployment.md`.
+- **Prompting architecture:** see `docs/prompting-architecture.md`.
 - **Documentation map:** see `docs/README.md`.
 
 ## Prerequisites

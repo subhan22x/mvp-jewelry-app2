@@ -785,6 +785,8 @@ describe("Step 4 — Progressive loading & Results", () => {
     const link = screen.getByRole("link", { name: /download/i });
     expect(link).toHaveAttribute("href", "/generated/req-test-v1.png");
     expect(link).toHaveAttribute("download");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
   });
 
   it("opens the edit modal and creates a Rev 1 card", async () => {

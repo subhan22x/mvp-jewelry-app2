@@ -1499,6 +1499,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
             <a
               href={previewOption.src}
               download={`${previewOption.label.replace(/\s+/g, "-").toLowerCase()}.png`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full bg-blue-500 px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-400"
             >
               Download

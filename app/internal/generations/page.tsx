@@ -1,17 +1,28 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/server/db/client";
+import * as builderModule from "@/src/lib/styles/builder";
+import * as registryModule from "@/src/lib/styles/registry";
+import * as textReferenceModule from "@/src/lib/styles/text-reference";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
+  tab?: string;
   status?: string;
   model?: string;
   request?: string;
   product?: string;
+  style?: string;
+  text?: string;
+  fill?: string;
+  outline?: string;
+  outlineWidth?: string;
+  background?: string;
 };
 
 const GENERATED_DIR = path.join(process.cwd(), "public", "generated");
+const PUBLIC_DIR = path.join(process.cwd(), "public");
 
 async function listGeneratedFiles() {
   try {
@@ -49,12 +60,387 @@ function isRemoteUrl(value: string) {
   }
 }
 
+function isInsideDir(filePath: string, dir: string) {
+  const relative = path.relative(dir, filePath);
+  return Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+async function fileExists(filePath: string) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function publicUrlForFile(filePath: string) {
+  if (!isInsideDir(filePath, PUBLIC_DIR)) return null;
+  const relative = path.relative(PUBLIC_DIR, filePath).split(path.sep).map(encodeURIComponent).join("/");
+  return `/${relative}`;
+}
+
+async function imageSrcForLocalFile(filePath: string) {
+  const publicUrl = publicUrlForFile(filePath);
+  if (publicUrl) return publicUrl;
+
+  return `/internal/generations/reference-image?p=${Buffer.from(filePath).toString("base64url")}`;
+}
+
+type ReviewAttachment = {
+  kind: "pendant" | "emblem" | "typography";
+  label: string;
+  filePath: string;
+  src: string | null;
+};
+
+function attachmentKind(filePath: string): ReviewAttachment["kind"] | null {
+  if (filePath.includes(`${path.sep}public${path.sep}pendants${path.sep}`)) return "pendant";
+  if (filePath.includes(`${path.sep}public${path.sep}plain-pendants${path.sep}`)) return "pendant";
+  if (filePath.includes(`${path.sep}public${path.sep}emblems${path.sep}`)) return "emblem";
+  return null;
+}
+
+function attachmentLabel(kind: ReviewAttachment["kind"]) {
+  const labels: Record<ReviewAttachment["kind"], string> = {
+    pendant: "Pendant reference",
+    emblem: "Emblem reference",
+    typography: "Font rendering"
+  };
+  return labels[kind];
+}
+
+function loadStyleReviewModules() {
+  const builder = "buildVariants" in builderModule
+    ? builderModule
+    : (builderModule as any).default;
+  const registry = "getAllStyles" in registryModule
+    ? registryModule
+    : (registryModule as any).default;
+  const textReference = "isTextReferenceDescriptorPath" in textReferenceModule
+    ? textReferenceModule
+    : (textReferenceModule as any).default;
+
+  return {
+    buildVariants: builder.buildVariants as typeof import("@/src/lib/styles/builder").buildVariants,
+    getAllStyles: registry.getAllStyles as typeof import("@/src/lib/styles/registry").getAllStyles,
+    isTextReferenceDescriptorPath: textReference.isTextReferenceDescriptorPath as typeof import("@/src/lib/styles/text-reference").isTextReferenceDescriptorPath,
+    renderTextReferenceDescriptor: textReference.renderTextReferenceDescriptor as typeof import("@/src/lib/styles/text-reference").renderTextReferenceDescriptor,
+    renderTextReferencePreview: textReference.renderTextReferencePreview as typeof import("@/src/lib/styles/text-reference").renderTextReferencePreview
+  };
+}
+
+function tabLinkClass(active: boolean) {
+  return `rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${
+    active
+      ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
+      : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-zinc-100"
+  }`;
+}
+
+function InternalTabs({ active }: { active: "review" | "text-renderer" }) {
+  return (
+    <nav className="mt-5 flex flex-wrap gap-2">
+      <a href="/internal/generations" className={tabLinkClass(active === "review")}>
+        Generation Review
+      </a>
+      <a href="/internal/generations?tab=text-renderer" className={tabLinkClass(active === "text-renderer")}>
+        Text Renderer
+      </a>
+    </nav>
+  );
+}
+
+function hexParam(value: string | undefined, fallback: string) {
+  return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+function numberParam(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(96, Math.round(parsed)));
+}
+
+async function renderTextRendererPage(filters: SearchParams) {
+  const { getAllStyles, renderTextReferencePreview } = loadStyleReviewModules();
+  const styles = getAllStyles().filter(style => style.fontReference);
+  const selectedStyle = styles.find(style => style.id === filters.style)
+    ?? styles.find(style => style.id === "samoa")
+    ?? styles[0];
+  const previewText = (filters.text ?? "SKY").slice(0, 32);
+  const options = {
+    fillColor: hexParam(filters.fill, "#050505"),
+    outlineColor: hexParam(filters.outline, "#b8924a"),
+    outlineWidth: numberParam(filters.outlineWidth, 34),
+    backgroundColor: hexParam(filters.background, "#ffffff")
+  };
+
+  const previewEntries = await Promise.all(styles.map(async style => {
+    const filePath = await renderTextReferencePreview({
+      styleId: style.id,
+      family: style.fontReference!.family,
+      fontPath: path.join(process.cwd(), style.fontReference!.file),
+      text: previewText,
+      transform: style.fontReference!.transform,
+      options
+    });
+    return {
+      style,
+      filePath,
+      src: await imageSrcForLocalFile(filePath)
+    };
+  }));
+  const selectedEntry = previewEntries.find(entry => entry.style.id === selectedStyle?.id) ?? previewEntries[0];
+
+  return (
+    <main className="min-h-dvh bg-[#101114] px-5 py-6 text-zinc-100 md:px-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="border-b border-white/10 pb-5">
+          <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Internal</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Text Renderer</h1>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+            Preview each iced-out style font with adjustable outline settings. This does not change saved production prompt settings.
+          </p>
+          <InternalTabs active="text-renderer" />
+        </header>
+
+        <section className="mt-6 grid gap-5 lg:grid-cols-[380px_1fr]">
+          <form className="rounded border border-white/10 bg-[#17191f] p-4">
+            <input type="hidden" name="tab" value="text-renderer" />
+            <div className="grid gap-4">
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Style</span>
+                <select
+                  name="style"
+                  defaultValue={selectedEntry?.style.id}
+                  className="w-full rounded border border-white/10 bg-[#101114] px-3 py-2 text-sm text-zinc-100"
+                >
+                  {styles.map(style => (
+                    <option key={style.id} value={style.id}>
+                      {style.label} / {style.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Preview text</span>
+                <input
+                  name="text"
+                  defaultValue={previewText}
+                  placeholder="Type a name"
+                  maxLength={32}
+                  className="w-full rounded border border-white/10 bg-[#101114] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+                />
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-zinc-300">
+                  <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Outline color</span>
+                  <input
+                    name="outline"
+                    type="color"
+                    defaultValue={options.outlineColor}
+                    className="h-11 w-full rounded border border-white/10 bg-[#101114] p-1"
+                  />
+                </label>
+                <label className="text-sm text-zinc-300">
+                  <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Fill color</span>
+                  <input
+                    name="fill"
+                    type="color"
+                    defaultValue={options.fillColor}
+                    className="h-11 w-full rounded border border-white/10 bg-[#101114] p-1"
+                  />
+                </label>
+              </div>
+
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  Outline width
+                  <span className="font-mono tracking-normal text-amber-200">{options.outlineWidth}px</span>
+                </span>
+                <div className="grid grid-cols-[1fr_74px] gap-3">
+                  <input
+                    name="outlineWidth"
+                    type="range"
+                    min="0"
+                    max="96"
+                    defaultValue={options.outlineWidth}
+                    className="accent-amber-300"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="96"
+                    defaultValue={options.outlineWidth}
+                    readOnly
+                    className="rounded border border-white/10 bg-[#101114] px-2 py-2 text-sm text-zinc-100"
+                  />
+                </div>
+              </label>
+
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Background</span>
+                <input
+                  name="background"
+                  type="color"
+                  defaultValue={options.backgroundColor}
+                  className="h-11 w-full rounded border border-white/10 bg-[#101114] p-1"
+                />
+              </label>
+
+              <button className="rounded bg-amber-300 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+                Update preview
+              </button>
+            </div>
+          </form>
+
+          <div className="rounded border border-white/10 bg-[#17191f] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-amber-200/80">Selected style</p>
+                <h2 className="mt-1 text-2xl font-semibold">{selectedEntry?.style.label ?? "No font styles found"}</h2>
+                {selectedEntry?.style.fontReference && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {selectedEntry.style.id} / {selectedEntry.style.fontReference.family}
+                  </p>
+                )}
+              </div>
+              {selectedEntry && (
+                <a href={selectedEntry.src} target="_blank" rel="noopener noreferrer" className="rounded border border-white/10 px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-white/25 hover:text-white">
+                  Open PNG
+                </a>
+              )}
+            </div>
+            <div className="mt-4 overflow-hidden rounded border border-white/10 bg-black/40">
+              {selectedEntry ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selectedEntry.src} alt={`${selectedEntry.style.label} text rendering`} className="block w-full" />
+              ) : (
+                <div className="p-8 text-center text-sm text-zinc-500">No styles with font references are configured.</div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <div className="border-b border-white/10 pb-3">
+            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">All configured fonts</p>
+            <h2 className="mt-1 text-xl font-semibold">Style comparison</h2>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {previewEntries.map(entry => (
+              <a
+                key={entry.style.id}
+                href={`/internal/generations?tab=text-renderer&style=${encodeURIComponent(entry.style.id)}&text=${encodeURIComponent(previewText)}&fill=${encodeURIComponent(options.fillColor)}&outline=${encodeURIComponent(options.outlineColor)}&outlineWidth=${options.outlineWidth}&background=${encodeURIComponent(options.backgroundColor)}`}
+                className={`rounded border bg-[#17191f] p-3 transition hover:border-amber-300/40 ${
+                  entry.style.id === selectedEntry?.style.id ? "border-amber-300/40" : "border-white/10"
+                }`}
+              >
+                <div className="aspect-[12/5] overflow-hidden rounded bg-black/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={entry.src} alt={`${entry.style.label} text rendering`} className="h-full w-full object-contain" />
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-100">{entry.style.label}</div>
+                    <div className="mt-1 text-[11px] text-zinc-500">{entry.style.id}</div>
+                  </div>
+                  <div className="max-w-[46%] truncate text-right text-[11px] text-zinc-400">
+                    {entry.style.fontReference?.family}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+async function buildReviewAttachments(row: {
+  variant: number;
+  request: {
+    userId: string;
+    productType: string;
+    pendantFinish: string;
+    styleId: string;
+    text: string;
+    twoTone: boolean;
+    primaryMetal: string;
+    secondaryMetal: string | null;
+    emblem: string;
+    plainColor: string | null;
+    plainMetal: string | null;
+    plainKarat: string | null;
+    plainChain: string | null;
+  };
+}) {
+  if (row.request.productType !== "name") return [];
+
+  try {
+    const {
+      buildVariants,
+      isTextReferenceDescriptorPath,
+      renderTextReferenceDescriptor
+    } = loadStyleReviewModules();
+    const builderInput = {
+      userId: row.request.userId,
+      styleId: row.request.styleId,
+      text: row.request.text,
+      pendantFinish: row.request.pendantFinish as any,
+      twoTone: row.request.twoTone,
+      primaryMetal: row.request.primaryMetal as any,
+      secondaryMetal: row.request.secondaryMetal as any,
+      emblem: row.request.emblem as any,
+      ...(row.request.plainColor ? { plainColor: row.request.plainColor as any } : {}),
+      ...(row.request.plainMetal ? { plainMetal: row.request.plainMetal as any } : {}),
+      ...(row.request.plainKarat ? { plainKarat: row.request.plainKarat as any } : {}),
+      ...(row.request.plainChain ? { plainChain: row.request.plainChain as any } : {})
+    };
+    const variants = buildVariants({
+      ...builderInput
+    });
+    const variant = variants.find(candidate => candidate.variant === row.variant) ?? variants[0];
+    const attachments = await Promise.all(variant.attachments.map(async (attachmentPath) => {
+      const kind = isTextReferenceDescriptorPath(attachmentPath) ? "typography" : attachmentKind(attachmentPath);
+      if (!kind) return null;
+      const filePath = kind === "typography"
+        ? await renderTextReferenceDescriptor(attachmentPath)
+        : attachmentPath;
+      if (!(await fileExists(filePath))) return null;
+      const src = await imageSrcForLocalFile(filePath);
+      return {
+        kind,
+        label: attachmentLabel(kind),
+        filePath,
+        src
+      };
+    }));
+
+    const byKind = new Map<ReviewAttachment["kind"], ReviewAttachment>();
+    for (const attachment of attachments) {
+      if (attachment && !byKind.has(attachment.kind)) byKind.set(attachment.kind, attachment);
+    }
+    return Array.from(byKind.values());
+  } catch (error) {
+    console.warn(`Unable to rebuild review attachments for ${row.request.styleId}:`, error);
+    return [];
+  }
+}
+
 export default async function InternalGenerationsPage({
   searchParams
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const filters = await searchParams;
+  if (filters.tab === "text-renderer") {
+    return renderTextRendererPage(filters);
+  }
+
   const [rows, videos, quoteRequests, generatedFiles] = await Promise.all([
     prisma.result.findMany({
       orderBy: [{ createdAt: "desc" }, { variant: "asc" }],
@@ -66,11 +452,17 @@ export default async function InternalGenerationsPage({
             text: true,
             productType: true,
             uploadFileName: true,
+            userId: true,
+            pendantFinish: true,
             styleId: true,
             twoTone: true,
             primaryMetal: true,
             secondaryMetal: true,
             emblem: true,
+            plainColor: true,
+            plainMetal: true,
+            plainKarat: true,
+            plainChain: true,
             createdAt: true
           }
         }
@@ -116,6 +508,8 @@ export default async function InternalGenerationsPage({
     if (normalizedRequest && !row.requestId.toLowerCase().includes(normalizedRequest)) return false;
     return true;
   });
+  const attachmentEntries = await Promise.all(filteredRows.map(async row => [row.id, await buildReviewAttachments(row)] as const));
+  const attachmentsByResultId = new Map(attachmentEntries);
 
   const succeeded = rows.filter(row => row.status === "succeeded").length;
   const failed = rows.filter(row => row.status === "failed").length;
@@ -131,6 +525,7 @@ export default async function InternalGenerationsPage({
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
               Images from Prisma result URLs matched with generation prompts.
             </p>
+            <InternalTabs active="review" />
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-sm md:w-[360px]">
             <div className="rounded border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
@@ -200,6 +595,7 @@ export default async function InternalGenerationsPage({
         <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredRows.map(row => {
             const hasImage = Boolean(row.imageUrl && (isRemoteUrl(row.imageUrl) || fileSet.has(row.imageUrl)));
+            const reviewAttachments = attachmentsByResultId.get(row.id) ?? [];
             return (
               <article key={row.id} className="flex flex-col rounded border border-white/10 bg-[#17191f] p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -247,6 +643,38 @@ export default async function InternalGenerationsPage({
                   <div className="text-[10px] uppercase tracking-wide text-zinc-500">Customer Text</div>
                   <pre className="mt-1 max-h-20 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] leading-snug text-zinc-100">{row.request.productType === "picture" ? row.request.uploadFileName ?? row.request.text : row.request.text}</pre>
                 </div>
+
+                {reviewAttachments.length > 0 && (
+                  <div className="mt-3">
+                    <div className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">Attached References</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {reviewAttachments.map(attachment => (
+                        <a
+                          key={`${attachment.kind}-${attachment.filePath}`}
+                          href={attachment.src ?? undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={attachment.filePath}
+                          className="group min-w-0 rounded border border-white/10 bg-black/25 p-1 transition hover:border-white/25"
+                        >
+                          <div className="aspect-square overflow-hidden rounded bg-black/50">
+                            {attachment.src ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={attachment.src} alt={attachment.label} className="h-full w-full object-contain" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center px-2 text-center text-[9px] text-zinc-600">
+                                Missing
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-1 truncate text-center text-[9px] uppercase tracking-wide text-zinc-500 group-hover:text-zinc-300">
+                            {attachment.label}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {row.error && (
                   <div className="mt-3">

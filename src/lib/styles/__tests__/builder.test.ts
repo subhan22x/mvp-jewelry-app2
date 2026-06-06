@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import { describe, expect, it, vi } from "vitest";
 import { buildVariants } from "../builder";
 
 const baseInput = {
@@ -29,6 +30,10 @@ function naturalPromptsFor(styleId: string) {
     variant: variant.variant,
     prompt: variant.prompt
   }));
+}
+
+function firstAttachments(input: Parameters<typeof buildVariants>[0]) {
+  return buildVariants(input)[0].attachments;
 }
 
 describe("buildVariants", () => {
@@ -156,6 +161,99 @@ describe("buildVariants", () => {
       expect(variant.prompt).not.toContain("above the lettering where the pendant bail normally sits");
       expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/samoa.png`);
       expect(variant.attachments.some(attachment => attachment.endsWith(".style-text-reference.json"))).toBe(true);
+    }
+  });
+
+  it("adds typography reference descriptors for every iced-out style font mapping", () => {
+    const styleIds = ["deja", "gatti", "jaida", "jhon", "jwae", "king", "lexy", "neiko", "samoa"];
+
+    for (const styleId of styleIds) {
+      const variants = buildVariants({ ...baseInput, styleId, text: "Sky" }, { promptMode: "natural_language" });
+      for (const variant of variants) {
+        expect(
+          variant.attachments.some(attachment => attachment.endsWith(".style-text-reference.json")),
+          `${styleId} variant ${variant.variant} should include a typography reference`
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("uses primary-metal colored emblem references for iced-out pendants", () => {
+    expect(firstAttachments({
+      ...baseInput,
+      styleId: "deja",
+      primaryMetal: "rose_gold",
+      secondaryMetal: "white_gold",
+      emblem: "butterfly"
+    })).toContain(`${process.cwd()}/public/emblems/colored/butterfly-rose-gold.png`);
+
+    expect(firstAttachments({
+      ...baseInput,
+      styleId: "deja",
+      primaryMetal: "yellow_gold",
+      secondaryMetal: "white_gold",
+      emblem: "crown"
+    })).toContain(`${process.cwd()}/public/emblems/colored/crown-yellow-gold.png`);
+
+    expect(firstAttachments({
+      ...baseInput,
+      styleId: "deja",
+      twoTone: false,
+      primaryMetal: "white_gold",
+      secondaryMetal: null,
+      emblem: "heart"
+    })).toContain(`${process.cwd()}/public/emblems/colored/heart-white-gold.png`);
+  });
+
+  it("does not attach colored emblems when no iced-out emblem is selected", () => {
+    const attachments = firstAttachments({
+      ...baseInput,
+      styleId: "deja",
+      emblem: "none"
+    });
+
+    expect(attachments.some(attachment => attachment.includes("/public/emblems/colored/"))).toBe(false);
+    expect(attachments.some(attachment => attachment.includes("/public/emblems/"))).toBe(false);
+  });
+
+  it("keeps plain pendant flow isolated from colored iced-out emblems", () => {
+    const attachments = firstAttachments({
+      userId: "demo",
+      pendantFinish: "plain",
+      styleId: "plain_style_1",
+      text: "Aurora",
+      plainColor: "rose_gold",
+      plainMetal: "gold",
+      plainKarat: "18k",
+      plainChain: "box"
+    });
+
+    expect(attachments).toContain(`${process.cwd()}/public/plain-pendants/plain_style_1.png`);
+    expect(attachments.some(attachment => attachment.includes("/public/emblems/colored/"))).toBe(false);
+  });
+
+  it("falls back to the style emblem reference when a colored emblem is unavailable", () => {
+    const originalExistsSync = fs.existsSync;
+    const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((filePath) => {
+      if (filePath.toString().endsWith("/public/emblems/colored/butterfly-rose-gold.png")) {
+        return false;
+      }
+      return originalExistsSync(filePath);
+    });
+
+    try {
+      const attachments = firstAttachments({
+        ...baseInput,
+        styleId: "deja",
+        primaryMetal: "rose_gold",
+        secondaryMetal: "white_gold",
+        emblem: "butterfly"
+      });
+
+      expect(attachments).toContain(`${process.cwd()}/public/emblems/BUTTERFLY EMBLEM.png`);
+      expect(attachments).not.toContain(`${process.cwd()}/public/emblems/colored/butterfly-rose-gold.png`);
+    } finally {
+      existsSpy.mockRestore();
     }
   });
 
