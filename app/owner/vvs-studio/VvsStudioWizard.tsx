@@ -558,7 +558,7 @@ function WizardHeader({ step, onHome }: { step: VvsWizardStep; onHome: () => voi
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <MobileOwnerNav active="VVS Studio" />
+        <MobileOwnerNav active="Studio" />
         <VvsLogo />
         <button
           type="button"
@@ -605,7 +605,7 @@ export default function VvsStudioWizard() {
 
   const handleHome = useCallback(() => {
     if (window.confirm("Your current VVS Studio draft will be lost if you leave. Go back home?")) {
-      router.push("/owner");
+      router.push("/owner/vvs-studio");
     }
   }, [router]);
 

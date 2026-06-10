@@ -663,10 +663,13 @@ describe("Step 4 — Progressive loading & Results", () => {
     expect(screen.getByText(/choose your favourite/i)).toBeInTheDocument();
   });
 
-  it("first draft is auto-selected", async () => {
+  it("does not auto-select a draft before quote request", async () => {
     const { user } = await setup();
     await toStep4(user);
-    expect(screen.getByRole("button", { name: /^draft 1$/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^draft 1$/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /^draft 2$/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /^get a quote$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^download$/i })).toBeDisabled();
   });
 
   it("shows partial progress counter while loading", async () => {
@@ -706,45 +709,24 @@ describe("Step 4 — Progressive loading & Results", () => {
     expect(screen.getByRole("button", { name: /^draft 2$/i })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("replaces continue with a red Generate Video button", async () => {
+  it("shows the quote action without the results-page video button", async () => {
     const { user } = await setup();
     await toStep4(user);
     expect(screen.queryByRole("button", { name: /^continue$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^generate video$/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^get a quote$/i })).toBeDisabled();
+    await tap(user, screen.getByRole("button", { name: /^draft 1$/i }));
+    expect(screen.getByRole("button", { name: /^get a quote$/i })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /^generate video$/i })).not.toBeInTheDocument();
   });
 
-  it("asks for an access code and starts video generation from the request", async () => {
+  it("opens the selected draft in a new tab from download", async () => {
     const { user } = await setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     await toStep4(user);
-    await tap(user, screen.getByRole("button", { name: /^generate video$/i }));
-    expect(screen.getByRole("dialog", { name: /generate video/i })).toBeInTheDocument();
+    await tap(user, screen.getByRole("button", { name: /^draft 2$/i }));
+    await tap(user, screen.getByRole("button", { name: /^download$/i }));
 
-    await type(user, screen.getByLabelText(/access code/i), "ID8");
-    mockVideoPostSuccess();
-    mockVideoGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^generate$/i }));
-
-    await waitFor(() => expect(screen.getByText(/your video/i)).toBeInTheDocument());
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/videos",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ requestId: "req-test", accessCode: "ID8", sourceResultId: "result-1", sourceImageUrl: "/generated/req-test-v1.png" })
-      })
-    );
-    expect(screen.getByText(/generated in 7\.25 seconds/i)).toBeInTheDocument();
-  });
-
-  it("keeps the access-code dialog open when video access is rejected", async () => {
-    const { user } = await setup();
-    await toStep4(user);
-    await tap(user, screen.getByRole("button", { name: /^generate video$/i }));
-    await type(user, screen.getByLabelText(/access code/i), "WRONG");
-    mockVideoPostError();
-    await tap(user, screen.getByRole("button", { name: /^generate$/i }));
-
-    await waitFor(() => expect(screen.getByText(/invalid access code/i)).toBeInTheDocument());
-    expect(screen.getByRole("dialog", { name: /generate video/i })).toBeInTheDocument();
+    expect(openSpy).toHaveBeenCalledWith("/generated/req-test-v2.png", "_blank", "noopener,noreferrer");
   });
 
   it("view button opens the preview modal", async () => {

@@ -1,24 +1,35 @@
 id: deja
 label: Mojo
 templateKey: block_baguette_v1
-emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
-
+emblemsAllowed:
+  - none
+  - crown
+  - heart
+  - spade
+  - butterfly
+  - moneybag
 fontReference:
   family: Campana Script
   file: public/style-fonts/deja/CampanaScript.otf
   transform: none
-
+  renderOptions:
+    backgroundColor: "#ffffff"
+    fillColor: "#050505"
+    outlineColor: "#b8924a"
+    outlineWidth: 13
 defaults:
   bubbleOutline: false
   forceAllCaps: false
-  deviationStrength: 0.40
+  deviationStrength: 0.4
   font: CC Matinee Idol
   view: front_view
-
 variantMatrix:
-  - { deviationStrength: 0.40, bubbleOutline: false, forceAllCaps: false }
-  - { deviationStrength: 0.60, bubbleOutline: true,  forceAllCaps: false }
-
+  - deviationStrength: 0.4
+    bubbleOutline: false
+    forceAllCaps: false
+  - deviationStrength: 0.6
+    bubbleOutline: true
+    forceAllCaps: false
 assets:
   pendantRef: public/pendants/mojo-deja.png
   emblemRefs:

@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/server/db/client";
-import * as builderModule from "@/src/lib/styles/builder";
+import { getDefaultAccountId } from "@/src/lib/account";
+import { loadStyleOverride, type StyleTextReferenceOptions } from "@/src/lib/styles/style-overrides";
 import * as registryModule from "@/src/lib/styles/registry";
 import * as textReferenceModule from "@/src/lib/styles/text-reference";
 
@@ -16,9 +17,13 @@ type SearchParams = {
   style?: string;
   text?: string;
   fill?: string;
+  fillColor?: string;
   outline?: string;
+  outlineColor?: string;
   outlineWidth?: string;
   background?: string;
+  backgroundColor?: string;
+  error?: string;
 };
 
 const GENERATED_DIR = path.join(process.cwd(), "public", "generated");
@@ -88,32 +93,31 @@ async function imageSrcForLocalFile(filePath: string) {
 }
 
 type ReviewAttachment = {
-  kind: "pendant" | "emblem" | "typography";
+  kind: "pendant" | "emblem" | "typography" | "reference";
   label: string;
   filePath: string;
-  src: string | null;
+  src: string;
 };
 
-function attachmentKind(filePath: string): ReviewAttachment["kind"] | null {
+function attachmentKind(filePath: string): ReviewAttachment["kind"] {
   if (filePath.includes(`${path.sep}public${path.sep}pendants${path.sep}`)) return "pendant";
   if (filePath.includes(`${path.sep}public${path.sep}plain-pendants${path.sep}`)) return "pendant";
   if (filePath.includes(`${path.sep}public${path.sep}emblems${path.sep}`)) return "emblem";
-  return null;
+  if (filePath.includes("flawless-style-text-references")) return "typography";
+  return "reference";
 }
 
 function attachmentLabel(kind: ReviewAttachment["kind"]) {
   const labels: Record<ReviewAttachment["kind"], string> = {
     pendant: "Pendant reference",
     emblem: "Emblem reference",
-    typography: "Font rendering"
+    typography: "Font rendering",
+    reference: "Reference"
   };
   return labels[kind];
 }
 
 function loadStyleReviewModules() {
-  const builder = "buildVariants" in builderModule
-    ? builderModule
-    : (builderModule as any).default;
   const registry = "getAllStyles" in registryModule
     ? registryModule
     : (registryModule as any).default;
@@ -122,10 +126,9 @@ function loadStyleReviewModules() {
     : (textReferenceModule as any).default;
 
   return {
-    buildVariants: builder.buildVariants as typeof import("@/src/lib/styles/builder").buildVariants,
     getAllStyles: registry.getAllStyles as typeof import("@/src/lib/styles/registry").getAllStyles,
-    isTextReferenceDescriptorPath: textReference.isTextReferenceDescriptorPath as typeof import("@/src/lib/styles/text-reference").isTextReferenceDescriptorPath,
-    renderTextReferenceDescriptor: textReference.renderTextReferenceDescriptor as typeof import("@/src/lib/styles/text-reference").renderTextReferenceDescriptor,
+    getTemplatePath: registry.getTemplatePath as typeof import("@/src/lib/styles/registry").getTemplatePath,
+    getOptionalTemplatePath: registry.getOptionalTemplatePath as typeof import("@/src/lib/styles/registry").getOptionalTemplatePath,
     renderTextReferencePreview: textReference.renderTextReferencePreview as typeof import("@/src/lib/styles/text-reference").renderTextReferencePreview
   };
 }
@@ -138,7 +141,7 @@ function tabLinkClass(active: boolean) {
   }`;
 }
 
-function InternalTabs({ active }: { active: "review" | "text-renderer" }) {
+function InternalTabs({ active }: { active: "review" | "text-renderer" | "style-editor" }) {
   return (
     <nav className="mt-5 flex flex-wrap gap-2">
       <a href="/internal/generations" className={tabLinkClass(active === "review")}>
@@ -146,6 +149,9 @@ function InternalTabs({ active }: { active: "review" | "text-renderer" }) {
       </a>
       <a href="/internal/generations?tab=text-renderer" className={tabLinkClass(active === "text-renderer")}>
         Text Renderer
+      </a>
+      <a href="/internal/generations?tab=style-editor" className={tabLinkClass(active === "style-editor")}>
+        Style Editor
       </a>
     </nav>
   );
@@ -159,6 +165,41 @@ function numberParam(value: string | undefined, fallback: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(0, Math.min(96, Math.round(parsed)));
+}
+
+const DEFAULT_TEXT_REFERENCE_OPTIONS = {
+  fillColor: "#050505",
+  outlineColor: "#b8924a",
+  outlineWidth: 34,
+  backgroundColor: "#ffffff"
+};
+
+function textReferenceOptionsWithDefaults(options?: StyleTextReferenceOptions | null) {
+  return {
+    fillColor: hexParam(options?.fillColor, DEFAULT_TEXT_REFERENCE_OPTIONS.fillColor),
+    outlineColor: hexParam(options?.outlineColor, DEFAULT_TEXT_REFERENCE_OPTIONS.outlineColor),
+    outlineWidth: numberParam(String(options?.outlineWidth ?? ""), DEFAULT_TEXT_REFERENCE_OPTIONS.outlineWidth),
+    backgroundColor: hexParam(options?.backgroundColor, DEFAULT_TEXT_REFERENCE_OPTIONS.backgroundColor)
+  };
+}
+
+async function latestStyleBackupExists(styleId: string) {
+  try {
+    const backupRoot = path.join(process.cwd(), ".style-editor-backups", styleId);
+    const entries = await fs.readdir(backupRoot, { withFileTypes: true });
+    return entries.some(entry => entry.isDirectory());
+  } catch {
+    return false;
+  }
+}
+
+async function readTemplate(pathOrNull: string | null) {
+  if (!pathOrNull) return "";
+  try {
+    return await fs.readFile(pathOrNull, "utf8");
+  } catch {
+    return "";
+  }
 }
 
 async function renderTextRendererPage(filters: SearchParams) {
@@ -360,75 +401,390 @@ async function renderTextRendererPage(filters: SearchParams) {
   );
 }
 
-async function buildReviewAttachments(row: {
-  variant: number;
-  request: {
-    userId: string;
-    productType: string;
-    pendantFinish: string;
-    styleId: string;
-    text: string;
-    twoTone: boolean;
-    primaryMetal: string;
-    secondaryMetal: string | null;
-    emblem: string;
-    plainColor: string | null;
-    plainMetal: string | null;
-    plainKarat: string | null;
-    plainChain: string | null;
-  };
-}) {
-  if (row.request.productType !== "name") return [];
+async function renderStyleEditorPage(filters: SearchParams) {
+  const { getAllStyles, getOptionalTemplatePath, renderTextReferencePreview } = loadStyleReviewModules();
+  const styles = getAllStyles().filter(style => !style.id.startsWith("plain_"));
+  const selectedStyle = styles.find(style => style.id === filters.style)
+    ?? styles.find(style => style.id === "samoa")
+    ?? styles[0];
 
+  if (!selectedStyle) {
+    return (
+      <main className="min-h-dvh bg-[#101114] px-5 py-6 text-zinc-100 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <header className="border-b border-white/10 pb-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Internal</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">Style Editor</h1>
+            <InternalTabs active="style-editor" />
+          </header>
+          <div className="mt-6 rounded border border-white/10 bg-white/[0.03] p-8 text-center text-zinc-400">
+            No editable iced-out styles are configured.
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const templatePath = getOptionalTemplatePath(selectedStyle.id, selectedStyle.templateKey);
+  const naturalTemplatePath = selectedStyle.naturalLanguageTemplateKey
+    ? getOptionalTemplatePath(selectedStyle.id, selectedStyle.naturalLanguageTemplateKey)
+    : null;
+  const [repoTemplateRaw, repoNaturalTemplateRaw, dbOverride, hasBackup] = await Promise.all([
+    readTemplate(templatePath),
+    readTemplate(naturalTemplatePath),
+    loadStyleOverride(getDefaultAccountId(), selectedStyle.id),
+    latestStyleBackupExists(selectedStyle.id)
+  ]);
+  const effectiveTemplateRaw = dbOverride?.templateRaw ?? repoTemplateRaw;
+  const effectiveNaturalTemplateRaw = dbOverride?.naturalLanguageTemplateRaw ?? repoNaturalTemplateRaw;
+  const savedAttachTextReference = dbOverride?.attachTextReference
+    ?? selectedStyle.fontReference?.attachTextReference
+    ?? true;
+  const savedTextOptions = textReferenceOptionsWithDefaults(
+    dbOverride?.textReferenceOptions ?? selectedStyle.fontReference?.renderOptions
+  );
+  const effectiveTextOptions = {
+    fillColor: hexParam(filters.fillColor ?? filters.fill, savedTextOptions.fillColor),
+    outlineColor: hexParam(filters.outlineColor ?? filters.outline, savedTextOptions.outlineColor),
+    outlineWidth: numberParam(filters.outlineWidth, savedTextOptions.outlineWidth),
+    backgroundColor: hexParam(filters.backgroundColor ?? filters.background, savedTextOptions.backgroundColor)
+  };
+  const previewText = (filters.text ?? "POMONA").slice(0, 32);
+  const previewPath = selectedStyle.fontReference
+    ? await renderTextReferencePreview({
+        styleId: selectedStyle.id,
+        family: selectedStyle.fontReference.family,
+        fontPath: path.join(process.cwd(), selectedStyle.fontReference.file),
+        text: previewText,
+        transform: selectedStyle.fontReference.transform,
+        options: effectiveTextOptions
+      })
+    : null;
+  const previewSrc = previewPath ? await imageSrcForLocalFile(previewPath) : null;
+  const statusMessages: Record<string, string> = {
+    "db-saved": "Database override saved. Future generations for this account will use it.",
+    "db-cleared": "Database override cleared. Future generations will use repo files.",
+    "repo-saved": "Repo style files saved after creating a local backup. Any DB override for this style was cleared.",
+    "repo-restored": "Latest repo backup restored."
+  };
+  const statusMessage = filters.status ? statusMessages[filters.status] : null;
+
+  return (
+    <main className="min-h-dvh bg-[#101114] px-5 py-6 text-zinc-100 md:px-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="border-b border-white/10 pb-5">
+          <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Internal</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Style Editor</h1>
+          <p className="mt-2 max-w-3xl text-sm text-zinc-400">
+            Edit iced-out prompt templates and text-renderer settings. Saves only affect future generation requests.
+          </p>
+          <InternalTabs active="style-editor" />
+        </header>
+
+        {(statusMessage || filters.error) && (
+          <div className={`mt-5 rounded border px-4 py-3 text-sm ${
+            filters.error
+              ? "border-red-400/30 bg-red-400/10 text-red-100"
+              : "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+          }`}>
+            {filters.error ?? statusMessage}
+          </div>
+        )}
+
+        <section className="mt-6 grid gap-5 lg:grid-cols-[320px_1fr]">
+          <aside className="rounded border border-white/10 bg-[#17191f] p-4">
+            <form>
+              <input type="hidden" name="tab" value="style-editor" />
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Style</span>
+                <select
+                  id="style-editor-style"
+                  name="style"
+                  defaultValue={selectedStyle.id}
+                  className="w-full rounded border border-white/10 bg-[#101114] px-3 py-2 text-sm text-zinc-100"
+                >
+                  {styles.map(style => (
+                    <option key={style.id} value={style.id}>
+                      {style.label} / {style.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-4 block text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Preview text</span>
+                <input
+                  id="style-editor-preview-text"
+                  name="text"
+                  defaultValue={previewText}
+                  maxLength={32}
+                  className="w-full rounded border border-white/10 bg-[#101114] px-3 py-2 text-sm text-zinc-100"
+                />
+              </label>
+              <button className="mt-4 w-full rounded bg-amber-300 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+                Load style
+              </button>
+            </form>
+
+            <div className="mt-5 space-y-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-zinc-400">
+              <div className="flex items-center justify-between gap-3">
+                <span>DB override</span>
+                <span className={dbOverride ? "text-amber-200" : "text-zinc-500"}>{dbOverride ? "active" : "inactive"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Effective source</span>
+                <span className={dbOverride ? "text-amber-200" : "text-emerald-200"}>{dbOverride ? "database" : "repo files"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Text renderer</span>
+                <span className={savedAttachTextReference ? "text-emerald-200" : "text-zinc-500"}>{savedAttachTextReference ? "attached" : "off"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Repo backup</span>
+                <span className={hasBackup ? "text-emerald-200" : "text-zinc-500"}>{hasBackup ? "available" : "none"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Font</span>
+                <span className="max-w-[150px] truncate text-right text-zinc-300">{selectedStyle.fontReference?.family ?? "none"}</span>
+              </div>
+            </div>
+
+            {previewSrc && (
+              <div className="mt-5 overflow-hidden rounded border border-white/10 bg-black/40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewSrc} alt={`${selectedStyle.label} text renderer preview`} className="block w-full" />
+              </div>
+            )}
+          </aside>
+
+          <form action="/api/internal/style-editor" method="post" className="rounded border border-white/10 bg-[#17191f] p-4">
+            <input type="hidden" name="styleId" value={selectedStyle.id} />
+
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-amber-200/80">{selectedStyle.id}</p>
+                <h2 className="mt-1 text-2xl font-semibold">{selectedStyle.label}</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Save to DB for a reversible account override, or save to repo files for source-controlled defaults.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  name="action"
+                  value="save-db"
+                  className="rounded bg-amber-300 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-amber-200"
+                >
+                  Save DB override
+                </button>
+                <button
+                  name="action"
+                  value="save-repo"
+                  className="rounded border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200"
+                >
+                  Save repo files
+                </button>
+              </div>
+            </div>
+
+            <section className="mt-5 grid gap-4 md:grid-cols-4">
+              <label className="flex min-h-[76px] items-center justify-between gap-4 rounded border border-white/10 bg-[#101114] px-3 py-2 text-sm text-zinc-300 md:col-span-4">
+                <span>
+                  <span className="block text-xs uppercase tracking-[0.2em] text-zinc-500">Attach text renderer</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-zinc-500">
+                    Include the generated font preview image as an API reference for future generations.
+                  </span>
+                </span>
+                <input
+                  name="attachTextReference"
+                  type="checkbox"
+                  value="true"
+                  defaultChecked={savedAttachTextReference}
+                  className="h-5 w-5 accent-amber-300"
+                />
+              </label>
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Outline width</span>
+                <input
+                  id="style-editor-outline-width"
+                  name="outlineWidth"
+                  type="number"
+                  min="0"
+                  max="96"
+                  defaultValue={effectiveTextOptions.outlineWidth}
+                  className="w-full rounded border border-white/10 bg-[#101114] px-3 py-2 text-sm text-zinc-100"
+                />
+              </label>
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Outline</span>
+                <input
+                  id="style-editor-outline-color"
+                  name="outlineColor"
+                  type="color"
+                  defaultValue={effectiveTextOptions.outlineColor}
+                  className="h-10 w-full rounded border border-white/10 bg-[#101114] p-1"
+                />
+              </label>
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Fill</span>
+                <input
+                  id="style-editor-fill-color"
+                  name="fillColor"
+                  type="color"
+                  defaultValue={effectiveTextOptions.fillColor}
+                  className="h-10 w-full rounded border border-white/10 bg-[#101114] p-1"
+                />
+              </label>
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 block text-xs uppercase tracking-[0.2em] text-zinc-500">Background</span>
+                <input
+                  id="style-editor-background-color"
+                  name="backgroundColor"
+                  type="color"
+                  defaultValue={effectiveTextOptions.backgroundColor}
+                  className="h-10 w-full rounded border border-white/10 bg-[#101114] p-1"
+                />
+              </label>
+            </section>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded border border-amber-300/20 bg-amber-300/5 p-3">
+              <p className="text-xs text-zinc-400">
+                Change renderer values, then refresh the preview before saving.
+              </p>
+              <button
+                type="button"
+                id="style-editor-refresh-preview"
+                className="rounded bg-amber-300 px-4 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-amber-200"
+              >
+                Refresh text renderer
+              </button>
+            </div>
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  (() => {
+                    const button = document.getElementById("style-editor-refresh-preview");
+                    if (!button) return;
+                    button.addEventListener("click", () => {
+                      const url = new URL(window.location.href);
+                      url.pathname = "/internal/generations";
+                      url.searchParams.set("tab", "style-editor");
+                      const fields = [
+                        ["style", "style-editor-style"],
+                        ["text", "style-editor-preview-text"],
+                        ["outlineWidth", "style-editor-outline-width"],
+                        ["outlineColor", "style-editor-outline-color"],
+                        ["fillColor", "style-editor-fill-color"],
+                        ["backgroundColor", "style-editor-background-color"]
+                      ];
+                      for (const [param, id] of fields) {
+                        const field = document.getElementById(id);
+                        if (field && "value" in field) {
+                          url.searchParams.set(param, field.value);
+                        }
+                      }
+                      url.searchParams.delete("status");
+                      url.searchParams.delete("error");
+                      window.location.href = url.toString();
+                    });
+                  })();
+                `
+              }}
+            />
+
+            <section className="mt-5 grid gap-4">
+              <label className="text-sm text-zinc-300">
+                <span className="mb-1 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  Base prompt template
+                  <span className="font-mono tracking-normal text-zinc-600">{templatePath ? path.basename(templatePath) : "not found"}</span>
+                </span>
+                <textarea
+                  name="templateRaw"
+                  defaultValue={effectiveTemplateRaw}
+                  spellCheck={false}
+                  disabled={!templatePath}
+                  placeholder={templatePath ? undefined : "This style does not have a base JSON/prompt template file. Use the natural-language template below."}
+                  className="min-h-[260px] w-full rounded border border-white/10 bg-[#101114] px-3 py-2 font-mono text-xs leading-relaxed text-zinc-100 placeholder:text-zinc-600"
+                />
+              </label>
+
+              {naturalTemplatePath && (
+                <label className="text-sm text-zinc-300">
+                  <span className="mb-1 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                    Natural-language prompt template
+                    <span className="font-mono tracking-normal text-zinc-600">{path.basename(naturalTemplatePath)}</span>
+                  </span>
+                  <textarea
+                    name="naturalLanguageTemplateRaw"
+                    defaultValue={effectiveNaturalTemplateRaw}
+                    spellCheck={false}
+                    className="min-h-[300px] w-full rounded border border-white/10 bg-[#101114] px-3 py-2 font-mono text-xs leading-relaxed text-zinc-100 placeholder:text-zinc-600"
+                  />
+                </label>
+              )}
+            </section>
+
+            <section className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+              <div className="text-xs text-zinc-500">
+                Revert options are explicit. Clearing DB overrides does not touch repo files.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  name="action"
+                  value="clear-db"
+                  className="rounded border border-white/10 bg-black/20 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/25"
+                >
+                  Clear DB override
+                </button>
+                <button
+                  name="action"
+                  value="restore-repo-backup"
+                  className="rounded border border-red-300/30 bg-red-400/10 px-4 py-2 text-xs font-semibold text-red-100 transition hover:border-red-200/60 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!hasBackup}
+                >
+                  Restore repo backup
+                </button>
+              </div>
+            </section>
+          </form>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function parseStoredAttachmentPaths(value: string | null) {
+  if (!value) return [];
   try {
-    const {
-      buildVariants,
-      isTextReferenceDescriptorPath,
-      renderTextReferenceDescriptor
-    } = loadStyleReviewModules();
-    const builderInput = {
-      userId: row.request.userId,
-      styleId: row.request.styleId,
-      text: row.request.text,
-      pendantFinish: row.request.pendantFinish as any,
-      twoTone: row.request.twoTone,
-      primaryMetal: row.request.primaryMetal as any,
-      secondaryMetal: row.request.secondaryMetal as any,
-      emblem: row.request.emblem as any,
-      ...(row.request.plainColor ? { plainColor: row.request.plainColor as any } : {}),
-      ...(row.request.plainMetal ? { plainMetal: row.request.plainMetal as any } : {}),
-      ...(row.request.plainKarat ? { plainKarat: row.request.plainKarat as any } : {}),
-      ...(row.request.plainChain ? { plainChain: row.request.plainChain as any } : {})
-    };
-    const variants = buildVariants({
-      ...builderInput
-    });
-    const variant = variants.find(candidate => candidate.variant === row.variant) ?? variants[0];
-    const attachments = await Promise.all(variant.attachments.map(async (attachmentPath) => {
-      const kind = isTextReferenceDescriptorPath(attachmentPath) ? "typography" : attachmentKind(attachmentPath);
-      if (!kind) return null;
-      const filePath = kind === "typography"
-        ? await renderTextReferenceDescriptor(attachmentPath)
-        : attachmentPath;
-      if (!(await fileExists(filePath))) return null;
-      const src = await imageSrcForLocalFile(filePath);
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function buildStoredReviewAttachments(attachmentPathsJson: string | null) {
+  const attachmentPaths = parseStoredAttachmentPaths(attachmentPathsJson);
+  const attachments: Array<ReviewAttachment | null> = await Promise.all(attachmentPaths.map(async (filePath) => {
+    const kind = attachmentKind(filePath);
+    if (isRemoteUrl(filePath)) {
       return {
         kind,
         label: attachmentLabel(kind),
         filePath,
-        src
+        src: filePath
       };
-    }));
-
-    const byKind = new Map<ReviewAttachment["kind"], ReviewAttachment>();
-    for (const attachment of attachments) {
-      if (attachment && !byKind.has(attachment.kind)) byKind.set(attachment.kind, attachment);
     }
-    return Array.from(byKind.values());
-  } catch (error) {
-    console.warn(`Unable to rebuild review attachments for ${row.request.styleId}:`, error);
-    return [];
-  }
+
+    if (!(await fileExists(filePath))) return null;
+    return {
+      kind,
+      label: attachmentLabel(kind),
+      filePath,
+      src: await imageSrcForLocalFile(filePath)
+    };
+  }));
+
+  return attachments.filter((attachment): attachment is ReviewAttachment => Boolean(attachment));
 }
 
 export default async function InternalGenerationsPage({
@@ -439,6 +795,9 @@ export default async function InternalGenerationsPage({
   const filters = await searchParams;
   if (filters.tab === "text-renderer") {
     return renderTextRendererPage(filters);
+  }
+  if (filters.tab === "style-editor") {
+    return renderStyleEditorPage(filters);
   }
 
   const [rows, videos, quoteRequests, generatedFiles] = await Promise.all([
@@ -508,7 +867,7 @@ export default async function InternalGenerationsPage({
     if (normalizedRequest && !row.requestId.toLowerCase().includes(normalizedRequest)) return false;
     return true;
   });
-  const attachmentEntries = await Promise.all(filteredRows.map(async row => [row.id, await buildReviewAttachments(row)] as const));
+  const attachmentEntries = await Promise.all(filteredRows.map(async row => [row.id, await buildStoredReviewAttachments(row.attachmentPathsJson)] as const));
   const attachmentsByResultId = new Map(attachmentEntries);
 
   const succeeded = rows.filter(row => row.status === "succeeded").length;
@@ -651,21 +1010,15 @@ export default async function InternalGenerationsPage({
                       {reviewAttachments.map(attachment => (
                         <a
                           key={`${attachment.kind}-${attachment.filePath}`}
-                          href={attachment.src ?? undefined}
+                          href={attachment.src}
                           target="_blank"
                           rel="noopener noreferrer"
                           title={attachment.filePath}
                           className="group min-w-0 rounded border border-white/10 bg-black/25 p-1 transition hover:border-white/25"
                         >
                           <div className="aspect-square overflow-hidden rounded bg-black/50">
-                            {attachment.src ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={attachment.src} alt={attachment.label} className="h-full w-full object-contain" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center px-2 text-center text-[9px] text-zinc-600">
-                                Missing
-                              </div>
-                            )}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={attachment.src} alt={attachment.label} className="h-full w-full object-contain" />
                           </div>
                           <div className="mt-1 truncate text-center text-[9px] uppercase tracking-wide text-zinc-500 group-hover:text-zinc-300">
                             {attachment.label}

@@ -26,6 +26,7 @@ type TextReferenceDescriptor = {
   family: string;
   fontPath: string;
   text: string;
+  renderOptions?: TextReferenceRenderOptions;
 };
 
 type TextReferenceRenderer = 'playwright' | 'svg-path';
@@ -120,20 +121,26 @@ export function isTextReferenceDescriptorPath(filePath: string) {
   return filePath.endsWith(DESCRIPTOR_EXTENSION);
 }
 
-export function createTextReferenceDescriptorPath(style: StyleConfig, text: string) {
+export function createTextReferenceDescriptorPath(
+  style: StyleConfig,
+  text: string,
+  options?: TextReferenceRenderOptions
+) {
   if (!style.fontReference) return null;
 
   const renderedText = style.fontReference.transform === 'uppercase'
     ? text.toUpperCase()
     : text;
+  const renderOptions = normalizeRenderOptions(options ?? style.fontReference.renderOptions);
   const descriptor: TextReferenceDescriptor = {
     kind: 'style-text-reference',
     styleId: style.id,
     family: style.fontReference.family,
     fontPath: path.join(process.cwd(), style.fontReference.file),
-    text: renderedText
+    text: renderedText,
+    renderOptions
   };
-  const hash = hashDescriptor(descriptor);
+  const hash = hashDescriptor(descriptor, renderOptions);
 
   ensureReferenceDir();
   const descriptorPath = path.join(REFERENCE_DIR, `${style.id}-${hash}${DESCRIPTOR_EXTENSION}`);
@@ -294,12 +301,13 @@ async function renderWithPlaywright(
 }
 
 async function renderTextReferenceToFile(descriptor: TextReferenceDescriptor, options?: TextReferenceRenderOptions) {
+  const renderOptions = options ?? descriptor.renderOptions;
   const hash = hashDescriptor({
     styleId: descriptor.styleId,
     family: descriptor.family,
     fontPath: descriptor.fontPath,
     text: descriptor.text
-  }, options);
+  }, renderOptions);
   ensureReferenceDir();
   const outputPath = path.join(REFERENCE_DIR, `${descriptor.styleId}-${hash}.png`);
   if (fs.existsSync(outputPath)) return outputPath;
@@ -310,14 +318,14 @@ async function renderTextReferenceToFile(descriptor: TextReferenceDescriptor, op
   const render = (async () => {
     if (activeRenderer() === 'playwright') {
       try {
-        await renderWithPlaywright(descriptor, outputPath, options);
+        await renderWithPlaywright(descriptor, outputPath, renderOptions);
         return outputPath;
       } catch (error) {
         console.warn(`Playwright text reference render failed for ${descriptor.styleId}; falling back to SVG path renderer.`, error);
       }
     }
 
-    await renderWithSvgPath(descriptor, outputPath, options);
+    await renderWithSvgPath(descriptor, outputPath, renderOptions);
     return outputPath;
   })();
 
