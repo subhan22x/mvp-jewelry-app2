@@ -34,6 +34,8 @@ Current style folders:
 - `king`
 - `lexy`
 - `neiko`
+- `pooh`
+- `samoa`
 
 Important convention: `.jsonp` means "prompt template", not necessarily valid JSON. Some templates render to JSON prompts, but `king` intentionally renders to plain prose. Do not assume all style prompts can be `JSON.parse`-ed.
 
@@ -88,12 +90,14 @@ Template rule of thumb:
 The YAML `assets` block controls which local reference files are attached to generation calls:
 
 - `pendantRef`: Main style reference image, usually `public/pendants/<style>.png`.
+- `pendantRefs`: Multiple equal style reference images. Use this when one style needs several pendant images attached to the same generation request.
 - `bailRef`: Optional separate bail reference. Most current styles do not set this.
 - `emblemRefs`: Optional emblem reference images keyed by emblem id.
 
 Current styles generally attach:
 
 - The style pendant reference.
+- Or all images listed in `pendantRefs`.
 - The selected emblem reference when `emblem` is not `none`.
 
 The prompt template receives `{{PENDANT_REF}}` and `{{BAIL_REF}}` as text placeholders, but the actual image files are passed separately as attachments through `connector.ts`.
@@ -105,7 +109,7 @@ Do not put model ids in `style.yml`. Model selection is separate from prompt sha
 Current model mapping in `src/lib/providers/index.ts`:
 
 - Variant 1 uses `gemini-3-pro-image-preview` with `imageSize: "2K"` and `aspectRatio: "9:16"`.
-- Variant 2 uses `gemini-3.1-flash-image-preview` with `imageSize: "1K"`.
+- Variant 2 uses `gemini-2.5-flash-image` with `imageSize: "1K"`.
 
 The connector calls `resolveGenerationConfig(variant)` and passes the returned `modelId` and optional `imageSize` to the provider.
 
@@ -143,6 +147,8 @@ We flattened that old structure to two variants. Style-specific exceptions are l
 | `king` | Plain prose prompt | `Helvetica Black SLANTED` | model switch only | model switch only | forced all caps |
 | `lexy` | Rich JSON-style pendant prompt | `inherit_source_style` unless YAML sets font | deviation `0.30`, no bubble | deviation `0.50`, bubble | as typed |
 | `neiko` | Compact JSON-style prompt | template-specific | deviation `0.30`, no bubble | deviation `0.50`, bubble | as typed |
+| `pooh` | User-provided prose prompt | no text renderer | deviation `0.30`, no bubble | deviation `0.50`, bubble | as typed |
+| `samoa` | Natural-language prompt | `Cristone` | deviation `0.30`, no bubble | deviation `0.50`, bubble | as typed |
 
 ## Style-Specific Details
 

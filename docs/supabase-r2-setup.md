@@ -93,7 +93,7 @@ The running app now uses Postgres. Keep deployment verification separate from ar
 3. Keep `prisma/schema.sqlite.prisma` only for archived-data migration utilities.
 4. Regenerate Prisma Client from the Postgres runtime schema with `npm run prisma:generate`.
 5. Run the app locally with Supabase `DATABASE_URL` and `DIRECT_URL`.
-6. Verify onboarding, profile editing, collections, reviews, quote requests, revisions, and VVS Studio persistence.
+6. Verify onboarding, visible MVP navigation, direct hidden profile/collections/reviews routes, quote requests, revisions, and VVS Studio persistence.
 7. Deploy with Postgres environment variables and remove SQLite disk assumptions from the production start command.
 
 Do not combine the runtime switch with destructive cleanup of local SQLite files. Keep the archived source until production verification is complete.

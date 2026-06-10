@@ -3,6 +3,11 @@ label: Jwae
 templateKey: block_baguette_v1
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Break Brush
+  file: public/style-fonts/jwae/Break-Brush.ttf
+  transform: none
+
 defaults:
   bubbleOutline: true
   forceAllCaps: false

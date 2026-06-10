@@ -50,6 +50,7 @@ model Account {
   VvsStudioUploads          VvsStudioUpload[]
   VvsStudioImageGenerations VvsStudioImageGeneration[]
   VvsStudioVideoGenerations VvsStudioVideoGeneration[]
+  VvsStudioJobs             VvsStudioJob[]
 }
 
 model AccountMembership {
@@ -106,6 +107,7 @@ model Result {
   request       Request   @relation(fields: [requestId], references: [id])
   variant       Int       // 1..2
   prompt        String
+  attachmentPathsJson String?
   imageUrl      String?
   modelId       String?
   status        String    @default("pending") // pending | succeeded | failed
@@ -388,6 +390,7 @@ model VvsStudioShoot {
   Uploads          VvsStudioUpload[]
   ImageGenerations VvsStudioImageGeneration[]
   VideoGenerations VvsStudioVideoGeneration[]
+  Jobs             VvsStudioJob[]
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
@@ -425,13 +428,19 @@ model VvsStudioImageGeneration {
   shoot         VvsStudioShoot @relation(fields: [shootId], references: [id])
 
   variant       Int            @default(1)
+  stage         String?        @default("style_composite") // source_refine | style_composite | last_shot
+  sourceImageGenerationId String?
+  styleKey      String?
   // pending | succeeded | failed
   status        String         @default("pending")
   prompt        String
   promptVersion String?
+  providerProfileId String?
+  providerProfileVersion String?
   provider      String         // openai | gemini
   modelId       String?
   providerJobId String?
+  providerPayloadJson String?
   imageUrl      String?
   error         String?
   startedAt     DateTime?
@@ -451,16 +460,24 @@ model VvsStudioVideoGeneration {
   shootId                 String
   shoot                   VvsStudioShoot @relation(fields: [shootId], references: [id])
   sourceImageGenerationId String?
+  firstImageGenerationId  String?
+  lastImageGenerationId   String?
   sourceImageUrl          String
+  lastImageUrl            String?
+  styleKey                String?
 
   // pending | succeeded | failed
   status        String  @default("pending")
   prompt        String
   promptVersion String?
+  providerProfileId String?
+  providerProfileVersion String?
   provider      String  @default("wavespeed")
   modelId       String?
   providerJobId String?
+  providerPayloadJson String?
   videoDurationSeconds Int? @default(6) // 6 | 10
+  resolution    String? @default("480p")
   videoUrl      String?
   remoteVideoUrl String?
   error         String?
@@ -471,5 +488,34 @@ model VvsStudioVideoGeneration {
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
+  @@index([shootId, createdAt])
+}
+
+model VvsStudioJob {
+  id             String         @id @default(cuid())
+  accountId      String
+  account        Account        @relation(fields: [accountId], references: [id])
+  shootId        String
+  shoot          VvsStudioShoot @relation(fields: [shootId], references: [id])
+
+  kind           String         @default("video_pipeline")
+  // queued | running | succeeded | failed | canceled
+  status         String         @default("queued")
+  // source_refine | style_composite | last_shot | video | save_video | complete
+  currentStage   String         @default("source_refine")
+  attempts       Int            @default(0)
+  maxAttempts    Int            @default(3)
+  lockedAt       DateTime?
+  lockedBy       String?
+  runAfter       DateTime       @default(now())
+  error          String?
+  profileSelectionJson String?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+  @@index([status, runAfter])
   @@index([shootId, createdAt])
 }

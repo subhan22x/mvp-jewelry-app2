@@ -18,11 +18,24 @@ export type StyleConfig = {
   templateKey: string;        // filename without extension
   naturalLanguageTemplateKey?: string; // filename without extension
   naturalLanguageSnippetsKey?: string; // filename without extension
+  fontReference?: {
+    family: string;
+    file: string;
+    transform?: 'uppercase' | 'none';
+    attachTextReference?: boolean;
+    renderOptions?: {
+      backgroundColor?: string;
+      fillColor?: string;
+      outlineColor?: string;
+      outlineWidth?: number;
+    };
+  };
   emblemsAllowed: Emblem[];
   defaults: (Required<VariantConfig> & { view: string }) & { font?: string; schemeType?: string };
   variantMatrix: [VariantConfig, VariantConfig];
   assets?: {
     pendantRef?: string;
+    pendantRefs?: string[];
     bailRef?: string;
     emblemRefs?: Record<Emblem, string>;
   };

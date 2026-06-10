@@ -1,5 +1,17 @@
 [
   {
+    "id": "samoa",
+    "label": "Samoa",
+    "src": "/pendants/samoa.png",
+    "thumbnailClassName": "object-contain object-center p-4 transition duration-500 group-hover:scale-105"
+  },
+  {
+    "id": "pooh",
+    "label": "Pooh",
+    "src": "/pendants/pooh.png",
+    "thumbnailClassName": "object-contain object-center p-4 transition duration-500 group-hover:scale-105"
+  },
+  {
     "id": "deja",
     "label": "Mojo",
     "src": "/pendants/mojo-deja.png"
@@ -22,7 +34,8 @@
   {
     "id": "jwae",
     "label": "Jwae",
-    "src": "/pendants/jwae.png"
+    "src": "/pendants/jwae.png",
+    "available": false
   },
   {
     "id": "king",
@@ -37,6 +50,7 @@
   {
     "id": "neiko",
     "label": "Neiko",
-    "src": "/pendants/neiko.png"
+    "src": "/pendants/neiko.png",
+    "thumbnailClassName": "object-contain object-center p-4 transition duration-500 group-hover:scale-105"
   }
 ]

@@ -5,6 +5,11 @@ naturalLanguageTemplateKey: neiko-natural-language
 naturalLanguageSnippetsKey: neiko-natural-language-snippets
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Milky Casuals
+  file: public/style-fonts/neiko/Milky-Casuals.otf
+  transform: none
+
 defaults:
   bubbleOutline: true
   forceAllCaps: false

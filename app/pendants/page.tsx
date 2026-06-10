@@ -14,7 +14,7 @@ type CardConfig = {
 
 // Pendant format tiles live here; add or update cards to change pendant entry points.
 const cards: CardConfig[] = [
-  { id: "name", label: "Name", subtitle: "or Initials", href: "/name", active: true, thumb: "/pendants/mojo-deja.png" },
+  { id: "name", label: "Icedout", href: "/name", active: true, thumb: "/pendants/mojo-deja.png" },
   { id: "picture", label: "Picture Pendants", href: "/picture-pendants", thumb: "/picture-pendants/picturependant3.jpg" },
   { id: "nameplates", label: "Nameplates", href: "/pendants/nameplates", thumb: "/plain-pendants/plain_style_5.png" },
   { id: "logo", label: "Logo", href: "#", disabled: true },

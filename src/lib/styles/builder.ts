@@ -4,8 +4,10 @@ import { z } from 'zod';
 import YAML from 'yaml';
 import { getSnippetPath, getStyle, getTemplatePath } from './registry';
 import { renderTemplate } from './utils';
-import type { BuiltVariant, CustomerInput, Emblem, PlainChain, PlainColor, PlainKarat, PlainMetal } from './_types';
+import { createTextReferenceDescriptorPath } from './text-reference';
+import type { BuiltVariant, CustomerInput, Emblem, Metal, PlainChain, PlainColor, PlainKarat, PlainMetal, StyleConfig } from './_types';
 import type { PromptMode } from '../prompt-mode';
+import type { StylePromptOverride } from './style-overrides';
 
 const InputSchema = z.object({
   userId: z.string().min(1),
@@ -51,6 +53,46 @@ type NaturalLanguageSnippets = {
   };
 };
 
+const COLORED_EMBLEM_DIR = 'public/emblems/colored';
+const METAL_EMBLEM_SUFFIX: Record<Metal, string> = {
+  rose_gold: 'rose-gold',
+  white_gold: 'white-gold',
+  yellow_gold: 'yellow-gold'
+};
+const EMBLEM_ASSET_SLUG: Record<Exclude<Emblem, 'none'>, string> = {
+  crown: 'crown',
+  heart: 'heart',
+  spade: 'spade',
+  butterfly: 'butterfly',
+  moneybag: 'moneybag'
+};
+
+function resolveEmblemRef({
+  style,
+  emblem,
+  pendantFinish,
+  primaryMetal
+}: {
+  style: StyleConfig;
+  emblem: Emblem;
+  pendantFinish: CustomerInput['pendantFinish'];
+  primaryMetal?: Metal;
+}) {
+  if (pendantFinish !== 'icedout' || emblem === 'none') return null;
+
+  if (primaryMetal) {
+    const coloredRef = path.join(
+      process.cwd(),
+      COLORED_EMBLEM_DIR,
+      `${EMBLEM_ASSET_SLUG[emblem]}-${METAL_EMBLEM_SUFFIX[primaryMetal]}.png`
+    );
+    if (fs.existsSync(coloredRef)) return coloredRef;
+  }
+
+  const fallbackRef = style.assets?.emblemRefs?.[emblem];
+  return fallbackRef ? path.join(process.cwd(), fallbackRef) : null;
+}
+
 function addVariantCompositionGuidance(prompt: string, variant: number) {
   if (variant !== 1) return prompt;
 
@@ -74,6 +116,29 @@ function addVariantCompositionGuidance(prompt: string, variant: number) {
 
 function metalLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function colorSchemeLabel(twoTone: boolean, primary: Metal, secondary?: Metal | null) {
+  return twoTone
+    ? `two tone ${metalLabel(primary)} and ${metalLabel(secondary ?? primary)}`
+    : metalLabel(primary);
+}
+
+function renderLooseStylePlaceholders(raw: string, ctx: { text: string; emblem: Emblem; colorScheme: string }) {
+  return raw
+    .replace(/\{\{insert text\}\}/g, ctx.text)
+    .replace(/\{\{emblem name\}\}/g, ctx.emblem)
+    .replace(/\{\{two tone Yellow Gold and White Gold\}\}/g, ctx.colorScheme);
+}
+
+function resolvePendantRefs(style: StyleConfig) {
+  const refs = style.assets?.pendantRefs?.length
+    ? style.assets.pendantRefs
+    : style.assets?.pendantRef
+      ? [style.assets.pendantRef]
+      : [];
+
+  return refs.map(ref => path.join(process.cwd(), ref));
 }
 
 function plainColorLabel(value: PlainColor) {
@@ -152,7 +217,7 @@ function buildNaturalLanguagePrompt({
   });
 }
 
-export function buildVariants(input: CustomerInput, options: { promptMode?: PromptMode } = {}): BuiltVariant[] {
+export function buildVariants(input: CustomerInput, options: { promptMode?: PromptMode; styleOverride?: StylePromptOverride } = {}): BuiltVariant[] {
   const data = InputSchema.parse(input);
   const style = getStyle(data.styleId);
   const lines = splitLines(data.text);
@@ -163,10 +228,7 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
     const plainColor = data.plainColor!;
     const plainMetal = data.plainMetal!;
     const plainChain = data.plainChain!;
-    const attachments: string[] = [];
-    if (style.assets?.pendantRef) {
-      attachments.push(path.join(process.cwd(), style.assets.pendantRef));
-    }
+    const attachments: string[] = resolvePendantRefs(style);
     const uniqueAttachments = Array.from(new Set(attachments));
 
     return [1, 2].map((variant) => {
@@ -200,17 +262,16 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
     && Boolean(style.naturalLanguageTemplateKey)
     && Boolean(style.naturalLanguageSnippetsKey);
   const templatePath = getTemplatePath(style.id, useNaturalLanguage ? style.naturalLanguageTemplateKey! : style.templateKey);
-  const raw = fs.readFileSync(templatePath, 'utf8');
+  const raw = useNaturalLanguage
+    ? options.styleOverride?.naturalLanguageTemplateRaw ?? fs.readFileSync(templatePath, 'utf8')
+    : options.styleOverride?.templateRaw ?? fs.readFileSync(templatePath, 'utf8');
   const naturalLanguageSnippets = useNaturalLanguage
     ? loadNaturalLanguageSnippets(style.id, style.naturalLanguageSnippetsKey!)
     : null;
 
   const baseFont = style.defaults.font ?? 'inherit_source_style';
 
-  const attachments: string[] = [];
-  if (style.assets?.pendantRef) {
-    attachments.push(path.join(process.cwd(), style.assets.pendantRef));
-  }
+  const attachments: string[] = resolvePendantRefs(style);
   if (style.assets?.bailRef) {
     attachments.push(path.join(process.cwd(), style.assets.bailRef));
   }
@@ -218,12 +279,14 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
   const primaryMetal = data.primaryMetal!;
   const twoTone = data.twoTone ?? false;
 
-  if (emblem !== 'none') {
-    const emblemRef = style.assets?.emblemRefs?.[emblem];
-    if (emblemRef) attachments.push(path.join(process.cwd(), emblemRef));
-  }
+  const emblemRef = resolveEmblemRef({
+    style,
+    emblem,
+    pendantFinish: data.pendantFinish,
+    primaryMetal
+  });
+  if (emblemRef) attachments.push(emblemRef);
 
-  const uniqueAttachments = Array.from(new Set(attachments));
   return [1, 2].map((variant) => {
     const v = style.variantMatrix[variant - 1];
     const merged = {
@@ -241,7 +304,7 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
       ? `${schemeType} ${primaryMetal} + ${secondary}`
       : `${schemeType} ${primaryMetal}`;
 
-    const prompt = naturalLanguageSnippets
+    const renderedPrompt = naturalLanguageSnippets
       ? buildNaturalLanguagePrompt({
           raw,
           snippets: naturalLanguageSnippets,
@@ -268,6 +331,26 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
           BUBBLE_OUTLINE_ENABLED: merged.bubble,
           VIEW: merged.view
         });
+    const prompt = renderLooseStylePlaceholders(renderedPrompt, {
+      text: finalLines.join(' '),
+      emblem,
+      colorScheme: colorSchemeLabel(twoTone, primaryMetal, secondary)
+    });
+
+    const attachTextReference = options.styleOverride?.attachTextReference
+      ?? style.fontReference?.attachTextReference
+      ?? true;
+    const textReferencePath = attachTextReference
+      ? createTextReferenceDescriptorPath(
+          style,
+          finalLines.join(' '),
+          options.styleOverride?.textReferenceOptions
+        )
+      : null;
+    const uniqueAttachments = Array.from(new Set([
+      ...attachments,
+      ...(textReferencePath ? [textReferencePath] : [])
+    ]));
 
     return { variant: variant as 1|2, prompt: addVariantCompositionGuidance(prompt, variant), attachments: uniqueAttachments };
   });
