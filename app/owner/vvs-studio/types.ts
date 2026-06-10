@@ -16,7 +16,7 @@ export type VvsWizardStep =
   | "generatingVideo"
   | "videoResult";
 
-export type VvsVisualStyle = "dark" | "marble" | "street" | "velvet" | "ice";
+export type VvsVisualStyle = "prisma" | "noir" | "glacier" | "gold_marble";
 export type VvsPieceType = "pendant" | "ring" | "chainz" | "grills" | "band";
 export type VvsMetalType = "10k_gold" | "14k_gold" | "18k_gold" | "silver";
 export type VvsGoldColor = "yellow_gold" | "white_gold" | "rose_gold";
@@ -31,6 +31,8 @@ export type VvsWizardState = {
   shootId?: string;
   imageGenerationId?: string;
   videoGenerationId?: string;
+  jobId?: string;
+  jobStage?: string;
   pieceType?: VvsPieceType;
   uploads: {
     top?: VvsUploadedFile;

@@ -3,18 +3,34 @@ label: Jaida
 templateKey: block_baguette_v1
 naturalLanguageTemplateKey: jaida-natural-language
 naturalLanguageSnippetsKey: jaida-natural-language-snippets
-emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
-
+emblemsAllowed:
+  - none
+  - crown
+  - heart
+  - spade
+  - butterfly
+  - moneybag
+fontReference:
+  family: Great Vibes
+  file: public/style-fonts/jaida/GreatVibes-Regular.ttf
+  transform: none
+  renderOptions:
+    backgroundColor: "#ffffff"
+    fillColor: "#050505"
+    outlineColor: "#050505"
+    outlineWidth: 12
 defaults:
   bubbleOutline: true
   forceAllCaps: false
-  deviationStrength: 0.30
+  deviationStrength: 0.3
   view: front_view
-
 variantMatrix:
-  - { deviationStrength: 0.30, bubbleOutline: false, forceAllCaps: false }
-  - { deviationStrength: 0.50, bubbleOutline: true,  forceAllCaps: false }
-
+  - deviationStrength: 0.3
+    bubbleOutline: false
+    forceAllCaps: false
+  - deviationStrength: 0.5
+    bubbleOutline: true
+    forceAllCaps: false
 assets:
   pendantRef: public/pendants/jaida.png
   emblemRefs:

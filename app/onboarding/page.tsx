@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
+import { createClient } from "@/src/lib/supabase/client";
 import { DEFAULT_THEME_KEY, THEME_OPTIONS } from "@/src/lib/theme/themes";
 
 const totalSteps = 6;
@@ -59,6 +60,12 @@ type ProductDraft = {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState<"google" | "apple" | "email" | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [businessName, setBusinessName] = useState("");
   const [city, setCity] = useState("");
@@ -77,8 +84,6 @@ export default function OnboardingPage() {
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [themeKey, setThemeKey] = useState(DEFAULT_THEME_KEY);
   const [products, setProducts] = useState<ProductDraft[]>([]);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
@@ -86,6 +91,73 @@ export default function OnboardingPage() {
   const coverPreview = useMemo(() => coverImage ? URL.createObjectURL(coverImage) : null, [coverImage]);
   const profilePreview = useMemo(() => profileImage ? URL.createObjectURL(profileImage) : null, [profileImage]);
   const progress = `${(step / totalSteps) * 100}%`;
+
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+    supabase.auth.getUser()
+      .then(async ({ data }) => {
+        if (!active) return;
+        if (data.user) {
+          const sessionResponse = await fetch("/api/auth/session");
+          if (!active) return;
+          if (sessionResponse.ok) {
+            router.replace("/owner");
+            return;
+          }
+        }
+        setAuthUserEmail(data.user ? data.user.email ?? "your social login" : null);
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthUserEmail(null);
+        setAuthChecked(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  async function continueWithOAuth(provider: "google" | "apple") {
+    setAuthSubmitting(provider);
+    setAuthError(null);
+    const supabase = createClient();
+    const redirectTo = `${window.location.origin}/auth/callback?next=/onboarding`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo }
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthSubmitting(null);
+    }
+  }
+
+  async function createEmailAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthSubmitting("email");
+    setAuthError(null);
+    const supabase = createClient();
+    const redirectTo = `${window.location.origin}/auth/callback?next=/onboarding`;
+    const normalizedEmail = authEmail.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password: authPassword,
+      options: { emailRedirectTo: redirectTo }
+    });
+    if (error || !data.user) {
+      setAuthError(error?.message ?? "Unable to create your login.");
+      setAuthSubmitting(null);
+      return;
+    }
+    if (!data.session) {
+      router.push(`/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+      return;
+    }
+    setAuthUserEmail(data.user.email ?? normalizedEmail);
+    setAuthSubmitting(null);
+  }
 
   function next() {
     setStep(value => Math.min(totalSteps, value + 1));
@@ -131,8 +203,6 @@ export default function OnboardingPage() {
       coverPreset,
       coverOverlayOpacity,
       coverTextColor,
-      email,
-      password,
       services: services.map((service, index) => ({ ...service, sortOrder: index })),
       products: products
         .filter(product => product.name.trim() && product.image)
@@ -169,11 +239,6 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (json.requiresEmailConfirmation) {
-      router.push(`/auth/check-email?email=${encodeURIComponent(json.email ?? email)}`);
-      return;
-    }
-
     router.push(json.ownerUrl ?? "/owner");
     setIsSubmitting(false);
   }
@@ -190,6 +255,65 @@ export default function OnboardingPage() {
               Open {publishedUrl}
             </a>
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!authChecked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#151311] px-5 py-8 text-[#F5F0E8]">
+        <div className="w-full max-w-[430px] rounded-[2rem] border border-[#332D25] bg-[#1C1915] p-6">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-[#D3A84F]">CaratLabs Setup</p>
+          <h1 className="mt-4 text-4xl font-black">Loading your signup...</h1>
+          <p className="mt-3 text-[#9E9589]">Checking whether you already have a session.</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!authUserEmail) {
+    return (
+      <main className="min-h-screen bg-[#151311] px-5 py-8 text-[#F5F0E8]">
+        <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[460px] items-center">
+          <section className="w-full rounded-[2rem] border border-[#332D25] bg-[#1C1915] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#D3A84F]">Start free</p>
+            <h1 className="mt-4 text-4xl font-black">Create your account.</h1>
+            <p className="mt-3 text-[#9E9589]">Sign up first so your studio profile, designs, and trial are saved to your login.</p>
+
+            <div className="mt-7 grid gap-3">
+              <button
+                type="button"
+                disabled={authSubmitting !== null}
+                onClick={() => void continueWithOAuth("google")}
+                className="h-14 rounded-2xl border border-[#332D25] bg-[#11100E] text-sm font-black text-[#F5F0E8] disabled:opacity-60"
+              >
+                {authSubmitting === "google" ? "Opening Google..." : "Continue with Google"}
+              </button>
+              <button
+                type="button"
+                disabled={authSubmitting !== null}
+                onClick={() => void continueWithOAuth("apple")}
+                className="h-14 rounded-2xl border border-[#332D25] bg-[#11100E] text-sm font-black text-[#F5F0E8] disabled:opacity-60"
+              >
+                {authSubmitting === "apple" ? "Opening Apple..." : "Continue with Apple"}
+              </button>
+            </div>
+
+            <div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[#6E665D]">
+              <span className="h-px flex-1 bg-[#332D25]" />
+              <span>Email</span>
+              <span className="h-px flex-1 bg-[#332D25]" />
+            </div>
+
+            <form onSubmit={createEmailAccount} className="space-y-4">
+              <Input label="Email address" value={authEmail} onChange={setAuthEmail} placeholder="you@example.com" type="email" />
+              <Input label="Password" value={authPassword} onChange={setAuthPassword} placeholder="Minimum 6 characters" type="password" />
+              {authError && <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{authError}</p>}
+              <PrimaryButton disabled={authSubmitting !== null}>{authSubmitting === "email" ? "Creating account..." : "Create account with email →"}</PrimaryButton>
+            </form>
+            <p className="mt-5 text-center text-xs text-[#8D8377]">Already have an account? <a href="/login" className="font-bold text-[#D3A84F]">Log in</a></p>
+          </section>
         </div>
       </main>
     );
@@ -385,7 +509,7 @@ export default function OnboardingPage() {
           <section className="space-y-6">
             <div>
               <h1 className="text-4xl font-black">Save your page.</h1>
-              <p className="mt-3 text-lg text-[#9E9589]">Your page is built. Create your login to publish it.</p>
+              <p className="mt-3 text-lg text-[#9E9589]">Your page is built. Publish it under {authUserEmail}.</p>
             </div>
             <div className="rounded-[2rem] border border-[#332D25] bg-[#1C1915] p-5">
               <div className="mx-auto h-36 max-w-72 rounded-[1.5rem] border border-[#2A251F] bg-[#11100E] p-4">
@@ -394,11 +518,9 @@ export default function OnboardingPage() {
                 <p className="text-sm text-[#8D8377]">/s/{slug || "yourname"}</p>
               </div>
             </div>
-            <Input label="Email address" value={email} onChange={setEmail} placeholder="you@example.com" />
-            <Input label="Password" value={password} onChange={setPassword} placeholder="Minimum 6 characters" type="password" />
             <Input label="CaratLabs URL" value={slug} onChange={setSlug} placeholder="yourname" />
             {error && <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
-            <PrimaryButton onClick={submit} disabled={isSubmitting}>{isSubmitting ? "Publishing..." : "Create my free account & publish →"}</PrimaryButton>
+            <PrimaryButton onClick={submit} disabled={isSubmitting}>{isSubmitting ? "Publishing..." : "Publish my free account →"}</PrimaryButton>
             <p className="text-center text-xs text-[#8D8377]">Free forever for beta. No credit card required.</p>
           </section>
         )}
@@ -445,7 +567,7 @@ function SelectInput({ label, value, onChange, placeholder, options }: { label: 
   );
 }
 
-function PrimaryButton({ children, onClick, disabled }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
+function PrimaryButton({ children, onClick, disabled }: { children: ReactNode; onClick?: () => void; disabled?: boolean }) {
   return <button disabled={disabled} onClick={onClick} className="h-14 w-full rounded-2xl bg-[#D3A84F] text-sm font-black text-black disabled:opacity-60">{children}</button>;
 }
 

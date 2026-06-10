@@ -8,15 +8,15 @@ import styles from "./LandingPage.module.css";
 const features = [
   {
     title: <>let customers <strong>design their dream piece</strong> in minutes - not weeks</>,
-    body: "An interactive configurator walks them through stone, metal, setting, and engraving with a photoreal preview at every step. They submit a complete spec; you reply with a quote."
+    body: "Customers choose stone, metal, setting, and engraving, then submit a complete spec you can quote."
   },
   {
     title: <><strong>realistic, personalized designs</strong> that remove the guesswork</>,
-    body: "Customers choose from premade styles or remix the pieces they already love. Our jewelry-trained AI renders every variation in photoreal detail, so they see exactly what they are buying before they ask."
+    body: "They start from proven styles or remix pieces they love, with AI previews before they ask."
   },
   {
     title: <><strong>automated follow-up</strong> that turns interest into orders</>,
-    body: "Send price quotes the moment a design is submitted, then keep warm leads moving toward the close without losing track of the conversation."
+    body: "Send quotes fast and keep every warm lead organized from design request to close."
   }
 ];
 
@@ -67,7 +67,7 @@ export default function LandingPage() {
   return (
     <main className={styles.page}>
       <nav className={styles.nav}>
-        <Link href="/" className={styles.logo}><Image src="/landing/vvs-design-logo.png" alt="VVS Design" width={150} height={74} priority /></Link>
+        <Link href="/" className={styles.logo}><Image src="/landing/flawless-lettering-logo.png" alt="flawless" width={199} height={79} priority /></Link>
         <div className={styles.navActions}>
           <Link href="/login" className={styles.login}>Log in</Link>
           <Link href="/onboarding" className={styles.primaryButton}>Start free <Arrow /></Link>
@@ -76,16 +76,16 @@ export default function LandingPage() {
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <h1>stop losing your <em>highest paying</em> customers</h1>
+          <h1>Design Custom<br />Jewelry orders <em>in minutes</em></h1>
           <p>The Jewelry Design Software that turns curiosity into sales. Give your customers a design to say yes to, in minutes.</p>
         </div>
         <div className={styles.heroImage}>
-          <Image src="/landing/hero-bg.jpg" alt="Custom Mojo and MANA diamond pendants displayed in a jewelry studio" fill sizes="(max-width: 880px) 100vw, 55vw" priority />
+          <Image src="/landing/hero-bg-transparent-5.png" alt="Custom pendant design app displayed in a jewelry studio case" fill sizes="(max-width: 880px) 100vw, 55vw" priority />
         </div>
       </section>
 
       <aside className={styles.orderBanner}>
-        <p>Book <em>3x</em> more customer orders using AI</p>
+        <p>Book <em>3x</em> more custom orders using AI</p>
       </aside>
       <p className={styles.howIntro}>
         <span>here&apos;s how</span>
@@ -209,7 +209,7 @@ export default function LandingPage() {
         <div className={styles.inlineActions}><Link href="/onboarding" className={styles.primaryButtonLarge}>Start free <Arrow /></Link><a href="mailto:hello@flawless.design" className={styles.outlineButton}>Book a demo</a></div>
       </section>
 
-      <footer className={styles.footer}><Image src="/landing/vvs-design-logo.png" alt="VVS Design" width={120} height={60} /><span>© 2026 flawless.design - All rights reserved</span></footer>
+      <footer className={styles.footer}><Image src="/landing/flawless-lettering-logo.png" alt="flawless" width={199} height={79} /><span>© 2026 flawless.design - All rights reserved</span></footer>
     </main>
   );
 }

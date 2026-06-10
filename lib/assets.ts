@@ -12,6 +12,8 @@ export type PendantStyle = {
   label: string;
   src: string;
   accent?: string;
+  available?: boolean;
+  thumbnailClassName?: string;
 };
 
 export type PicturePendantStyle = {
@@ -24,8 +26,11 @@ export type PicturePendantStyle = {
   available?: boolean;
 };
 
-// Styles are sourced from data/pendant-styles.json; use scripts/manage-styles.mjs to edit.
-export const pendantStyles: PendantStyle[] = (stylesData as PendantStyle[]).map(style => ({ ...style }));
+// Styles are sourced from data/pendant-styles.json; use `available: false`
+// to keep a style available internally while hiding it from the frontend.
+export const pendantStyles: PendantStyle[] = (stylesData as PendantStyle[])
+  .filter(style => style.available !== false)
+  .map(style => ({ ...style, available: style.available !== false }));
 
 // Picture Pendant styles stay separate from Name styles. A style is selectable
 // only when explicitly marked available after its assets/prompts are added.

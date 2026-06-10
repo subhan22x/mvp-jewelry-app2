@@ -77,9 +77,9 @@ export default function LeadCaptureModal({ requestId, onSubmitted }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="To continue, please enter"
-      className="fixed inset-0 z-50 overflow-hidden bg-[#201006] text-white backdrop-blur-md"
+      className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-[#050101] text-white backdrop-blur-md"
     >
-      <div className="min-h-dvh bg-[radial-gradient(circle_at_top,#b6782e_0%,#7a421b_44%,#210f07_100%)]">
+      <div className="min-h-dvh bg-[linear-gradient(180deg,var(--theme-gradient-top)_0%,var(--theme-gradient-mid)_48%,var(--theme-gradient-bottom)_100%)]">
         <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-4 sm:px-8 sm:py-10">
           <section className="flex flex-col items-center text-center">
             <div className="relative h-20 w-20 sm:h-36 sm:w-36">

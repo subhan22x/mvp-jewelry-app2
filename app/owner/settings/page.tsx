@@ -2,7 +2,9 @@ import { getNamePromptMode } from "@/src/lib/prompt-mode";
 import OwnerFrame from "../OwnerFrame";
 import PromptModeForm from "../PromptModeForm";
 import ThemeSettingsForm from "./ThemeSettingsForm";
+import VvsPipelineSettingsForm from "./VvsPipelineSettingsForm";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
+import { canManageVvsPipelineSettings } from "@/src/lib/vvs-studio/pipeline-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,7 @@ export default async function OwnerSettingsPage() {
           <p className="mt-2 text-[15px] text-[#c2c6d6]">Account preferences, prompt mode, and operational controls.</p>
         </section>
         <ThemeSettingsForm />
+        <VvsPipelineSettingsForm enabled={canManageVvsPipelineSettings(owner.email)} />
         <PromptModeForm initialMode={promptMode} />
       </div>
     </OwnerFrame>

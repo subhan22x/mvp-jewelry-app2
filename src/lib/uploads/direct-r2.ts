@@ -31,15 +31,20 @@ export async function uploadFileDirectly(file: File, purpose: string): Promise<D
   if (!response.ok) throw new Error(json.error ?? "Unable to prepare file upload.");
 
   const upload = json as PresignResponse;
-  const putResponse = await fetch(upload.uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": upload.contentType,
-      "Cache-Control": "public, max-age=31536000, immutable"
-    },
-    body: file
-  });
-  if (!putResponse.ok) throw new Error("Unable to upload file to media storage.");
+  try {
+    const putResponse = await fetch(upload.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": upload.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable"
+      },
+      body: file
+    });
+    if (!putResponse.ok) return null;
+  } catch (error) {
+    console.warn("[direct upload] Falling back to server upload.", error);
+    return null;
+  }
 
   return {
     key: upload.key,

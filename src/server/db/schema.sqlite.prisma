@@ -105,6 +105,7 @@ model Result {
   request       Request   @relation(fields: [requestId], references: [id])
   variant       Int       // 1..2
   prompt        String
+  attachmentPathsJson String?
   imageUrl      String?
   modelId       String?
   status        String    @default("pending") // pending | succeeded | failed

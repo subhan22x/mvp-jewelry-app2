@@ -1,16 +1,25 @@
 # Store Owner Profile And Onboarding
 
+## MVP Visibility Note
+
+Profile, collections, and reviews are preserved for the product roadmap but hidden from normal MVP navigation.
+
+- `/s/:slug` validates the active/published store and redirects to `/name?account=:slug`.
+- `/s/:slug/review` and `/s/:slug/quote` remain accessible by direct URL.
+- `/owner/profile`, `/owner/collections`, and `/owner/reviews` remain accessible by direct URL for internal/admin work.
+- Onboarding and APIs still collect profile, product, collection, and review data so future storefront work does not lose context.
+
 ## Decisions
 
-- Public profile URL: `/s/:slug`.
+- Reserved public profile URL: `/s/:slug`. During the MVP this route redirects to the design flow.
 - Store owners edit their public profile at `/owner/profile`.
 - Store owners provide one public phone number, which is also used for WhatsApp message links.
 - Product upload during onboarding is optional.
 - Email/password account creation happens at the final onboarding step.
 - `Get Quote` is a dedicated general quote intake flow, separate from the pendant builder.
-- Public profile buttons are fixed: Message, Instagram, Website, and Design Custom. Instagram and Website are hidden when empty.
+- Deferred public profile buttons were fixed as Message, Instagram, Website, and Design Custom. This storefront surface is currently hidden from MVP navigation.
 - Owners can add up to two extra Linktree-style public links.
-- Public collections are represented by products grouped under fixed categories, not a separate custom collection builder.
+- Public collections are represented by products grouped under fixed categories, not a separate custom collection builder. Customer browsing is currently hidden in the MVP.
 
 ## Onboarding Route
 
@@ -84,7 +93,7 @@ Legacy/current services:
 - `repair`: placeholder
 - `reviews`: placeholder
 
-`StoreService` rows are retained for compatibility. The current public profile renders fixed main buttons from `StoreProfile` fields instead of rendering service rows directly.
+`StoreService` rows are retained for compatibility. The deferred public profile renders fixed main buttons from `StoreProfile` fields instead of rendering service rows directly.
 
 ## Step 4: Page Look
 
@@ -157,7 +166,7 @@ Current product categories:
 - grillz
 - other
 
-The owner collection manager at `/owner/collections` ensures default category collections exist for:
+The hidden-MVP owner collection manager at `/owner/collections` ensures default category collections exist for:
 
 - pendant
 - ring
@@ -276,7 +285,7 @@ Review rows are scoped to the store owner's `accountId`. Current statuses are:
 - `pending`
 - `hidden`
 
-The owner reviews dashboard supports search, status filters, rating filters, average rating, rating distribution, and a request-review pane that creates a shareable review URL and WhatsApp message.
+The hidden-MVP owner reviews dashboard supports search, status filters, rating filters, average rating, rating distribution, and a request-review pane that creates a shareable review URL and WhatsApp message.
 
 ## Admin Follow-Up Needed
 

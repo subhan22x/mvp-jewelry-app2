@@ -41,16 +41,12 @@ export default async function OwnerProfilePage() {
           <ProfileEditor
             publicUrl={`/s/${account.slug}`}
             displayName={account.StoreProfile?.displayName ?? account.name}
-            headline={account.StoreProfile?.headline ?? ""}
             profileImageUrl={account.StoreProfile?.profileImageUrl ?? null}
             instagramHandle={account.StoreProfile?.instagramHandle ?? ""}
             phone={account.StoreProfile?.phone ?? account.StoreProfile?.whatsappPhone ?? ""}
             websiteUrl={account.StoreProfile?.websiteUrl ?? ""}
-            addressLine1={account.StoreProfile?.addressLine1 ?? ""}
-            addressLine2={account.StoreProfile?.addressLine2 ?? ""}
             city={account.StoreProfile?.city ?? ""}
             state={account.StoreProfile?.state ?? ""}
-            postalCode={account.StoreProfile?.postalCode ?? ""}
             country={account.StoreProfile?.country ?? ""}
             extraLinks={parseExtraLinks(account.StoreProfile?.extraLinksJson)}
           />

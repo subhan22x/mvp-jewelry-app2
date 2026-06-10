@@ -3,7 +3,7 @@ import { OpenAIProvider } from './openai';
 import type { ImageProvider } from './types';
 
 const GREAT_MODEL_ID = 'gemini-3-pro-image-preview';
-const FAST_MODEL_ID = 'gemini-3.1-flash-image-preview';
+const FAST_MODEL_ID = 'gemini-2.5-flash-image';
 
 const providerCache = new Map<string, ImageProvider>();
 

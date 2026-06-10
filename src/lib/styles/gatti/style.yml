@@ -5,6 +5,11 @@ naturalLanguageTemplateKey: gatti-natural-language
 naturalLanguageSnippetsKey: gatti-natural-language-snippets
 emblemsAllowed: [none, crown, heart, spade, butterfly, moneybag]
 
+fontReference:
+  family: Magnolia Script
+  file: public/style-fonts/gatti/Magnolia-Script.otf
+  transform: none
+
 defaults:
   bubbleOutline: true
   forceAllCaps: false
