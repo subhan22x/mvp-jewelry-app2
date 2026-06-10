@@ -25,3 +25,4 @@ temp_check.py
 *.tmp
 *.tsbuildinfo
 .vercel
+.style-editor-backups/

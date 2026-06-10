@@ -6,6 +6,7 @@ import { generateImage } from '@/lib/styles/connector';
 import { getDefaultAccountId } from '@/src/lib/account';
 import { getNamePromptMode } from '@/src/lib/prompt-mode';
 import { scheduleBackgroundTask } from '@/src/lib/platform/background';
+import { loadStyleOverride } from '@/src/lib/styles/style-overrides';
 
 export const maxDuration = 300;
 
@@ -85,7 +86,10 @@ export async function POST(req: Request) {
       }
     });
 
-    const promptMode = await getNamePromptMode(accountId);
+    const [promptMode, styleOverride] = await Promise.all([
+      getNamePromptMode(accountId),
+      isPlain ? Promise.resolve(null) : loadStyleOverride(accountId, body.styleId)
+    ]);
     const variants = buildVariants({
       userId: body.userId,
       styleId: body.styleId,
@@ -99,7 +103,7 @@ export async function POST(req: Request) {
       plainMetal: body.plainMetal,
       plainKarat: body.plainKarat ?? null,
       plainChain: body.plainChain
-    }, { promptMode });
+    }, { promptMode, styleOverride: styleOverride ?? undefined });
 
     const attemptRows = await Promise.all(variants.map((v) => {
       const startedAt = new Date();
@@ -123,7 +127,13 @@ export async function POST(req: Request) {
           prompt: v.prompt,
           attachments: v.attachments,
           requestId: request.id,
-          variant: v.variant
+          variant: v.variant,
+          onPreparedAttachments: async (attachments) => {
+            await prisma.result.update({
+              where: { id: attempt.id },
+              data: { attachmentPathsJson: JSON.stringify(attachments) }
+            });
+          }
         });
         const completedAt = new Date();
         await prisma.result.update({

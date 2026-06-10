@@ -178,6 +178,77 @@ describe("buildVariants", () => {
     }
   });
 
+  it("builds POOH with three equal pendant references, a color-aware emblem, and no typography reference", () => {
+    const variants = buildVariants({
+      ...baseInput,
+      styleId: "pooh",
+      text: "Jason",
+      primaryMetal: "yellow_gold",
+      secondaryMetal: "white_gold",
+      emblem: "heart"
+    }, { promptMode: "natural_language" });
+
+    expect(variants).toHaveLength(2);
+    for (const variant of variants) {
+      expect(variant.prompt).toContain('changing the main text to "Jason"');
+      expect(variant.prompt).toContain("heart emblem above the lettering");
+      expect(variant.prompt).toContain("Use a two tone Yellow Gold and White Gold color scheme");
+      expect(variant.prompt).not.toContain("{{insert text}}");
+      expect(variant.prompt).not.toContain("{{emblem name}}");
+      expect(variant.prompt).not.toContain("{{two tone Yellow Gold and White Gold}}");
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/pooh/reference-rose.jpg`);
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/pooh/reference-white.jpg`);
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/pooh/reference-yellow.jpg`);
+      expect(variant.attachments).toContain(`${process.cwd()}/public/emblems/colored/heart-yellow-gold.png`);
+      expect(variant.attachments.some(attachment => attachment.endsWith(".style-text-reference.json"))).toBe(false);
+    }
+  });
+
+  it("uses style editor overrides for future prompt templates and typography render settings", () => {
+    const variants = buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      text: "Sky"
+    }, {
+      promptMode: "natural_language",
+      styleOverride: {
+        naturalLanguageTemplateRaw: 'Override prompt for "{{TEXT_SNIPPET}}"',
+        textReferenceOptions: {
+          backgroundColor: "#ffffff",
+          fillColor: "#111111",
+          outlineColor: "#ffcc55",
+          outlineWidth: 12
+        }
+      }
+    });
+    const descriptorPath = variants[0].attachments.find(attachment => attachment.endsWith(".style-text-reference.json"));
+    expect(variants[0].prompt).toContain('Override prompt for "Sky"');
+    expect(descriptorPath).toBeTruthy();
+
+    const descriptor = JSON.parse(fs.readFileSync(descriptorPath!, "utf8"));
+    expect(descriptor.renderOptions).toMatchObject({
+      backgroundColor: "#ffffff",
+      fillColor: "#111111",
+      outlineColor: "#ffcc55",
+      outlineWidth: 12
+    });
+  });
+
+  it("can disable typography reference attachments through style editor overrides", () => {
+    const variants = buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      text: "Sky"
+    }, {
+      promptMode: "natural_language",
+      styleOverride: {
+        attachTextReference: false
+      }
+    });
+
+    expect(variants[0].attachments.some(attachment => attachment.endsWith(".style-text-reference.json"))).toBe(false);
+  });
+
   it("uses primary-metal colored emblem references for iced-out pendants", () => {
     expect(firstAttachments({
       ...baseInput,

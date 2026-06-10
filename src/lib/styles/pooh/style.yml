@@ -1,0 +1,33 @@
+id: pooh
+label: Pooh
+templateKey: pooh-natural-language
+emblemsAllowed:
+  - none
+  - crown
+  - heart
+  - spade
+  - butterfly
+  - moneybag
+defaults:
+  bubbleOutline: true
+  forceAllCaps: false
+  deviationStrength: 0.30
+  view: front_view
+variantMatrix:
+  - deviationStrength: 0.30
+    bubbleOutline: false
+    forceAllCaps: false
+  - deviationStrength: 0.50
+    bubbleOutline: true
+    forceAllCaps: false
+assets:
+  pendantRefs:
+    - public/pendants/pooh/reference-rose.jpg
+    - public/pendants/pooh/reference-white.jpg
+    - public/pendants/pooh/reference-yellow.jpg
+  emblemRefs:
+    crown: public/emblems/CROWN EMBLEM.png
+    heart: public/emblems/heart emblem.png
+    spade: public/emblems/SPADE EMBLEM.png
+    butterfly: public/emblems/BUTTERFLY EMBLEM.png
+    moneybag: public/emblems/moneybag emblem.png

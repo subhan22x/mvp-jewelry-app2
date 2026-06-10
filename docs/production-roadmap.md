@@ -21,6 +21,7 @@ Still internal-MVP behavior:
 - Email/password owner authentication is wired through Supabase Auth with confirmation callbacks.
 - Owner dashboard account resolution uses the signed-in owner's active membership.
 - Customer pendant-generation routes still default to the seeded demo account until storefront-aware design links are completed.
+- Profile, collections, and reviews are data-backed but hidden from normal MVP owner/customer navigation. `/s/:slug` redirects to the design flow.
 - Production no longer falls back to durable local filesystem writes.
 - Stripe subscriptions and trials are not implemented.
 
@@ -55,7 +56,7 @@ Still internal-MVP behavior:
 2. Configure Supabase Postgres and Cloudflare R2 secrets.
 3. Connect Cloudflare DNS.
 4. Add error tracking, uptime checks, and log retention.
-5. Exercise signup, onboarding, Stripe test mode, quote sharing, reviews, collections, profile editing, generation, revisions, and VVS Studio.
+5. Exercise signup, onboarding, visible owner navigation, direct hidden admin routes, quote sharing, public design redirect, direct review/quote URLs, generation, revisions, and VVS Studio.
 
 ## Vercel Runtime Note
 

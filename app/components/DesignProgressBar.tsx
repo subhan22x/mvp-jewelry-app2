@@ -5,6 +5,10 @@ type DesignProgressBarProps = {
   className?: string;
 };
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
 export default function DesignProgressBar({ current, className = "" }: DesignProgressBarProps) {
   const activeIndex = Math.max(0, Math.min(current, DESIGN_STEPS.length - 1));
 
@@ -20,25 +24,26 @@ export default function DesignProgressBar({ current, className = "" }: DesignPro
               {index > 0 && (
                 <span
                   aria-hidden="true"
-                  className="absolute right-1/2 top-1/2 h-px w-full -translate-y-1/2"
-                  style={{
-                    background: index <= activeIndex ? "var(--theme-script)" : "var(--theme-text)",
-                    opacity: index <= activeIndex ? 0.8 : 0.72
-                  }}
+                  className={cx(
+                    "absolute right-1/2 top-1/2 h-px w-full -translate-y-1/2",
+                    index <= activeIndex
+                      ? "bg-[var(--theme-script)] opacity-80"
+                      : "bg-[var(--theme-text)] opacity-[0.72]"
+                  )}
                 />
               )}
               <span
                 aria-hidden="true"
                 data-design-progress-step={label}
                 data-active={isActive ? "true" : "false"}
-                className="relative z-10 block rounded-full border"
-                style={{
-                  width: isActive ? 26 : 9,
-                  height: 9,
-                  background: isActive || isComplete ? "var(--theme-script)" : "var(--theme-text)",
-                  borderColor: isActive || isComplete ? "var(--theme-script)" : "var(--theme-text)",
-                  boxShadow: isActive ? "0 0 16px var(--theme-selected-glow)" : "none"
-                }}
+                className={cx(
+                  "relative z-10 block h-[9px] rounded-full border",
+                  isActive ? "w-[26px]" : "w-[9px]",
+                  isActive || isComplete
+                    ? "border-[color:var(--theme-script)] bg-[var(--theme-script)]"
+                    : "border-[color:var(--theme-text)] bg-[var(--theme-text)]",
+                  isActive && "shadow-[0_0_16px_var(--theme-selected-glow)]"
+                )}
               />
             </div>
           );
@@ -49,10 +54,10 @@ export default function DesignProgressBar({ current, className = "" }: DesignPro
         {DESIGN_STEPS.map((label, index) => (
           <span
             key={label}
-            className="text-[10px] font-semibold leading-tight"
-            style={{
-              color: index === activeIndex ? "var(--theme-script)" : "var(--theme-text)"
-            }}
+            className={cx(
+              "text-[10px] font-semibold leading-tight",
+              index === activeIndex ? "text-[var(--theme-script)]" : "text-[var(--theme-text)]"
+            )}
           >
             {label}
           </span>

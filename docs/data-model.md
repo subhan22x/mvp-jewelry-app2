@@ -26,6 +26,8 @@ Current domains:
 - Public storefront: `StoreProfile`, `StoreService`, `ProductCollection`, `Product`, `StoreReview`.
 - VVS Studio: `VvsStudioShoot`, `VvsStudioUpload`, `VvsStudioImageGeneration`, `VvsStudioVideoGeneration`, `VvsStudioJob`.
 
+MVP visibility note: `StoreProfile`, `ProductCollection`, `Product`, and `StoreReview` remain part of the data model even though profile, collections, and reviews are hidden from normal owner/customer navigation. Do not remove these models or intake flows just because the current MVP routes do not expose them.
+
 ```mermaid
 erDiagram
   USER ||--o{ ACCOUNT_MEMBERSHIP : joins
@@ -65,7 +67,7 @@ Important implementation details:
 
 - `Account` scopes public profile, products, reviews, quote requests, generated media records, and VVS Studio records.
 - `StoreProfile` stores public profile content, full address, phone, Instagram handle, website, and up to two extra links in `extraLinksJson`.
-- `ProductCollection` and `Product` power the public `/s/:slug` collections grid and `/owner/collections` manager. `Product.isActive` is the draft/published switch.
+- `ProductCollection` and `Product` power the deferred public collections grid and hidden-MVP `/owner/collections` manager. `Product.isActive` is the draft/published switch.
 - `StoreReview` stores customer reviews submitted from `/s/:slug/review`.
 - `QuoteRequest` preserves customer selections and owner-adjusted quote fields such as estimated delivery, quote material, karat, and quote stone type.
 - `VvsStudioJob` is the durable Postgres-backed pipeline queue for owner VVS Studio video generation. It records the current stage, attempts, lock fields, run timing, and retryable error state.

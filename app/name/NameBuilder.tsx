@@ -216,11 +216,10 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
   const activePlainChain = PLAIN_CHAINS.find(option => option.id === plainChain) ?? PLAIN_CHAINS[0];
   const canAddLine = lines.length < MAX_NAME_LINES;
   const hasPrimaryName = lines[0]?.trim().length > 0;
-  const highQualityGeneration = generations.find(generation => generation.variant === 1) ?? null;
   const revisionGenerations = generations
     .filter(generation => generation.kind === "revision")
     .sort((a, b) => (a.revisionNumber ?? 0) - (b.revisionNumber ?? 0));
-  const selectedGeneration = generations.find(generation => generation.id === selectedGenerationId) ?? highQualityGeneration;
+  const selectedGeneration = generations.find(generation => generation.id === selectedGenerationId) ?? null;
   const canCreateRevision = revisionGenerations.length < 2;
   const prewarmTextReferenceKey = !isPlain && step === 2 && activeStyle && hasPrimaryName
     ? `${activeStyle.id}:${lines.map(entry => entry.trim()).filter(Boolean).join(" ")}`
@@ -428,10 +427,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
             ...mapped,
             ...prev.filter(generation => generation.kind === "revision")
           ]);
-          if (mapped.length > 0) {
-            setSelectedGenerationId(prev => prev ?? mapped[0].id);
-          }
-
           if (pollData.done || pollCount >= MAX_POLL_ATTEMPTS) {
             pollTimeoutRef.current = null;
             setIsGenerating(false);
@@ -661,6 +656,10 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
       setQuoteError("Missing request id for this generation.");
       return;
     }
+    if (!selectedGeneration?.src) {
+      setQuoteError("Select the design image you want quoted first.");
+      return;
+    }
 
     setQuoteError(null);
     setQuoteStatus("submitting");
@@ -671,7 +670,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
         body: JSON.stringify({
           requestId: capturedRequestId,
           videoId: videoStatus?.id,
-          designedImageUrl: selectedGeneration?.src ?? highQualityGeneration?.src,
+          designedImageUrl: selectedGeneration.src,
           videoUrl: videoStatus?.videoUrl,
           diamondQuality: isPlain ? undefined : diamondQuality,
           customerName: leadContact?.name,
@@ -1346,11 +1345,29 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                     })}
                   </div>
                   <p className="mt-4 text-xs text-[var(--theme-text-muted)]">
+                    {selectedGeneration
+                      ? `${selectedGeneration.label} selected for quote`
+                      : "Select one image before requesting a quote"}
+                    <span className="mx-2 text-[var(--theme-text-muted)]/50">•</span>
                     {revisionGenerations.length} of 2 revisions used
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedGeneration?.src) window.open(selectedGeneration.src, "_blank", "noopener,noreferrer");
+                    }}
+                    disabled={!selectedGeneration?.src}
+                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${
+                      selectedGeneration?.src
+                        ? "border border-[color:var(--theme-border)] bg-black/25 text-[var(--theme-text)] hover:border-[color:var(--theme-border-hover)]"
+                        : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"
+                    }`}
+                  >
+                    Download
+                  </button>
                   <button
                     type="button"
                     onClick={handleQuoteRequest}
@@ -1363,18 +1380,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                           : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"
                     }`}
                   >
-                    {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "get a quote"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVideoError(null);
-                      setShowAccessCodePrompt(true);
-                    }}
-                    disabled={!selectedGeneration?.src || isGenerating}
-                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${selectedGeneration?.src && !isGenerating ? "bg-red-600 text-white hover:bg-red-500" : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"}`}
-                  >
-                    Generate Video
+                    {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "Get a quote"}
                   </button>
                 </div>
                 {quoteStatus === "submitted" && (
@@ -1448,7 +1454,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
                               : "bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]"
                         }`}
                       >
-                        {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "get a quote"}
+                        {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "Get a quote"}
                       </button>
                     ) : (
                       <button

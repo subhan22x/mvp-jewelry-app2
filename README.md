@@ -6,7 +6,8 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 
 ## Status
 
-- **Working flows:** custom name pendants, picture pendants, public storefront profiles, collections, reviews, owner quote review, and VVS Studio.
+- **Working visible MVP flows:** custom name pendants, picture pendants, owner quote review, owner Design, and VVS Studio.
+- **Hidden but preserved:** public storefront profile, collections, and reviews remain implemented and data-backed, but are hidden from normal MVP navigation.
 - **Current tenant mode:** owner dashboard routes resolve the signed-in owner's active account membership. Customer pendant requests still default to the seeded `demo` storefront until storefront-aware design links are completed.
 - **SaaS direction:** see `SAAS_PRODUCT_MAP.md` for the planned multi-account SaaS architecture, subscription billing, CRM, and onboarding roadmap.
 - **Data model review:** see `docs/data-model.md` for current and target ER diagrams.
@@ -14,6 +15,7 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 - **Supabase/R2 setup notes:** see `docs/supabase-r2-setup.md`.
 - **Vercel deployment:** see `docs/vercel-deployment.md`.
 - **Prompting architecture:** see `docs/prompting-architecture.md`.
+- **Agent handoff and MVP scope:** see `docs/agent-context.md`.
 - **Documentation map:** see `docs/README.md`.
 
 ## Prerequisites
@@ -98,10 +100,13 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - `/owner/videos` lists all pendant video jobs, including pending, completed, and failed attempts.
 - `/owner/videos/[videoJobId]` shows the selected source image, loading/progress state, final video player, download action, and share/copy action.
 - Completed Wavespeed videos are downloaded into `GENERATED_IMAGE_DIR`, served from `/generated/:file`, and stored in `VideoGeneration.videoUrl`. The original Wavespeed URL is retained in `VideoGeneration.remoteVideoUrl`.
-- `/owner/profile` edits the public storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links.
+- Visible owner navigation is intentionally limited to Quotes (`/owner`), Design (`/owner/design`), Studio (`/owner/vvs-studio`), and Settings (`/owner/settings`) for the MVP.
+- `/owner/profile`, `/owner/collections`, and `/owner/reviews` remain available by direct URL for internal/admin use, but are hidden from normal owner navigation.
+- `/owner/profile` edits the stored storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links.
 - The profile editor uses a country-aware phone input and best-effort verifier icons for Instagram, Website, and extra links.
-- `/owner/collections` manages public product pieces by fixed categories. Draft pieces use `Product.isActive = false`; published pieces appear on `/s/:slug`.
+- `/owner/collections` manages product pieces by fixed categories. Draft pieces use `Product.isActive = false`; published pieces remain stored for the future storefront.
 - `/owner/reviews` shows persisted `StoreReview` rows, filters/searches reviews, and includes a request-review pane for sharing `/s/:slug/review`.
+- During the MVP, `/s/:slug` redirects customers into `/name?account=:slug`. `/s/:slug/review` and `/s/:slug/quote` remain directly accessible.
 - The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
 - `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
@@ -238,12 +243,12 @@ app/
   name/__tests__/            # Vitest unit tests for the name builder
   owner/page.tsx             # owner dashboard: quote requests + Generate Video section
   owner/account/page.tsx     # owner account settings, including Prompt System
-  owner/profile/page.tsx     # public storefront profile editor
-  owner/collections/page.tsx # owner collection/piece manager
-  owner/reviews/page.tsx     # owner review dashboard and request-review pane
+  owner/profile/page.tsx     # hidden-MVP profile editor, direct URL still works
+  owner/collections/page.tsx # hidden-MVP collection/piece manager, direct URL still works
+  owner/reviews/page.tsx     # hidden-MVP review dashboard, direct URL still works
   owner/videos/page.tsx      # all pendant video jobs
   owner/videos/[videoJobId]/page.tsx # video job status/player/download/share page
-  s/[accountSlug]/page.tsx   # public storefront profile and collections
+  s/[accountSlug]/page.tsx   # validates store, then redirects MVP traffic to /name?account=:slug
   s/[accountSlug]/review/    # public customer review form
   api/requests/route.ts      # POST /api/requests — creates a Request and starts async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
@@ -290,5 +295,6 @@ The folders `lib/styles/` and `server/db/client.ts` are currently re-export shim
 ## Further reading
 
 - `docs/README.md` — documentation map and source-of-truth guide.
+- `docs/agent-context.md` — future-agent handoff, MVP visibility rules, and known pitfalls.
 - `docs/production-roadmap.md` — current production checkpoint and remaining blockers.
 - `CLAUDE.md` — architecture, style/prompt conventions, prompt-engineering rules, what not to do.

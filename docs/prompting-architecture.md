@@ -17,6 +17,7 @@ For each request, the builder:
 5. Builds two variants.
 6. Adds reference image attachments:
    - the style pendant reference from `assets.pendantRef`
+   - or multiple equal style references from `assets.pendantRefs`
    - optional color-aware iced-out emblem reference, falling back to `assets.emblemRefs`
    - optional typography reference descriptor from `fontReference`
 
@@ -44,6 +45,7 @@ Important fields:
 | `defaults` | Style defaults such as all-caps, view, and deviation strength. |
 | `variantMatrix` | Per-variant overrides. |
 | `assets.pendantRef` | Main visual style reference image. |
+| `assets.pendantRefs` | Multiple equal visual style reference images. Used when a style needs more than one pendant reference attached. |
 | `assets.emblemRefs` | Optional visual emblem references. |
 
 ## Typography Reference Attachments
@@ -67,6 +69,8 @@ This keeps generated helper images out of the repo, avoids durable storage bloat
 Browser-canvas rendering is used because some decorative fonts, including Cristone and Campana Script, render incorrectly when serialized through `Path.toPathData()` and then rasterized as SVG paths. Direct canvas drawing matches the behavior of the opentype.js font inspector more closely.
 
 The customer review step calls `/api/text-reference/prewarm` for iced-out styles. This warms the Playwright browser and renders the exact selected style/text before the customer clicks `accept`, so provider submission can reuse the cached PNG.
+
+Styles without `fontReference` do not attach typography references. `pooh` intentionally has no text-rendering attachment and relies on its pendant reference images plus the selected color-aware emblem.
 
 ### Production Hosting Notes
 
@@ -115,6 +119,7 @@ Current mapping:
 | `gatti` | Hasan | Magnolia Script | `public/style-fonts/gatti/Magnolia-Script.otf` |
 | `king` | MANA | Helvetica Neue Black Italic | `public/style-fonts/king/Helvetica-Neue-Black-Italic.ttf` |
 | `lexy` | Lexy | Birds of Paradise | `public/style-fonts/lexy/Birds-of-Paradise.ttf` |
+| `pooh` | Pooh | none | no typography reference attached |
 
 `king` uses `transform: uppercase` because the MANA style is forced all-caps.
 

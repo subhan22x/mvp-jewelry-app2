@@ -7,11 +7,8 @@ type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "p
 
 const ownerNav = [
   { label: "Quotes", href: "/owner", icon: "quotes" },
-  { label: "VVS Design", href: "/owner/design", icon: "design" },
-  { label: "VVS Studio", href: "/owner/vvs-studio", icon: "vvs" },
-  { label: "Reviews", href: "/owner/reviews", icon: "reviews" },
-  { label: "Collections", href: "/owner/collections", icon: "collections" },
-  { label: "Profile", href: "/owner/profile", icon: "profile" },
+  { label: "Design", href: "/owner/design", icon: "design" },
+  { label: "Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Settings", href: "/owner/settings", icon: "settings" }
 ] satisfies Array<{ label: string; href: string; icon: OwnerNavIcon }>;
 

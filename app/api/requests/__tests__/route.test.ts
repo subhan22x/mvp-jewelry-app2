@@ -30,6 +30,10 @@ vi.mock("@/lib/styles/connector", () => ({
   generateImage: mocks.generateImage
 }));
 
+vi.mock("@/src/lib/styles/style-overrides", () => ({
+  loadStyleOverride: vi.fn().mockResolvedValue(null)
+}));
+
 const requestBody = {
   userId: "demo",
   styleId: "jwae",
@@ -121,6 +125,33 @@ describe("/api/requests", () => {
           modelId: "model-a",
           durationMs: 2500
         })
+      });
+    });
+  });
+
+  it("stores the prepared provider attachment snapshot on the result row", async () => {
+    const { POST } = await import("../route");
+
+    mocks.buildVariants.mockReturnValue([
+      { variant: 1, prompt: "prompt 1", attachments: ["/tmp/style-reference.png"] }
+    ]);
+    mocks.generateImage.mockImplementation(async ({ onPreparedAttachments }) => {
+      await onPreparedAttachments?.(["/tmp/rendered-text-reference.png", "/tmp/style-reference.png"]);
+      return { imageUrl: "/generated/req-test-v1.png", modelId: "model-a" };
+    });
+
+    const response = await POST(new Request("http://test.local/api/requests", {
+      method: "POST",
+      body: JSON.stringify(requestBody)
+    }));
+
+    expect(response.status).toBe(201);
+    await vi.waitFor(() => {
+      expect(mocks.resultUpdate).toHaveBeenCalledWith({
+        where: { id: "attempt-1" },
+        data: {
+          attachmentPathsJson: JSON.stringify(["/tmp/rendered-text-reference.png", "/tmp/style-reference.png"])
+        }
       });
     });
   });

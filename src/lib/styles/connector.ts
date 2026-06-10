@@ -11,6 +11,7 @@ export type GenerateArgs = {
   requestId: string;
   variant: number;
   modelVariant?: number;
+  onPreparedAttachments?: (attachments: string[]) => void | Promise<void>;
 };
 
 const OUTPUT_DIR = process.env.GENERATED_IMAGE_DIR ?? path.join(process.cwd(), 'public', 'generated');
@@ -62,9 +63,17 @@ async function prepareProviderAttachments(attachments: string[]) {
   );
 }
 
-export async function generateImage({ prompt, attachments = [], requestId, variant, modelVariant }: GenerateArgs): Promise<{ imageUrl: string; modelId: string }> {
+export async function generateImage({
+  prompt,
+  attachments = [],
+  requestId,
+  variant,
+  modelVariant,
+  onPreparedAttachments
+}: GenerateArgs): Promise<{ imageUrl: string; modelId: string }> {
   const { provider, modelId, imageSize, aspectRatio } = resolveGenerationConfig(modelVariant ?? variant);
   const providerAttachments = await prepareProviderAttachments(attachments);
+  await onPreparedAttachments?.(providerAttachments);
 
   const { buffer, mimeType } = await withTimeout(
     provider.generate({ prompt, attachments: providerAttachments, modelId, imageSize, aspectRatio }),

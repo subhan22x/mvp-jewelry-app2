@@ -54,7 +54,7 @@ The application is not fully production SaaS-ready yet. The most important remai
 | `/login` | Owner email/password login. |
 | `/auth/check-email` | Confirmation guidance after signup when email verification is required. |
 | `/auth/callback` | Supabase PKCE/email-confirmation callback that exchanges the code and activates pending owner records. |
-| `/s/:accountSlug` | Public owner storefront profile and product collections. |
+| `/s/:accountSlug` | MVP redirect into `/name?account=:accountSlug` after validating the store. The storefront page is reserved for later. |
 | `/s/:accountSlug/review` | Public customer review form. |
 | `/s/:accountSlug/quote` | Public general quote form. |
 
@@ -66,9 +66,9 @@ All `/owner/**` pages are protected by `app/owner/layout.tsx`.
 | --- | --- |
 | `/owner` | Quote and generated-draft review dashboard. |
 | `/owner/account` | Owner account settings, including prompt mode. |
-| `/owner/profile` | Public store-profile editor. |
-| `/owner/collections` | Product-piece and collections manager. |
-| `/owner/reviews` | Review dashboard and request-review sharing pane. |
+| `/owner/profile` | Hidden-MVP store-profile editor. Direct URL still works. |
+| `/owner/collections` | Hidden-MVP product-piece and collections manager. Direct URL still works. |
+| `/owner/reviews` | Hidden-MVP review dashboard and request-review sharing pane. Direct URL still works. |
 | `/owner/videos` | Owner-generated pendant video jobs. |
 | `/owner/videos/:videoJobId` | Video status, download, and sharing page. |
 | `/owner/vvs-studio` | VVS Studio multi-step jewelry asset workflow. |

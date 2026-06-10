@@ -79,6 +79,7 @@ CREATE TABLE "public"."Result" (
     "requestId" TEXT NOT NULL,
     "variant" INTEGER NOT NULL,
     "prompt" TEXT NOT NULL,
+    "attachmentPathsJson" TEXT,
     "imageUrl" TEXT,
     "modelId" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending',
@@ -605,4 +606,3 @@ ALTER TABLE "public"."VvsStudioVideoGeneration" ADD CONSTRAINT "VvsStudioVideoGe
 
 -- AddForeignKey
 ALTER TABLE "public"."VvsStudioVideoGeneration" ADD CONSTRAINT "VvsStudioVideoGeneration_shootId_fkey" FOREIGN KEY ("shootId") REFERENCES "public"."VvsStudioShoot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
