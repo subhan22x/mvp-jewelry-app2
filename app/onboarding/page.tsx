@@ -11,6 +11,8 @@ const CREAM = "#ede4d4";
 const DIM = "rgba(237,228,212,0.62)";
 const SCREEN_COUNT = 6;
 
+type InstagramStatus = "idle" | "checking" | "found" | "not_found" | "invalid" | "unknown";
+
 type Draft = {
   ownerName: string;
   phone: string;
@@ -39,12 +41,12 @@ function Headline({ white, accent }: { white: string; accent?: string }) {
   );
 }
 
-function FormHead({ eyebrow, white, accent, sub }: { eyebrow: string; white: string; accent: string; sub: string }) {
+function FormHead({ eyebrow, white, accent, sub }: { eyebrow?: string; white: string; accent?: string; sub: string }) {
   return (
     <div className="ob-form-head">
-      <Eyebrow>{eyebrow}</Eyebrow>
+      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
       <h1>
-        {white} <span>{accent}</span>
+        {white}{accent && <> <span>{accent}</span></>}
       </h1>
       <p className="ob-sub">{sub}</p>
     </div>
@@ -97,6 +99,44 @@ function FormField({
   );
 }
 
+function InstagramField({ value, onChange, status }: { value: string; onChange: (value: string) => void; status: InstagramStatus }) {
+  const statusText = {
+    idle: "",
+    checking: "Checking…",
+    found: "Account found",
+    not_found: "Account not found",
+    invalid: "Invalid username",
+    unknown: "Could not verify"
+  }[status];
+
+  return (
+    <label className="ob-label">
+      <span className="ob-label-row">
+        <span>Business Instagram</span>
+        {statusText && <small className={`ob-instagram-status status-${status}`}>{statusText}</small>}
+      </span>
+      <span className={`ob-field ob-instagram-field status-${status}`}>
+        <span className="ob-instagram-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="5.2" stroke="currentColor" strokeWidth="1.8" />
+            <circle cx="12" cy="12" r="3.6" stroke="currentColor" strokeWidth="1.8" />
+            <circle cx="17.4" cy="6.8" r="1" fill="currentColor" />
+          </svg>
+        </span>
+        <b>@</b>
+        <input
+          className="ob-input ob-input-bare"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="yourstore"
+          autoComplete="off"
+        />
+        {status === "found" && <span className="ob-instagram-check" aria-label="Instagram account verified">✓</span>}
+      </span>
+    </label>
+  );
+}
+
 function GoogleIcon() {
   return (
     <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
@@ -142,6 +182,7 @@ export default function OnboardingPage() {
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
+  const [instagramStatus, setInstagramStatus] = useState<InstagramStatus>("idle");
   const [businessName, setBusinessName] = useState("");
   const [logoFile, setLogoFile] = useState<File | undefined>();
   const [email, setEmail] = useState("");
@@ -170,6 +211,39 @@ export default function OnboardingPage() {
   useEffect(() => {
     localStorage.setItem("vvs_onb", String(screen));
   }, [screen]);
+
+  useEffect(() => {
+    const username = instagramHandle.replace(/^@+/, "").trim();
+    if (!username) {
+      setInstagramStatus("idle");
+      return;
+    }
+    if (!/^[a-zA-Z0-9._]{1,30}$/.test(username) || username.includes("..") || username.startsWith(".") || username.endsWith(".")) {
+      setInstagramStatus("invalid");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setInstagramStatus("checking");
+      try {
+        const response = await fetch(`/api/onboarding/instagram?username=${encodeURIComponent(username)}`, { signal: controller.signal });
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setInstagramStatus("unknown");
+          return;
+        }
+        setInstagramStatus(json.status === "found" ? "found" : json.status === "not_found" ? "not_found" : json.status === "invalid" ? "invalid" : "unknown");
+      } catch {
+        if (!controller.signal.aborted) setInstagramStatus("unknown");
+      }
+    }, 650);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [instagramHandle]);
 
   useEffect(() => {
     let active = true;
@@ -353,6 +427,7 @@ export default function OnboardingPage() {
             ownerName={ownerName}
             phone={phone}
             instagramHandle={instagramHandle}
+            instagramStatus={instagramStatus}
             setOwnerName={setOwnerName}
             setPhone={setPhone}
             setInstagramHandle={setInstagramHandle}
@@ -422,6 +497,12 @@ function ScreenWelcome() {
   return (
     <section className="ob-screen">
       <div className="ob-welcome-image" />
+      <div className="ob-ai-orbit" aria-hidden="true">
+        <span className="ob-orbit-ring ob-orbit-ring-one" />
+        <span className="ob-orbit-ring ob-orbit-ring-two" />
+        <span className="ob-orbit-core">✦</span>
+        <small>AI</small>
+      </div>
       <div className="ob-welcome-fade" />
       <div className="ob-body ob-bottom-body">
         <Eyebrow>The AI Studio for Jewelers</Eyebrow>
@@ -437,6 +518,7 @@ function ScreenGetStarted({
   ownerName,
   phone,
   instagramHandle,
+  instagramStatus,
   setOwnerName,
   setPhone,
   setInstagramHandle
@@ -444,6 +526,7 @@ function ScreenGetStarted({
   ownerName: string;
   phone: string;
   instagramHandle: string;
+  instagramStatus: InstagramStatus;
   setOwnerName: (value: string) => void;
   setPhone: (value: string) => void;
   setInstagramHandle: (value: string) => void;
@@ -451,11 +534,11 @@ function ScreenGetStarted({
   return (
     <section className="ob-screen">
       <div className="ob-form-body" onPointerDown={(event) => event.stopPropagation()}>
-        <FormHead eyebrow="Get Started" white="First, the" accent="basics." sub="Twenty seconds to set up your studio. We’ll text you the link." />
+        <FormHead white="Basic Info" sub="Add the essentials for your studio profile." />
         <div className="ob-form-stack">
           <FormField label="Your name" placeholder="Jordan Vance" value={ownerName} onChange={setOwnerName} autoComplete="name" />
           <FormField label="Phone number" placeholder="(555) 123-4567" value={phone} onChange={setPhone} type="tel" autoComplete="tel" />
-          <FormField label="Business Instagram" placeholder="yourstore" value={instagramHandle} onChange={setInstagramHandle} prefix="@" autoComplete="off" />
+          <InstagramField value={instagramHandle} onChange={setInstagramHandle} status={instagramStatus} />
         </div>
       </div>
     </section>
@@ -551,7 +634,7 @@ function ScreenAccount({
   return (
     <section className="ob-screen">
       <div className="ob-form-body ob-account-body" onPointerDown={(event) => event.stopPropagation()}>
-        <FormHead eyebrow="Create Account" white="Set up your" accent="studio." sub="This is what your customers will see." />
+        <FormHead eyebrow="Create Account" white="Setup your" accent="profile." sub="Your logo or store name will be shown on the design tool." />
         <div className="ob-form-stack">
           <FormField label="Business name" placeholder="VVS Custom Jewelers" value={businessName} onChange={setBusinessName} autoComplete="organization" />
           <label className="ob-label">
@@ -635,6 +718,14 @@ const onboardingStyles = `
   .ob-welcome-sub { margin-top:14px; }
   .ob-gap-16 { height:16px; flex:0 0 auto; }
   .ob-welcome-image { position:absolute; top:4%; left:0; right:0; height:52%; background:url('/onboarding/hero-ipad-display.png') center top/contain no-repeat; }
+  .ob-ai-orbit { position:absolute; top:29%; left:11%; z-index:4; width:86px; height:86px; display:grid; place-items:center; color:${GOLD}; filter:drop-shadow(0 8px 18px rgba(0,0,0,.5)); }
+  .ob-orbit-ring { position:absolute; inset:0; border-radius:50%; border:1px solid rgba(232,176,106,.34); }
+  .ob-orbit-ring-one:before,.ob-orbit-ring-two:before { content:""; position:absolute; width:7px; height:7px; border-radius:50%; background:${GOLD}; box-shadow:0 0 12px rgba(232,176,106,.9); }
+  .ob-orbit-ring-one:before { top:5px; left:18px; }
+  .ob-orbit-ring-two { inset:13px; border-color:rgba(232,176,106,.2); }
+  .ob-orbit-ring-two:before { right:-3px; bottom:17px; width:5px; height:5px; }
+  .ob-orbit-core { width:38px; height:38px; display:grid; place-items:center; border-radius:50%; background:rgba(15,9,5,.86); border:1px solid rgba(232,176,106,.5); font-size:19px; }
+  .ob-ai-orbit small { position:absolute; bottom:-4px; padding:3px 8px; border-radius:999px; background:rgba(15,9,5,.88); border:1px solid rgba(232,176,106,.28); font:800 8px/1 var(--font-figtree),sans-serif; letter-spacing:.2em; }
   .ob-welcome-fade { position:absolute; inset:0 0 auto; height:64%; background:linear-gradient(180deg,rgba(8,5,3,0) 0%,rgba(8,5,3,0) 44%,rgba(10,6,4,.5) 72%,var(--screen-bg) 100%); }
   .ob-form-head { margin-bottom:24px; }
   .ob-form-head h1 { margin:14px 0 0; font:800 28px/1.1 var(--font-figtree),sans-serif; letter-spacing:-.025em; color:#fff; }
@@ -642,11 +733,22 @@ const onboardingStyles = `
   .ob-form-stack { display:flex; flex-direction:column; gap:18px; }
   .ob-label { display:block; font-family:var(--font-figtree),sans-serif; }
   .ob-label > span:first-child { display:block; margin-bottom:8px; font-size:12.5px; font-weight:600; letter-spacing:.01em; color:${CREAM}; opacity:.85; }
+  .ob-label > .ob-label-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .ob-label-row > span { color:${CREAM}; }
+  .ob-instagram-status { font-size:11px; font-weight:700; color:rgba(237,228,212,.46); }
+  .ob-instagram-status.status-found { color:#e8b06a; }
+  .ob-instagram-status.status-not_found,.ob-instagram-status.status-invalid { color:#fca5a5; }
   .ob-input { width:100%; height:50px; border-radius:14px; background:rgba(237,228,212,.05); border:1px solid rgba(237,228,212,.12); color:#fff; font-size:15.5px; font-weight:500; padding:0 16px; outline:none; transition:.2s; }
   .ob-input::placeholder { color:rgba(237,228,212,.32); font-weight:400; }
   .ob-input:focus, .ob-field:focus-within { border-color:rgba(232,176,106,.7); background:rgba(237,228,212,.08); }
   .ob-field { display:flex; align-items:center; padding-left:14px; border-radius:14px; background:rgba(237,228,212,.05); border:1px solid rgba(237,228,212,.12); transition:.2s; }
   .ob-field b { color:rgba(237,228,212,.45); font-size:15.5px; font-weight:500; margin-right:2px; }
+  .ob-instagram-field { padding-left:11px; }
+  .ob-instagram-field.status-found { border-color:rgba(232,176,106,.6); }
+  .ob-instagram-field.status-not_found,.ob-instagram-field.status-invalid { border-color:rgba(248,113,113,.55); }
+  .ob-instagram-icon { display:flex; margin-right:8px; color:rgba(237,228,212,.42); }
+  .ob-instagram-field.status-found .ob-instagram-icon { color:#e8b06a; }
+  .ob-instagram-check { display:grid; place-items:center; flex:0 0 22px; height:22px; margin-right:12px; border-radius:50%; background:${GOLD}; color:#1a0e04; font-size:12px; font-weight:900; }
   .ob-input-bare { background:none; border:0; height:48px; padding:0 14px 0 2px; border-radius:0; }
   .ob-input-bare:focus { background:none; }
   .ob-friction-list { display:flex; flex-direction:column; gap:11px; margin-top:26px; }
