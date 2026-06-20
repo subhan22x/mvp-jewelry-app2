@@ -6,7 +6,7 @@ export default function OwnerDesignPage() {
       <section className="h-[calc(100dvh-5rem)] w-full overflow-hidden bg-[var(--theme-page)]">
         <iframe
           title="VVS Design"
-          src="/design?brand=flawless"
+          src="/design"
           className="h-full w-full border-0"
         />
       </section>
