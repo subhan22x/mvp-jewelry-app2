@@ -7,12 +7,15 @@ import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { consumeUsageCredit, usageErrorResponse } from "@/src/lib/usage";
 
 const Body = z.object({
+  resultId: z.string().min(1).nullable().optional(),
+  resultRevisionId: z.string().min(1).nullable().optional(),
   quotedPriceCents: z.number().int().nonnegative().optional(),
   quoteNotes: z.string().max(2000).optional(),
   estimatedDelivery: z.string().max(120).optional().nullable(),
   quoteMaterial: z.string().max(80).optional().nullable(),
   quoteMaterialKarat: z.string().max(20).optional().nullable(),
   quoteStoneType: z.string().max(80).optional().nullable(),
+  previewMediaType: z.enum(["image", "model3d", "video"]).optional(),
   status: z.enum(["pending", "priced", "sent", "fulfilled", "closed"]).optional()
 });
 
@@ -84,21 +87,130 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const accountId = owner.accountId;
     const existing = await prisma.quoteRequest.findFirst({
       where: { id, accountId },
-      select: { id: true, status: true, publicToken: true }
+      select: {
+        id: true,
+        requestId: true,
+        status: true,
+        publicToken: true,
+        resultId: true,
+        resultRevisionId: true,
+        previewMediaType: true,
+        videoId: true,
+        model3dId: true
+      }
     });
     if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+    if (body.resultId && body.resultRevisionId) {
+      return NextResponse.json({ error: "Choose either an original generation or a revision, not both." }, { status: 400 });
+    }
+
+    let selectedMediaData: Record<string, unknown> = {};
+    if (body.resultRevisionId !== undefined) {
+      if (!body.resultRevisionId || !existing.requestId) {
+        return NextResponse.json({ error: "A generated revision is required." }, { status: 400 });
+      }
+      const revision = await prisma.resultRevision.findFirst({
+        where: {
+          id: body.resultRevisionId,
+          accountId,
+          requestId: existing.requestId,
+          status: "succeeded",
+          imageUrl: { not: null }
+        },
+        select: {
+          id: true,
+          sourceResultId: true,
+          imageUrl: true,
+          completedAt: true,
+          createdAt: true
+        }
+      });
+      if (!revision?.imageUrl) {
+        return NextResponse.json({ error: "The selected revision is not available for this quote." }, { status: 400 });
+      }
+      const selectionChanged = existing.resultRevisionId !== revision.id;
+      selectedMediaData = {
+        resultId: revision.sourceResultId,
+        resultRevisionId: revision.id,
+        designedImageUrl: revision.imageUrl,
+        generatedAt: revision.completedAt ?? revision.createdAt,
+        ...(selectionChanged ? {
+          previewMediaType: "image",
+          model3dId: null,
+          videoId: null,
+          videoUrl: null
+        } : {})
+      };
+    } else if (body.resultId !== undefined) {
+      if (!body.resultId || !existing.requestId) {
+        return NextResponse.json({ error: "A generated image is required." }, { status: 400 });
+      }
+      const result = await prisma.result.findFirst({
+        where: {
+          id: body.resultId,
+          accountId,
+          requestId: existing.requestId,
+          status: "succeeded",
+          imageUrl: { not: null }
+        },
+        select: { id: true, imageUrl: true, completedAt: true, createdAt: true }
+      });
+      if (!result?.imageUrl) {
+        return NextResponse.json({ error: "The selected generation is not available for this quote." }, { status: 400 });
+      }
+      const selectionChanged = existing.resultId !== result.id || existing.resultRevisionId !== null;
+      selectedMediaData = {
+        resultId: result.id,
+        resultRevisionId: null,
+        designedImageUrl: result.imageUrl,
+        generatedAt: result.completedAt ?? result.createdAt,
+        ...(selectionChanged ? {
+          previewMediaType: "image",
+          model3dId: null,
+          videoId: null,
+          videoUrl: null
+        } : {})
+      };
+    }
+
+    const nextPreviewMediaType = body.previewMediaType ?? existing.previewMediaType;
+    if (body.status === "sent" && nextPreviewMediaType === "model3d") {
+      const model = existing.model3dId
+        ? await prisma.model3dGeneration.findFirst({
+            where: { id: existing.model3dId, accountId, status: "succeeded", modelUrl: { not: null } },
+            select: { id: true }
+          })
+        : null;
+      if (!model) {
+        return NextResponse.json({ error: "The selected 3D preview must finish before this quote can be shared." }, { status: 409 });
+      }
+    }
+    if (body.status === "sent" && nextPreviewMediaType === "video") {
+      const video = existing.videoId
+        ? await prisma.videoGeneration.findFirst({
+            where: { id: existing.videoId, accountId, status: "succeeded", videoUrl: { not: null } },
+            select: { id: true }
+          })
+        : null;
+      if (!video) {
+        return NextResponse.json({ error: "The selected video must finish before this quote can be shared." }, { status: 409 });
+      }
+    }
+
     const data = {
+      ...selectedMediaData,
       quotedPriceCents: body.quotedPriceCents,
       quoteNotes: body.quoteNotes,
       status: body.status,
+      ...(body.previewMediaType !== undefined ? { previewMediaType: body.previewMediaType } : {}),
       ...(body.estimatedDelivery !== undefined ? { estimatedDelivery: cleanOptional(body.estimatedDelivery) } : {}),
       ...(body.quoteMaterial !== undefined ? { quoteMaterial: cleanOptional(body.quoteMaterial) } : {}),
       ...(body.quoteMaterialKarat !== undefined ? { quoteMaterialKarat: cleanOptional(body.quoteMaterialKarat) } : {}),
       ...(body.quoteStoneType !== undefined ? { quoteStoneType: cleanOptional(body.quoteStoneType) } : {}),
     };
 
-    const needsPublicToken = body.status === "sent" && !existing.publicToken;
+    const needsPublicToken = (body.status === "priced" || body.status === "sent") && !existing.publicToken;
     const quoteRequest = await updateQuoteWithPublicToken(id, data, needsPublicToken);
     if (existing.status !== "sent" && body.status === "sent") {
       await consumeUsageCredit({
@@ -125,6 +237,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       quoteMaterial: quoteRequest.quoteMaterial,
       quoteMaterialKarat: quoteRequest.quoteMaterialKarat,
       quoteStoneType: quoteRequest.quoteStoneType,
+      resultId: quoteRequest.resultId,
+      resultRevisionId: quoteRequest.resultRevisionId,
+      previewMediaType: quoteRequest.previewMediaType,
       status: quoteRequest.status,
       publicQuoteUrl: publicQuoteUrl(req, quoteRequest.publicToken)
     });

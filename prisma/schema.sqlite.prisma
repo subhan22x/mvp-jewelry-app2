@@ -89,6 +89,7 @@ model Request {
   size           String?
   metalType      String?
   stoneType      String?
+  diamondQuality String?  // vs | vvs
   plainColor     String?
   plainMetal     String?
   plainKarat     String?
@@ -144,6 +145,7 @@ model ResultRevision {
   completedAt    DateTime?
   durationMs     Int?
   createdAt      DateTime @default(now())
+  QuoteRequests  QuoteRequest[]
 
   @@index([accountId, requestId])
   @@index([sourceResultId])
@@ -207,6 +209,7 @@ model Model3dGeneration {
   completedAt    DateTime?
   durationMs     Int?
   createdAt      DateTime  @default(now())
+  QuoteRequests  QuoteRequest[]
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
@@ -216,14 +219,19 @@ model QuoteRequest {
   id               String           @id @default(cuid())
   accountId        String           @default("demo-account")
   account          Account          @relation(fields: [accountId], references: [id])
-  requestId        String?
+  requestId        String?          @unique
   request          Request?         @relation(fields: [requestId], references: [id])
   resultId         String?
   result           Result?          @relation(fields: [resultId], references: [id])
   videoId          String?
   video            VideoGeneration? @relation(fields: [videoId], references: [id])
+  model3dId        String?
+  model3d          Model3dGeneration? @relation(fields: [model3dId], references: [id])
+  resultRevisionId String?
+  resultRevision   ResultRevision?   @relation(fields: [resultRevisionId], references: [id])
   designedImageUrl String?
   videoUrl         String?
+  previewMediaType String           @default("image") // image | model3d | video
   generatedAt      DateTime?
   productType      String?
   pendantFinish    String?

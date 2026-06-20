@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/server/db/client";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import VideoJobStatus from "../VideoJobStatus";
@@ -16,6 +16,11 @@ export default async function OwnerVideoJobPage({ params }: { params: Promise<{ 
   const video = await prisma.videoGeneration.findFirst({
     where: { id: videoJobId, accountId },
     include: {
+      QuoteRequests: {
+        select: { id: true, status: true },
+        orderBy: { createdAt: "desc" },
+        take: 1
+      },
       request: {
         select: {
           text: true,
@@ -29,6 +34,10 @@ export default async function OwnerVideoJobPage({ params }: { params: Promise<{ 
   });
 
   if (!video) notFound();
+  const boundQuote = video.QuoteRequests[0];
+  if (boundQuote) {
+    redirect(`/owner/quotes/${boundQuote.id}/${["sent", "fulfilled", "closed"].includes(boundQuote.status) ? "preview" : "media"}`);
+  }
 
   return (
     <main className="min-h-dvh bg-[#101114] px-4 py-8 text-[#e1e2ec] md:px-6">

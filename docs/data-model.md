@@ -58,10 +58,12 @@ erDiagram
   REQUEST ||--o{ RESULT_REVISION : revises
   REQUEST ||--o{ VIDEO_GENERATION : generates
   REQUEST ||--o{ MODEL3D_GENERATION : generates
-  REQUEST ||--o{ QUOTE_REQUEST : snapshots
+  REQUEST ||--o| QUOTE_REQUEST : owns_draft
   RESULT ||--o{ RESULT_REVISION : source_for
   RESULT ||--o{ QUOTE_REQUEST : selected_for
+  RESULT_REVISION ||--o{ QUOTE_REQUEST : selected_revision_for
   VIDEO_GENERATION ||--o{ QUOTE_REQUEST : attached_to
+  MODEL3D_GENERATION ||--o{ QUOTE_REQUEST : attached_to
   PRODUCT_COLLECTION ||--o{ PRODUCT : contains
   VVS_STUDIO_SHOOT ||--o{ VVS_STUDIO_UPLOAD : receives
   VVS_STUDIO_SHOOT ||--o{ VVS_STUDIO_IMAGE_GENERATION : generates
@@ -75,8 +77,14 @@ Important implementation details:
 - `StoreProfile` stores public profile content, full address, phone, Instagram handle, website, and up to two extra links in `extraLinksJson`.
 - `ProductCollection` and `Product` power the deferred public collections grid and hidden-MVP `/owner/collections` manager. `Product.isActive` is the draft/published switch.
 - `StoreReview` stores customer reviews submitted from `/s/:slug/review`.
-- `QuoteRequest` preserves customer selections and owner-adjusted quote fields such as estimated delivery, quote material, karat, and quote stone type.
-- `Model3dGeneration` records owner-triggered experimental image-to-3D jobs for name pendants. It stores the public source image URL, prompt, provider job/model ids, local durable GLB URL, original provider URL, status, errors, and timing.
+- A `Request` with customer contact and at least one successful image owns one automatically created draft `QuoteRequest`. The nullable request relation remains available for general/manual quote intake, but is unique when present.
+- `QuoteRequest` preserves customer selections and owner-adjusted quote fields such as estimated delivery, quote material, karat, and quote stone type. It also stores the exact selected `resultId` or `resultRevisionId`, its `previewMediaType`, and the explicitly attached `videoId` or `model3dId`.
+- `Request.diamondQuality` persists the customer's VS/VVS selection as metadata so automatically created quote drafts retain it; it is not treated as a major image-prompt control.
+- `previewMediaType` is `image`, `model3d`, or `video`; `image` is the default. A 3D/video option is shown only for generation families that support it.
+- `Model3dGeneration` records quote-bound image-to-3D jobs. It stores the public source image URL, prompt, provider job/model ids, durable GLB URL, original provider URL, status, errors, and timing.
+- Quote creation and publication are separate. Creating the private link proceeds to media selection; the public quote route accepts the quote only after finalization and after any selected `Model3dGeneration` or `VideoGeneration` succeeds.
+- Existing Postgres installations apply the nullable-unique request relation, explicit media relations, and historical quote/media backfill with `npm run supabase:migrate-quote-flow`; the SQL is idempotent and preserves older duplicate quotes by detaching, not deleting, them.
+- Owner and customer routes render the same quote preview card, so 3D/video presentation is owned by the quote UI rather than standalone job pages.
 - `VvsStudioJob` is the durable Postgres-backed pipeline queue for owner VVS Studio video generation. It records the current stage, attempts, lock fields, run timing, and retryable error state.
 - VVS Studio image/video generation rows record stage, provider profile/version, provider payload JSON, and first/last image references so outputs remain explainable after prompt or model changes.
 - `UsagePlan` stores account-level monthly limits, `AccountUsageBucket` tracks the current period by usage kind, and `UsageEvent` is the immutable idempotent ledger for billable events.
@@ -89,7 +97,17 @@ Current gaps before paid SaaS onboarding:
 - Subscription fields exist on `Account`, and usage metering now exists in the database. Stripe checkout, webhooks, trial gating, and paid plan provisioning are still not implemented.
 - `AppSetting.key` remains globally unique, so owner prompt settings use account-prefixed keys.
 - Media ownership is not centralized in `MediaAsset`.
-- `Lead.requestId`, `VideoGeneration.sourceResultId`, and `Model3dGeneration.sourceResultId` remain scalar references instead of Prisma relations.
+- `Lead.requestId`, `VideoGeneration.sourceResultId`, and `Model3dGeneration.sourceResultId` remain scalar references instead of Prisma relations. Quote-to-selection and quote-to-preview-media references are explicit relations and must not be replaced by latest-job lookup.
+
+## Consolidated Quote Invariants
+
+- Eligibility is server-derived: customer contact plus at least one succeeded original or revision image on an account-scoped `Request`.
+- Eligibility applies to every generation family backed by `Request`. Owner-only VVS Studio outputs do not auto-create quotes until customer contact is associated with them.
+- Draft creation is idempotent and enforced by the unique nullable `QuoteRequest.requestId`; additional completed variants or revisions update availability without creating duplicate drafts.
+- The owner, not the customer, chooses the exact original `Result` or `ResultRevision` used by the quote.
+- `Image only` is the default. `Image + 3D` and `Image + Video` attach one succeeded job explicitly and are subject to per-product capability filtering.
+- A public token may exist while preparation continues, but public quote resolution rejects draft, unfinalized, and media-pending records.
+- Historical quote and media rows are backfilled when account, request, and source ownership match. Ambiguous media remains unbound for manual review rather than being attached by timestamp.
 
 ## Legacy MVP Diagram
 
@@ -226,6 +244,7 @@ erDiagram
   ACCOUNT ||--o{ REQUEST : owns
   ACCOUNT ||--o{ QUOTE_REQUEST : owns
   ACCOUNT ||--o{ VIDEO_GENERATION : owns
+  ACCOUNT ||--o{ MODEL3D_GENERATION : owns
   ACCOUNT ||--o{ MEDIA_ASSET : owns
   ACCOUNT ||--o| MEDIA_ASSET : logo
   ACCOUNT ||--o{ APP_SETTING : configures
@@ -246,15 +265,21 @@ erDiagram
   PUBLIC_SESSION ||--o{ REQUEST : creates
 
   REQUEST ||--o{ RESULT : produces
+  REQUEST ||--o{ RESULT_REVISION : revises
   REQUEST ||--o{ VIDEO_GENERATION : has
-  REQUEST ||--o{ QUOTE_REQUEST : snapshots
+  REQUEST ||--o{ MODEL3D_GENERATION : has
+  REQUEST ||--o| QUOTE_REQUEST : owns_draft
 
+  RESULT ||--o{ RESULT_REVISION : source_for
   RESULT ||--o{ VIDEO_GENERATION : source_for
   RESULT ||--o{ QUOTE_REQUEST : selected_for
   RESULT ||--o{ MEDIA_ASSET : image_asset
+  RESULT_REVISION ||--o{ QUOTE_REQUEST : selected_revision_for
 
   VIDEO_GENERATION ||--o{ QUOTE_REQUEST : attached_to
   VIDEO_GENERATION ||--o{ MEDIA_ASSET : video_asset
+  MODEL3D_GENERATION ||--o{ QUOTE_REQUEST : attached_to
+  MODEL3D_GENERATION ||--o{ MEDIA_ASSET : model_asset
 
   QUOTE_REQUEST ||--o{ MESSAGE : communicated_by
   QUOTE_REQUEST ||--o{ PAYMENT : paid_by
@@ -460,6 +485,24 @@ erDiagram
     datetime createdAt
   }
 
+  RESULT_REVISION {
+    string id PK
+    string accountId FK
+    string requestId FK
+    string sourceResultId FK
+    int revisionNumber
+    string prompt
+    string imageUrl
+    string imageMediaAssetId FK
+    string modelId
+    string provider
+    string status
+    string error
+    datetime completedAt
+    int durationMs
+    datetime createdAt
+  }
+
   VIDEO_GENERATION {
     string id PK
     string accountId FK
@@ -481,13 +524,37 @@ erDiagram
     datetime createdAt
   }
 
+  MODEL3D_GENERATION {
+    string id PK
+    string accountId FK
+    string requestId FK
+    string sourceResultId FK
+    string sourceImageUrl
+    string prompt
+    string format
+    string modelUrl
+    string modelMediaAssetId FK
+    string remoteModelUrl
+    string modelId
+    string providerJobId
+    string status
+    string error
+    datetime startedAt
+    datetime completedAt
+    int durationMs
+    datetime createdAt
+  }
+
   QUOTE_REQUEST {
     string id PK
     string accountId FK
     string customerId FK
-    string requestId FK
+    string requestId FK, UK
     string resultId FK
+    string resultRevisionId FK
     string videoId FK
+    string model3dId FK
+    string previewMediaType
     string designedImageUrl
     string videoUrl
     datetime generatedAt
@@ -780,17 +847,24 @@ accounts/{accountId}/uploads/{mediaAssetId}.{ext}
 flowchart TD
   A[Customer opens account storefront path] --> B[Account resolved by slug]
   B --> C[Customer creates pendant request anonymously]
-  C --> D[Request row with accountId and publicSessionId]
-  D --> E[Result rows generated asynchronously]
-  E --> F[Customer or owner selects image]
-  F --> G[Optional VideoGeneration]
-  F --> H[Quote form submitted]
-  G --> H
-  H --> I[Customer row created or matched]
-  I --> J[QuoteRequest linked to account/customer/request/result/video]
-  J --> K[Store owner CRM and quote dashboard]
-  K --> L[Email/SMS Message sent]
-  L --> M[Message status tracked]
+  C --> D[Request row plus account-scoped Lead contact]
+  D --> E[Originals and revisions generate asynchronously]
+  E --> F{Successful image and contact?}
+  F -- Yes --> G[Create or reuse one private draft QuoteRequest]
+  G --> H[Owner clicks Prepare Quote]
+  H --> I[Owner selects exact Result or ResultRevision]
+  I --> J[Price details and private link created]
+  J --> K{Preview media}
+  K -->|Default| L[Image only]
+  K -->|Supported| M[Generate and attach 3D]
+  K -->|Supported| N[Generate and attach video]
+  M --> O[Wait for success]
+  N --> O
+  L --> P[Finalize quote]
+  O --> P
+  P --> Q[Public quote preview enabled]
+  Q --> R[Email or SMS Message sent]
+  R --> S[Message status tracked]
 ```
 
 ## Owner Dashboard Data Boundaries
@@ -817,6 +891,9 @@ Every box after `Account` must be filtered by `accountId`.
 | `Request.userId` | `Request.accountId`, optional `Request.customerId` | Store ownership moves from user to account. |
 | `Lead` | `Customer` | Replace loose lead records with account-scoped CRM records. |
 | `QuoteRequest.customerName/email/phone` | `Customer` plus quote snapshot fields | Keep snapshot fields for historical quote accuracy. |
+| repeated `QuoteRequest.requestId` rows | one nullable-unique `QuoteRequest.requestId` | Backfill one canonical quote per request and flag ambiguous duplicates for review. |
+| selected revision stored only as an image URL | `QuoteRequest.resultRevisionId` | Preserve an explicit revision relation; do not infer by URL or revision order. |
+| latest successful model/video lookup | `QuoteRequest.model3dId`, `videoId`, and `previewMediaType` | Attach the exact preview asset selected during quote preparation. |
 | `Result.imageUrl` | `Result.imageUrl` plus optional `MediaAsset` | Preserve direct URL while adding media ownership. |
 | `VideoGeneration.videoUrl` | `VideoGeneration.videoUrl` plus optional `MediaAsset` | Preserve local/display URL while adding media ownership. |
 | `AppSetting` | account-scoped `AppSetting` | Prompt mode may be account-scoped later, but prompt/model control remains SaaS-admin-only for now. |

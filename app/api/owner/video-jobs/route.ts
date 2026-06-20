@@ -11,7 +11,10 @@ import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/
 export const maxDuration = 300;
 
 const Body = z.object({
-  resultId: z.string().min(1)
+  resultId: z.string().min(1).optional(),
+  quoteId: z.string().min(1).optional()
+}).refine(body => Boolean(body.resultId) !== Boolean(body.quoteId), {
+  message: "Provide exactly one quoteId or resultId."
 });
 
 function getGenerationErrorMessage(err: unknown) {
@@ -27,14 +30,33 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const accountId = owner.accountId;
+    const quote = body.quoteId
+      ? await prisma.quoteRequest.findFirst({
+          where: { id: body.quoteId, accountId },
+          select: {
+            id: true,
+            requestId: true,
+            resultId: true,
+            designedImageUrl: true,
+            status: true
+          }
+        })
+      : null;
+    if (body.quoteId && !quote) return NextResponse.json({ error: "Quote not found." }, { status: 404 });
+    if (quote && (!quote.requestId || !quote.resultId || !quote.designedImageUrl)) {
+      return NextResponse.json({ error: "Select a generated quote image before creating a video preview." }, { status: 400 });
+    }
+    const selectedResultId = quote?.resultId ?? body.resultId;
+    if (!selectedResultId) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
     const result = await prisma.result.findUnique({
-      where: { id: body.resultId },
+      where: { id: selectedResultId },
       include: { request: true }
     });
 
     if (!result) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
     if (result.accountId !== accountId) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
-    if (result.status !== "succeeded" || !result.imageUrl) {
+    const selectedImageUrl = quote?.designedImageUrl ?? result.imageUrl;
+    if (result.status !== "succeeded" || !selectedImageUrl) {
       return NextResponse.json({ error: "This generation image is not ready for video generation." }, { status: 400 });
     }
     if ((result.request.productType ?? "name") !== "name") {
@@ -42,7 +64,7 @@ export async function POST(req: Request) {
     }
     await ensureUsageAvailable(accountId, "design_video_generated");
 
-    const sourceImageUrl = toPublicImageUrl(req, result.imageUrl);
+    const sourceImageUrl = toPublicImageUrl(req, selectedImageUrl);
     assertPublicImageUrl(sourceImageUrl);
     const prompt = buildJewelryVideoPrompt();
     const startedAt = new Date();
@@ -58,6 +80,17 @@ export async function POST(req: Request) {
         startedAt
       }
     });
+    if (quote) {
+      await prisma.quoteRequest.update({
+        where: { id: quote.id },
+        data: {
+          videoId: video.id,
+          videoUrl: null,
+          previewMediaType: "video",
+          status: "priced"
+        }
+      });
+    }
 
     scheduleBackgroundTask((async () => {
       const startedMs = startedAt.getTime();
@@ -78,6 +111,12 @@ export async function POST(req: Request) {
             durationMs: Math.max(0, completedAt.getTime() - startedMs)
           }
         });
+        if (quote) {
+          await prisma.quoteRequest.updateMany({
+            where: { id: quote.id, videoId: video.id },
+            data: { videoUrl: localVideoUrl }
+          });
+        }
         await consumeUsageCredit({
           accountId,
           kind: "design_video_generated",

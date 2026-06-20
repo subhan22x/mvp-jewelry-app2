@@ -1,12 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
-import SendQuoteForm from "./SendQuoteForm";
-import GenerateVideoButton from "./GenerateVideoButton";
-import OwnerFrame from "./OwnerFrame";
-import MarkFulfilledButton from "./MarkFulfilledButton";
-import View3dButton from "./View3dButton";
 import { getOwnerDashboardMetrics } from "@/src/lib/owner/dashboard-metrics";
+import OwnerFrame from "./OwnerFrame";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +11,7 @@ type SearchParams = {
   filter?: string;
 };
 
-type GenerationRow = Awaited<ReturnType<typeof getOwnerData>>["generations"][number];
+type QuoteRow = Awaited<ReturnType<typeof getOwnerData>>["quotes"][number];
 
 function formatDate(value: Date | null) {
   if (!value) return "n/a";
@@ -44,112 +40,83 @@ function isToday(value: Date | null) {
     && value.getDate() === now.getDate();
 }
 
-function metalLabel(primary?: string | null, secondary?: string | null) {
-  const pretty = (value?: string | null) =>
-    value ? value.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase()) : "Not selected";
-  return secondary && secondary !== primary ? `${pretty(primary)} + ${pretty(secondary)}` : pretty(primary);
-}
-
-function sizeLabel(size?: string | null) {
-  const labels: Record<string, string> = {
-    "2_3_inches": "2 - 3 inches",
-    "3_4_5_inches": "3 - 4.5 inches",
-    "4_5_7_inches": "4.5 - 7 inches",
-    "7_10_inches": "7 - 10 inches"
-  };
-  return size ? labels[size] ?? size : "n/a";
-}
-
-function materialSpecLabel(value?: string | null) {
-  const labels: Record<string, string> = {
-    gold: "Gold",
-    silver: "Silver",
-    rose_gold: "Rose Gold",
-    gold_plated: "Gold Plated",
-    "10k": "10K",
-    "14k": "14K",
-    "18k": "18K",
-    natural_diamonds: "Natural Diamonds",
-    lab_diamonds: "Lab Diamonds",
-    moissanite: "Moissanite",
-    rope: "Rope chain",
-    box: "Box chain",
-    snake: "Snake chain",
-    cable: "Cable chain",
-    station: "Station chain",
-    bar_link_tube_station: "Bar link chain / tube station chain",
-    figaro_oval_link: "Figaro style / oval link chain"
-  };
-  return value ? labels[value] ?? value : "n/a";
-}
-
-function quoteMaterialFromSelection(value?: string | null) {
-  if (value === "gold" || value === "silver") return value;
-  return null;
-}
-
-function quoteStoneFromSelection(value?: string | null) {
-  const supported = new Set(["natural_diamonds", "lab_diamonds", "moissanite", "cz", "other"]);
-  return value && supported.has(value) ? value : null;
+function cleanLabel(value?: string | null) {
+  return value ? value.replaceAll("_", " ").replace(/\b\w/g, letter => letter.toUpperCase()) : null;
 }
 
 function statusClass(status: string) {
-  if (status === "sent") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
-  if (status === "failed") return "border-red-300/30 bg-red-400/10 text-red-200";
-  if (status === "succeeded") return "border-blue-300/30 bg-blue-400/10 text-blue-200";
+  if (status === "sent" || status === "fulfilled") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
+  if (status === "priced") return "border-blue-300/30 bg-blue-400/10 text-blue-200";
   return "border-[#f7bc5f]/40 bg-[#1D120C]/90 text-[#f7bc5f]";
 }
 
-function generationMatches(row: GenerationRow, query: string, filter: string) {
-  const quote = row.QuoteRequests[0] ?? null;
-  const request = row.request;
-  const hasSucceededModel = request.Models3d.some(model => model.sourceResultId === row.id && model.status === "succeeded");
+function quoteTitle(quote: QuoteRow) {
+  return quote.text
+    || quote.request?.text
+    || (quote.productType === "picture" ? "Picture pendant" : null)
+    || (quote.productType === "bracelet" ? "Bracelet" : null)
+    || "Custom jewelry";
+}
+
+function productLabel(quote: QuoteRow) {
+  const productType = quote.productType ?? quote.request?.productType;
+  if (productType === "picture") return "Picture pendant";
+  if (productType === "bracelet") return "Bracelet";
+  if (productType === "general_quote") return "Custom jewelry";
+  if ((quote.pendantFinish ?? quote.request?.pendantFinish) === "plain") return "Nameplate";
+  return "Name pendant";
+}
+
+function referenceImage(quote: QuoteRow) {
+  if (quote.designedImageUrl) return quote.designedImageUrl;
+  if (!quote.referenceImageUrlsJson) return null;
+  try {
+    const urls = JSON.parse(quote.referenceImageUrlsJson);
+    return Array.isArray(urls) && typeof urls[0] === "string" ? urls[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+function quoteMatches(quote: QuoteRow, query: string, filter: string) {
   const haystack = [
-    row.id,
-    row.status,
-    request.text,
-    request.styleId,
-    request.pendantFinish,
-    request.primaryMetal,
-    request.secondaryMetal,
-    request.size,
-    request.metalType,
-    request.stoneType,
-    request.plainColor,
-    request.plainMetal,
-    request.plainKarat,
-    request.plainChain,
-    request.productType,
-    request.uploadFileName,
-    hasSucceededModel ? "3d model generated view 3d" : "",
-    quote?.customerName,
-    quote?.customerEmail,
-    quote?.status
+    quote.id,
+    quote.status,
+    quote.customerName,
+    quote.customerEmail,
+    quote.customerPhone,
+    quote.text,
+    quote.request?.text,
+    quote.styleId,
+    quote.request?.styleId,
+    quote.productType,
+    quote.request?.productType,
+    quote.previewMediaType
   ].join(" ").toLowerCase();
 
   if (query && !haystack.includes(query)) return false;
-  if (filter === "pending" && quote?.status !== "pending") return false;
-  if (filter === "sent" && quote?.status !== "sent") return false;
-  if (filter === "fulfilled" && quote?.status !== "fulfilled") return false;
-  if (filter === "today" && !isToday(row.createdAt)) return false;
-  if (filter === "name" && request.productType !== "name") return false;
-  if (filter === "picture" && request.productType !== "picture") return false;
-  if (filter === "3d" && !hasSucceededModel) return false;
+  if (["pending", "priced", "sent", "fulfilled"].includes(filter) && quote.status !== filter) return false;
+  if (filter === "today" && !isToday(quote.createdAt)) return false;
+  if (filter === "3d" && !(
+    quote.previewMediaType === "model3d"
+    && quote.model3d?.status === "succeeded"
+    && ["sent", "fulfilled", "closed"].includes(quote.status)
+  )) return false;
   return true;
 }
 
 async function getOwnerData(accountId: string) {
-  const [metrics, generations] = await Promise.all([
+  const [metrics, quotes] = await Promise.all([
     getOwnerDashboardMetrics(accountId),
-    prisma.result.findMany({
+    prisma.quoteRequest.findMany({
       where: { accountId },
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: { createdAt: "desc" },
       take: 120,
       include: {
-        QuoteRequests: {
-          orderBy: { createdAt: "desc" },
-          take: 1
-        },
+        result: { select: { id: true, imageUrl: true, variant: true, status: true } },
+        resultRevision: { select: { id: true, imageUrl: true, revisionNumber: true, status: true } },
+        video: { select: { id: true, status: true, videoUrl: true } },
+        model3d: { select: { id: true, status: true, modelUrl: true } },
         request: {
           select: {
             id: true,
@@ -159,31 +126,14 @@ async function getOwnerData(accountId: string) {
             text: true,
             primaryMetal: true,
             secondaryMetal: true,
-            size: true,
-            metalType: true,
-            stoneType: true,
-            plainColor: true,
-            plainMetal: true,
-            plainKarat: true,
-            plainChain: true,
-            uploadFileName: true,
-            Videos: {
-              select: {
-                id: true,
-                sourceResultId: true,
-                status: true
-              },
-              orderBy: { createdAt: "desc" }
+            Results: {
+              where: { status: "succeeded", imageUrl: { not: null } },
+              select: { id: true, imageUrl: true },
+              orderBy: { variant: "asc" }
             },
-            Models3d: {
-              select: {
-                id: true,
-                sourceResultId: true,
-                status: true,
-                modelUrl: true,
-                createdAt: true
-              },
-              orderBy: { createdAt: "desc" }
+            ResultRevisions: {
+              where: { status: "succeeded", imageUrl: { not: null } },
+              select: { id: true, imageUrl: true }
             }
           }
         }
@@ -191,10 +141,7 @@ async function getOwnerData(accountId: string) {
     })
   ]);
 
-  return {
-    metrics,
-    generations
-  };
+  return { metrics, quotes };
 }
 
 function FilterChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
@@ -215,202 +162,72 @@ function FilterChip({ href, active, children }: { href: string; active: boolean;
 function MetricCard({ label, value, suffix, accent = false }: { label: string; value: React.ReactNode; suffix?: string; accent?: boolean }) {
   return (
     <div className={`relative min-w-0 overflow-hidden rounded-xl border p-4 ${accent ? "border-[#D1B873]/20 bg-[#17191F]" : "border-white/5 bg-[#17191F]"}`}>
-      {accent && <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-[#f7bc5f]/10 blur-xl" aria-hidden />}
+      {accent ? <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-[#f7bc5f]/10 blur-xl" aria-hidden /> : null}
       <span className={`text-[12px] font-semibold uppercase tracking-wider ${accent ? "text-[#f7bc5f]" : "text-[#8c909f]"}`}>{label}</span>
       <div className={`mt-1 flex min-w-0 items-baseline gap-1.5 ${accent ? "text-[#f7bc5f]" : "text-[#e1e2ec]"}`}>
         <span className="min-w-0 break-words text-[28px] font-bold leading-tight">{value}</span>
-        {suffix && <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8c909f]">{suffix}</span>}
+        {suffix ? <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8c909f]">{suffix}</span> : null}
       </div>
     </div>
   );
 }
 
-function generationTypeLabel(row: GenerationRow) {
-  if (row.request.productType === "picture") return "Picture pendant";
-  return row.request.pendantFinish === "plain" ? "Nameplate" : "Icedout name pendant";
-}
-
-function generationTitle(row: GenerationRow) {
-  if (row.request.productType === "picture") return row.request.uploadFileName || row.request.text || "Picture pendant";
-  return row.request.text || "Name pendant";
-}
-
-function quoteReviewDetails(row: GenerationRow, quote: NonNullable<GenerationRow["QuoteRequests"][number]>) {
-  const productType = quote.productType ?? row.request.productType;
-  const pendantFinish = quote.pendantFinish ?? row.request.pendantFinish;
-  const isPlain = pendantFinish === "plain";
-
-  const customerDetails = [
-    { label: "Customer", value: quote.customerName },
-    { label: "Phone", value: quote.customerPhone },
-    { label: "Email", value: quote.customerEmail },
-  ];
-
-  const designDetails = [
-    { label: "Text / engraving", value: quote.text ?? row.request.text },
-    { label: "Finish", value: isPlain ? "Plain" : "Icedout" },
-    { label: "Metal colors", value: metalLabel(quote.primaryMetal ?? row.request.primaryMetal, quote.secondaryMetal ?? row.request.secondaryMetal) },
-    { label: "Size", value: sizeLabel(quote.size ?? row.request.size) },
-    { label: "Metal type", value: materialSpecLabel(quote.metalType ?? row.request.metalType) },
-    { label: "Stone type", value: materialSpecLabel(quote.stoneType ?? row.request.stoneType) },
-    { label: "Style", value: quote.styleId ?? row.request.styleId },
-    { label: "Product", value: productType === "picture" ? "Picture pendant" : isPlain ? "Nameplate" : "Icedout name pendant" },
-    { label: "Plain color", value: materialSpecLabel(quote.plainColor ?? row.request.plainColor) },
-    { label: "Plain metal", value: materialSpecLabel(quote.plainMetal ?? row.request.plainMetal) },
-    { label: "Karat", value: materialSpecLabel(quote.plainKarat ?? row.request.plainKarat) },
-    { label: "Chain", value: materialSpecLabel(quote.plainChain ?? row.request.plainChain) },
-    { label: "Emblem", value: quote.emblem },
-    { label: "Diamond quality", value: quote.diamondQuality },
-  ].filter(detail => detail.value && detail.value !== "n/a" && detail.value !== "Not selected");
-
-  return { customerDetails, designDetails };
-}
-
-function GenerationCard({ row }: { row: GenerationRow }) {
-  const quote = row.QuoteRequests[0] ?? null;
-  const videosForImage = row.request.Videos.filter(video => video.sourceResultId === row.id);
-  const completedVideos = videosForImage.filter(video => video.status === "succeeded").length;
-  const modelsForImage = row.request.Models3d.filter(model => model.sourceResultId === row.id);
-  const succeededModel = modelsForImage.find(model => model.status === "succeeded" && model.modelUrl);
-  const activeModel = modelsForImage.find(model => model.status === "pending");
-  const latestModel = succeededModel ?? activeModel ?? modelsForImage[0] ?? null;
-  const canGenerateVideo = row.request.productType === "name";
-  const reviewDetails = quote ? quoteReviewDetails(row, quote) : null;
+function QuoteCard({ quote, openPreview = false }: { quote: QuoteRow; openPreview?: boolean }) {
+  const imageUrl = referenceImage(quote);
+  const generationCount = (quote.request?.Results.length ?? 0) + (quote.request?.ResultRevisions.length ?? 0);
 
   return (
     <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#D1B873]/30 bg-[#17191F] shadow-[0_8px_30px_rgba(0,0,0,0.4)] md:flex-row">
       <div className="relative h-64 w-full bg-black md:h-auto md:w-2/5">
-        {row.imageUrl ? (
+        {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.imageUrl} alt={`${generationTitle(row)} generated pendant`} className="h-full w-full object-cover opacity-85 transition duration-500 group-hover:opacity-100" />
+          <img src={imageUrl} alt={`${quoteTitle(quote)} selected design`} className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:opacity-100" />
         ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/35">No generated image saved</div>
+          <div className="flex h-full min-h-64 items-center justify-center px-6 text-center text-sm text-white/35">No design image selected</div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:bg-gradient-to-r" />
-        <div className={`absolute left-4 top-4 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium backdrop-blur ${statusClass(row.status)}`}>
+        <div className={`absolute left-4 top-4 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium backdrop-blur ${statusClass(quote.status)}`}>
           <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-          {row.status}
+          {cleanLabel(quote.status)}
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-between bg-[#17191F] p-5 md:bg-transparent">
+      <div className="flex min-w-0 flex-1 flex-col justify-between p-5">
         <div>
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="min-w-0">
-              <h3 className="min-w-0 break-words text-[22px] font-bold leading-tight text-[#e1e2ec]">{generationTitle(row)}</h3>
-              <p className="mt-2 break-words text-[11px] font-semibold uppercase leading-5 tracking-[0.18em] text-[#f7bc5f]">{generationTypeLabel(row)} / Draft {row.variant}</p>
+              <h2 className="break-words text-[22px] font-bold leading-tight text-[#e1e2ec]">{quoteTitle(quote)}</h2>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f7bc5f]">{productLabel(quote)}</p>
             </div>
-            <span className="flex-shrink-0 text-[11px] leading-5 text-[#8c909f] sm:pt-1">{formatDate(row.createdAt)}</span>
+            <span className="flex-shrink-0 text-[11px] leading-5 text-[#8c909f]">{formatDate(quote.createdAt)}</span>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-4 border-t border-white/5 pb-2 pt-4 sm:grid-cols-2">
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Text</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{row.request.text || "n/a"}</span>
+          <dl className="mt-4 grid grid-cols-1 gap-4 border-t border-white/5 pt-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Customer</dt>
+              <dd className="mt-1 break-words text-[15px] font-medium text-[#e1e2ec]">{quote.customerName}</dd>
             </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Style</span>
-              <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{row.request.styleId ?? "n/a"}</span>
+            <div className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Contact</dt>
+              <dd className="mt-1 break-words text-[15px] font-medium text-[#e1e2ec]">{quote.customerPhone || quote.customerEmail}</dd>
             </div>
-            {quote && (
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Customer</span>
-                <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{quote.customerName}</span>
-              </div>
-            )}
-            {row.request.pendantFinish === "plain" ? (
-              <>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Finish</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">Plain</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Color</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainColor)}</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainMetal)}</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Karat</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainKarat)}</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Chain</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.plainChain)}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Colors</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{metalLabel(row.request.primaryMetal, row.request.secondaryMetal)}</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Size</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{sizeLabel(row.request.size)}</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Metal Type</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.metalType)}</span>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-[#8c909f]">Stone Type</span>
-                  <span className="break-words text-[15px] font-medium text-[#e1e2ec]">{materialSpecLabel(row.request.stoneType)}</span>
-                </div>
-              </>
-            )}
-          </div>
+            <div className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Design choices</dt>
+              <dd className="mt-1 text-[15px] font-medium text-[#e1e2ec]">{generationCount > 0 ? `${generationCount} available` : "Uploaded reference"}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Preview</dt>
+              <dd className="mt-1 text-[15px] font-medium text-[#e1e2ec]">{quote.previewMediaType === "model3d" ? "Image + 3D" : quote.previewMediaType === "video" ? "Image + Video" : "Image only"}</dd>
+            </div>
+          </dl>
         </div>
 
-        <div className="mt-6 grid items-start gap-3 sm:grid-cols-2">
-          {quote ? (
-            <div className="space-y-3">
-              <SendQuoteForm
-                quoteId={quote.id}
-                quotedPriceCents={quote.quotedPriceCents}
-                quoteNotes={quote.quoteNotes}
-                estimatedDelivery={quote.estimatedDelivery}
-                quoteMaterial={quote.quoteMaterial ?? quoteMaterialFromSelection(quote.metalType ?? row.request.metalType ?? quote.plainMetal ?? row.request.plainMetal)}
-                quoteMaterialKarat={quote.quoteMaterialKarat ?? quote.plainKarat ?? row.request.plainKarat}
-                quoteStoneType={quote.quoteStoneType ?? quoteStoneFromSelection(quote.stoneType ?? row.request.stoneType)}
-                imageUrl={row.imageUrl}
-                customerPhone={quote.customerPhone}
-                customerDetails={reviewDetails?.customerDetails ?? []}
-                designDetails={reviewDetails?.designDetails ?? []}
-              />
-              <MarkFulfilledButton quoteId={quote.id} disabled={quote.status !== "sent"} />
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">
-              No customer quote request for this draft yet.
-            </div>
-          )}
-          {canGenerateVideo ? (
-            <div className="flex min-w-0 flex-col gap-3">
-              <GenerateVideoButton
-                resultId={row.id}
-                attemptCount={videosForImage.length}
-                completedCount={completedVideos}
-                disabled={!row.imageUrl || row.status !== "succeeded"}
-                labelOverride="Quick video generate"
-              />
-              <View3dButton
-                resultId={row.id}
-                attemptCount={modelsForImage.length}
-                existingModelJobId={latestModel?.id ?? null}
-                existingModelStatus={latestModel?.status ?? null}
-                hasSucceededModel={Boolean(succeededModel)}
-                disabled={!row.imageUrl || row.status !== "succeeded"}
-              />
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">
-              Video generation is available for name pendants only.
-            </div>
-          )}
-        </div>
+        <Link
+          href={`/owner/quotes/${quote.id}/${openPreview ? "preview" : "prepare"}`}
+          className="mt-6 flex h-14 w-full items-center justify-center rounded-full bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-[0_0_25px_rgba(59,130,246,0.25)] transition hover:bg-blue-400"
+        >
+          {openPreview ? "View Quote Preview" : "Prepare Quote"}
+        </Link>
       </div>
     </article>
   );
@@ -422,8 +239,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
   const query = (params.q ?? "").trim().toLowerCase();
   const filter = (params.filter ?? "all").toLowerCase();
   const data = await getOwnerData(accountId);
-  const visibleGenerations = data.generations.filter(row => generationMatches(row, query, filter));
-
+  const visibleQuotes = data.quotes.filter(quote => quoteMatches(quote, query, filter));
   const currentQuery = params.q ? `&q=${encodeURIComponent(params.q)}` : "";
   const chipHref = (nextFilter: string) => `/owner?filter=${nextFilter}${currentQuery}`;
 
@@ -431,8 +247,8 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
     <OwnerFrame active="Quotes">
       <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-8 px-4 md:px-6">
         <section className="min-w-0">
-          <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Store Dashboard</h1>
-          <p className="mt-2 text-[15px] text-[#c2c6d6]">Review generations, send quotes, create videos, and manage saved 3D models</p>
+          <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Quotes</h1>
+          <p className="mt-2 text-[15px] text-[#c2c6d6]">Choose a customer design, prepare the quote, and add an optional preview asset.</p>
         </section>
 
         <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-4">
@@ -445,44 +261,25 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
         <section className="flex min-w-0 flex-col gap-4">
           <form className="relative flex h-12 w-full min-w-0 items-center rounded-xl border border-white/10 bg-black/45 px-4 shadow-inner transition focus-within:border-white/30">
             <span className="mr-3 flex-shrink-0 text-[#8c909f]" aria-hidden>search</span>
-            <input
-              name="q"
-              defaultValue={params.q ?? ""}
-              className="min-w-0 flex-1 border-none bg-transparent text-base text-[#e1e2ec] outline-none placeholder:text-white/30 focus:ring-0"
-              placeholder="Search customer, text, style, or 3D"
-            />
+            <input name="q" defaultValue={params.q ?? ""} className="min-w-0 flex-1 border-none bg-transparent text-base text-[#e1e2ec] outline-none placeholder:text-white/30" placeholder="Search customer, design, or style" />
             <input type="hidden" name="filter" value={filter} />
           </form>
           <div className="-mx-4 flex max-w-[100vw] gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <FilterChip href={chipHref("all")} active={filter === "all"}>All</FilterChip>
             <FilterChip href={chipHref("pending")} active={filter === "pending"}>Pending</FilterChip>
+            <FilterChip href={chipHref("priced")} active={filter === "priced"}>In progress</FilterChip>
             <FilterChip href={chipHref("sent")} active={filter === "sent"}>Sent</FilterChip>
             <FilterChip href={chipHref("fulfilled")} active={filter === "fulfilled"}>Fulfilled</FilterChip>
             <FilterChip href={chipHref("today")} active={filter === "today"}>Today</FilterChip>
             <FilterChip href={chipHref("3d")} active={filter === "3d"}>3D Models</FilterChip>
-            <FilterChip href={chipHref("name")} active={filter === "name"}>Name Pendants</FilterChip>
-            <FilterChip href={chipHref("picture")} active={filter === "picture"}>Picture Pendants</FilterChip>
           </div>
         </section>
 
-        <section className="grid min-w-0 gap-6">
-          <details open className="group min-w-0">
-            <summary className="flex min-w-0 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#272a31] p-4 transition hover:bg-[#363941]">
-              <div className="min-w-0">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-[#8c909f]">Generations</h2>
-                <p className="mt-1 text-sm text-[#c2c6d6]">Newest generated drafts first</p>
-              </div>
-              <span className="flex-shrink-0 text-[#f7bc5f] transition group-open:rotate-180" aria-hidden>v</span>
-            </summary>
-            <div className="mt-4 flex min-w-0 flex-col gap-5">
-              {visibleGenerations.map(row => <GenerationCard key={row.id} row={row} />)}
-              {visibleGenerations.length === 0 && (
-                <div className="rounded-xl border border-white/5 bg-[#17191F] p-6 text-center text-sm text-[#8c909f] sm:p-8">
-                  No generations match the current filters.
-                </div>
-              )}
-            </div>
-          </details>
+        <section className="grid min-w-0 gap-5">
+          {visibleQuotes.map(quote => <QuoteCard key={quote.id} quote={quote} openPreview={filter === "3d"} />)}
+          {visibleQuotes.length === 0 ? (
+            <div className="rounded-xl border border-white/5 bg-[#17191F] p-8 text-center text-sm text-[#8c909f]">No quotes match the current filters.</div>
+          ) : null}
         </section>
       </div>
     </OwnerFrame>

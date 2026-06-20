@@ -9,6 +9,7 @@ import { scheduleBackgroundTask } from '@/src/lib/platform/background';
 import { loadStyleOverride } from '@/src/lib/styles/style-overrides';
 import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
+import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
 
 export const maxDuration = 300;
 
@@ -25,6 +26,7 @@ const Body = z.object({
   size: z.enum(['2_3_inches', '3_4_5_inches', '4_5_7_inches', '7_10_inches']).optional(),
   metalType: z.enum(['gold', 'silver']).optional(),
   stoneType: z.enum(['natural_diamonds', 'lab_diamonds', 'moissanite']).optional(),
+  diamondQuality: z.enum(['vs', 'vvs']).optional(),
   plainColor: z.enum(['gold', 'silver', 'rose_gold']).optional(),
   plainMetal: z.enum(['gold_plated', 'silver', 'gold']).optional(),
   plainKarat: z.enum(['10k', '14k', '18k']).nullish(),
@@ -83,6 +85,7 @@ export async function POST(req: Request) {
         size: isPlain ? null : body.size ?? null,
         metalType: isPlain ? null : body.metalType ?? null,
         stoneType: isPlain ? null : body.stoneType ?? null,
+        diamondQuality: isPlain ? null : body.diamondQuality ?? null,
         plainColor: isPlain ? body.plainColor! : null,
         plainMetal: isPlain ? body.plainMetal! : null,
         plainKarat: isPlain ? body.plainKarat ?? null : null,
@@ -157,6 +160,9 @@ export async function POST(req: Request) {
           sourceType: 'Result',
           sourceId: updated.id,
           metadata: { requestId: request.id, variant: v.variant }
+        });
+        await ensureDraftQuoteForRequest(request.id).catch(error => {
+          console.error(`[quote draft ${request.id}] automatic creation failed:`, error);
         });
       } catch (err) {
         console.error(`[variant ${v.variant}] generation failed:`, err);
