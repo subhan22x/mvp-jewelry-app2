@@ -7,6 +7,7 @@ import { buildVvsStudioVideoPrompt } from "@/src/lib/vvs-studio/prompt-builder";
 import { generateVvsVideo } from "@/src/lib/vvs-studio/video-generator";
 import { toPublicImageUrl, assertPublicImageUrl } from "@/src/lib/video/public-url";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
 
 export const maxDuration = 300;
 
@@ -40,6 +41,7 @@ export async function POST(req: Request, { params }: Ctx) {
     if (!imageGen || imageGen.shootId !== shoot.id || imageGen.status !== "succeeded" || !imageGen.imageUrl) {
       return NextResponse.json({ error: "Source image generation is not ready." }, { status: 400 });
     }
+    await ensureUsageAvailable(accountId, "vvs_video_generated");
 
     const sourceImageUrl = toPublicImageUrl(req, imageGen.imageUrl);
     assertPublicImageUrl(sourceImageUrl);
@@ -86,7 +88,7 @@ export async function POST(req: Request, { params }: Ctx) {
           durationSeconds,
         });
         const completedAt = new Date();
-        await prisma.vvsStudioVideoGeneration.update({
+        const updated = await prisma.vvsStudioVideoGeneration.update({
           where: { id: videoGen.id },
           data: {
             status: "succeeded",
@@ -98,6 +100,13 @@ export async function POST(req: Request, { params }: Ctx) {
             durationMs: Math.max(0, completedAt.getTime() - startedMs),
             error: null,
           },
+        });
+        await consumeUsageCredit({
+          accountId,
+          kind: "vvs_video_generated",
+          sourceType: "VvsStudioVideoGeneration",
+          sourceId: updated.id,
+          metadata: { shootId: shoot.id }
         });
         await prisma.vvsStudioShoot.update({
           where: { id: shoot.id },
@@ -124,6 +133,8 @@ export async function POST(req: Request, { params }: Ctx) {
 
     return NextResponse.json({ videoGenerationId: videoGen.id }, { status: 201 });
   } catch (err) {
+    const usage = usageErrorResponse(err);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     const message = errorMessage(err);
     const status = message.includes("APP_BASE_URL") || message.includes("public") ? 500 : 400;
     return NextResponse.json({ error: message }, { status });

@@ -149,9 +149,10 @@ const buildPendantColumns = (styles: readonly PendantStyle[], perColumn = 2) =>
 type NameBuilderProps = {
   mode?: PendantFinishKey;
   backHref?: string;
+  accountSlug?: string;
 };
 
-export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }: NameBuilderProps) {
+export default function NameBuilder({ mode = "icedout", backHref = "/pendants", accountSlug }: NameBuilderProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(0);
   const [lines, setLines] = useState<string[]>([""]);
@@ -188,6 +189,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
   const [leadContact, setLeadContact] = useState<LeadContact | null>(null);
+  const [pendingGenerateAfterLead, setPendingGenerateAfterLead] = useState(false);
   const [quoteStatus, setQuoteStatus] = useState<"idle" | "submitting" | "submitted">("idle");
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
@@ -344,6 +346,11 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
 
   const handleAcceptDesign = async () => {
     if (isGenerating) return;
+    if (accountSlug && !leadContact) {
+      setPendingGenerateAfterLead(true);
+      setShowLeadCapture(true);
+      return;
+    }
     const trimmedLines = lines.map(entry => entry.trim()).filter(Boolean);
     if (!trimmedLines.length) return;
 
@@ -352,6 +359,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
 
     const payload = isPlain ? {
       userId: 'demo',
+      accountSlug,
       pendantFinish,
       styleId: plainStyleId,
       text: trimmedLines.join('\n'),
@@ -361,6 +369,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
       plainChain
     } : {
       userId: 'demo',
+      accountSlug,
       pendantFinish,
       styleId,
       text: trimmedLines.join('\n'),
@@ -695,6 +704,13 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
       if (revisionPollTimeoutRef.current) clearTimeout(revisionPollTimeoutRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!pendingGenerateAfterLead || !leadContact) return;
+    setPendingGenerateAfterLead(false);
+    void handleAcceptDesign();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingGenerateAfterLead, leadContact]);
 
   return (
     <>
@@ -1681,6 +1697,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants" }
     {showLeadCapture && (
       <LeadCaptureModal
         requestId={capturedRequestId}
+        accountSlug={accountSlug}
         onSubmitted={(lead) => {
           setLeadContact(lead);
           setShowLeadCapture(false);

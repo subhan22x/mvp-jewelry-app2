@@ -4,6 +4,8 @@ import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import SendQuoteForm from "./SendQuoteForm";
 import GenerateVideoButton from "./GenerateVideoButton";
 import OwnerFrame from "./OwnerFrame";
+import MarkFulfilledButton from "./MarkFulfilledButton";
+import View3dButton from "./View3dButton";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +93,7 @@ function statusClass(status: string) {
 function generationMatches(row: GenerationRow, query: string, filter: string) {
   const quote = row.QuoteRequests[0] ?? null;
   const request = row.request;
+  const hasSucceededModel = request.Models3d.some(model => model.sourceResultId === row.id && model.status === "succeeded");
   const haystack = [
     row.id,
     row.status,
@@ -108,6 +111,7 @@ function generationMatches(row: GenerationRow, query: string, filter: string) {
     request.plainChain,
     request.productType,
     request.uploadFileName,
+    hasSucceededModel ? "3d model generated view 3d" : "",
     quote?.customerName,
     quote?.customerEmail,
     quote?.status
@@ -116,18 +120,21 @@ function generationMatches(row: GenerationRow, query: string, filter: string) {
   if (query && !haystack.includes(query)) return false;
   if (filter === "pending" && quote?.status !== "pending") return false;
   if (filter === "sent" && quote?.status !== "sent") return false;
+  if (filter === "fulfilled" && quote?.status !== "fulfilled") return false;
   if (filter === "today" && !isToday(row.createdAt)) return false;
   if (filter === "name" && request.productType !== "name") return false;
   if (filter === "picture" && request.productType !== "picture") return false;
+  if (filter === "3d" && !hasSucceededModel) return false;
   return true;
 }
 
 async function getOwnerData(accountId: string) {
-  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, generations] = await Promise.all([
+  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, fulfilledQuotes, generations] = await Promise.all([
     prisma.quoteRequest.count({ where: { accountId } }),
     prisma.result.count({ where: { accountId } }),
     prisma.quoteRequest.count({ where: { accountId, status: "pending" } }),
     prisma.quoteRequest.count({ where: { accountId, status: "sent" } }),
+    prisma.quoteRequest.count({ where: { accountId, status: "fulfilled" } }),
     prisma.result.findMany({
       where: { accountId },
       orderBy: [{ createdAt: "desc" }],
@@ -161,6 +168,16 @@ async function getOwnerData(accountId: string) {
                 status: true
               },
               orderBy: { createdAt: "desc" }
+            },
+            Models3d: {
+              select: {
+                id: true,
+                sourceResultId: true,
+                status: true,
+                modelUrl: true,
+                createdAt: true
+              },
+              orderBy: { createdAt: "desc" }
             }
           }
         }
@@ -169,7 +186,7 @@ async function getOwnerData(accountId: string) {
   ]);
 
   return {
-    metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes },
+    metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes, fulfilledQuotes },
     generations
   };
 }
@@ -244,6 +261,10 @@ function GenerationCard({ row }: { row: GenerationRow }) {
   const quote = row.QuoteRequests[0] ?? null;
   const videosForImage = row.request.Videos.filter(video => video.sourceResultId === row.id);
   const completedVideos = videosForImage.filter(video => video.status === "succeeded").length;
+  const modelsForImage = row.request.Models3d.filter(model => model.sourceResultId === row.id);
+  const succeededModel = modelsForImage.find(model => model.status === "succeeded" && model.modelUrl);
+  const activeModel = modelsForImage.find(model => model.status === "pending");
+  const latestModel = succeededModel ?? activeModel ?? modelsForImage[0] ?? null;
   const canGenerateVideo = row.request.productType === "name";
   const reviewDetails = quote ? quoteReviewDetails(row, quote) : null;
 
@@ -336,32 +357,45 @@ function GenerationCard({ row }: { row: GenerationRow }) {
 
         <div className="mt-6 grid items-start gap-3 sm:grid-cols-2">
           {quote ? (
-            <SendQuoteForm
-              quoteId={quote.id}
-              quotedPriceCents={quote.quotedPriceCents}
-              quoteNotes={quote.quoteNotes}
-              estimatedDelivery={quote.estimatedDelivery}
-              quoteMaterial={quote.quoteMaterial ?? quoteMaterialFromSelection(quote.metalType ?? row.request.metalType ?? quote.plainMetal ?? row.request.plainMetal)}
-              quoteMaterialKarat={quote.quoteMaterialKarat ?? quote.plainKarat ?? row.request.plainKarat}
-              quoteStoneType={quote.quoteStoneType ?? quoteStoneFromSelection(quote.stoneType ?? row.request.stoneType)}
-              imageUrl={row.imageUrl}
-              customerPhone={quote.customerPhone}
-              customerDetails={reviewDetails?.customerDetails ?? []}
-              designDetails={reviewDetails?.designDetails ?? []}
-            />
+            <div className="space-y-3">
+              <SendQuoteForm
+                quoteId={quote.id}
+                quotedPriceCents={quote.quotedPriceCents}
+                quoteNotes={quote.quoteNotes}
+                estimatedDelivery={quote.estimatedDelivery}
+                quoteMaterial={quote.quoteMaterial ?? quoteMaterialFromSelection(quote.metalType ?? row.request.metalType ?? quote.plainMetal ?? row.request.plainMetal)}
+                quoteMaterialKarat={quote.quoteMaterialKarat ?? quote.plainKarat ?? row.request.plainKarat}
+                quoteStoneType={quote.quoteStoneType ?? quoteStoneFromSelection(quote.stoneType ?? row.request.stoneType)}
+                imageUrl={row.imageUrl}
+                customerPhone={quote.customerPhone}
+                customerDetails={reviewDetails?.customerDetails ?? []}
+                designDetails={reviewDetails?.designDetails ?? []}
+              />
+              <MarkFulfilledButton quoteId={quote.id} disabled={quote.status !== "sent"} />
+            </div>
           ) : (
             <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">
               No customer quote request for this draft yet.
             </div>
           )}
           {canGenerateVideo ? (
-            <GenerateVideoButton
-              resultId={row.id}
-              attemptCount={videosForImage.length}
-              completedCount={completedVideos}
-              disabled={!row.imageUrl || row.status !== "succeeded"}
-              labelOverride="Quick video generate"
-            />
+            <div className="flex min-w-0 flex-col gap-3">
+              <GenerateVideoButton
+                resultId={row.id}
+                attemptCount={videosForImage.length}
+                completedCount={completedVideos}
+                disabled={!row.imageUrl || row.status !== "succeeded"}
+                labelOverride="Quick video generate"
+              />
+              <View3dButton
+                resultId={row.id}
+                attemptCount={modelsForImage.length}
+                existingModelJobId={latestModel?.id ?? null}
+                existingModelStatus={latestModel?.status ?? null}
+                hasSucceededModel={Boolean(succeededModel)}
+                disabled={!row.imageUrl || row.status !== "succeeded"}
+              />
+            </div>
           ) : (
             <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-center text-xs text-[#8c909f]">
               Video generation is available for name pendants only.
@@ -389,14 +423,15 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
       <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-8 px-4 md:px-6">
         <section className="min-w-0">
           <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Store Dashboard</h1>
-          <p className="mt-2 text-[15px] text-[#c2c6d6]">Review generations, send quotes, and create quick videos</p>
+          <p className="mt-2 text-[15px] text-[#c2c6d6]">Review generations, send quotes, create videos, and manage saved 3D models</p>
         </section>
 
-        <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-4">
+        <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-5">
           <MetricCard label="Quote Requests" value={data.metrics.quoteCount} />
           <MetricCard label="Total Generations" value={data.metrics.totalGenerations} />
           <MetricCard label="Pending Quotes" value={data.metrics.pendingQuotes} accent />
           <MetricCard label="Sent Quotes" value={data.metrics.sentQuotes} />
+          <MetricCard label="Fulfilled" value={data.metrics.fulfilledQuotes} />
         </section>
 
         <section className="flex min-w-0 flex-col gap-4">
@@ -406,7 +441,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
               name="q"
               defaultValue={params.q ?? ""}
               className="min-w-0 flex-1 border-none bg-transparent text-base text-[#e1e2ec] outline-none placeholder:text-white/30 focus:ring-0"
-              placeholder="Search customer, text, or style"
+              placeholder="Search customer, text, style, or 3D"
             />
             <input type="hidden" name="filter" value={filter} />
           </form>
@@ -414,7 +449,9 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
             <FilterChip href={chipHref("all")} active={filter === "all"}>All</FilterChip>
             <FilterChip href={chipHref("pending")} active={filter === "pending"}>Pending</FilterChip>
             <FilterChip href={chipHref("sent")} active={filter === "sent"}>Sent</FilterChip>
+            <FilterChip href={chipHref("fulfilled")} active={filter === "fulfilled"}>Fulfilled</FilterChip>
             <FilterChip href={chipHref("today")} active={filter === "today"}>Today</FilterChip>
+            <FilterChip href={chipHref("3d")} active={filter === "3d"}>3D Models</FilterChip>
             <FilterChip href={chipHref("name")} active={filter === "name"}>Name Pendants</FilterChip>
             <FilterChip href={chipHref("picture")} active={filter === "picture"}>Picture Pendants</FilterChip>
           </div>

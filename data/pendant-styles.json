@@ -19,7 +19,8 @@
   {
     "id": "gatti",
     "label": "Hasan",
-    "src": "/pendants/hasan-gatti.png"
+    "src": "/pendants/hasan-gatti.png",
+    "available": false
   },
   {
     "id": "jaida",

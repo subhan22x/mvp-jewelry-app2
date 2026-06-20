@@ -2,6 +2,7 @@ import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { processNextVvsStudioJob, startVvsVideoPipeline } from "@/src/lib/vvs-studio/pipeline";
+import { usageErrorResponse } from "@/src/lib/usage";
 
 export const maxDuration = 60;
 
@@ -22,6 +23,8 @@ export async function POST(_req: Request, { params }: Ctx) {
 
     return NextResponse.json({ jobId: job.id, status: job.status, currentStage: job.currentStage }, { status: 201 });
   } catch (err) {
+    const usage = usageErrorResponse(err);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to start VVS video pipeline." }, { status: 400 });
   }
 }

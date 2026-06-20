@@ -38,6 +38,7 @@ model Account {
   Results              Result[]
   Leads                Lead[]
   Videos               VideoGeneration[]
+  Models3d             Model3dGeneration[]
   QuoteRequests        QuoteRequest[]
   AppSettings          AppSetting[]
   StoreProfile         StoreProfile?
@@ -50,6 +51,9 @@ model Account {
   VvsStudioImageGenerations VvsStudioImageGeneration[]
   VvsStudioVideoGenerations VvsStudioVideoGeneration[]
   VvsStudioJobs             VvsStudioJob[]
+  UsagePlans                UsagePlan[]
+  UsageBuckets              AccountUsageBucket[]
+  UsageEvents               UsageEvent[]
 }
 
 model AccountMembership {
@@ -93,6 +97,7 @@ model Request {
   Results        Result[]
   ResultRevisions ResultRevision[]
   Videos         VideoGeneration[]
+  Models3d       Model3dGeneration[]
   QuoteRequests  QuoteRequest[]
 
   @@index([accountId, createdAt])
@@ -182,6 +187,31 @@ model VideoGeneration {
   @@index([accountId, status])
 }
 
+model Model3dGeneration {
+  id             String    @id @default(cuid())
+  accountId      String    @default("demo-account")
+  account        Account   @relation(fields: [accountId], references: [id])
+  requestId      String
+  request        Request   @relation(fields: [requestId], references: [id])
+  sourceResultId String?
+  sourceImageUrl String
+  prompt         String
+  format         String    @default("glb") // glb | usdz | obj | fbx | stl
+  modelUrl       String?
+  remoteModelUrl String?
+  modelId        String?
+  providerJobId  String?
+  status         String    @default("pending") // pending | succeeded | failed
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  durationMs     Int?
+  createdAt      DateTime  @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
 model QuoteRequest {
   id               String           @id @default(cuid())
   accountId        String           @default("demo-account")
@@ -214,7 +244,7 @@ model QuoteRequest {
   customerName     String
   customerPhone    String
   customerEmail    String
-  status           String           @default("pending") // pending | priced | sent | closed
+  status           String           @default("pending") // pending | priced | sent | fulfilled | closed
   quotedPriceCents Int?
   quoteNotes       String?
   estimatedDelivery String?
@@ -222,10 +252,60 @@ model QuoteRequest {
   quoteMaterialKarat String?
   quoteStoneType   String?
   referenceImageUrlsJson String?
+  publicToken      String?          @unique
+  publicTokenCreatedAt DateTime?
   createdAt        DateTime         @default(now())
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
+}
+
+model UsagePlan {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  planKey   String   @default("starter")
+  limitsJson String
+  startsAt  DateTime @default(now())
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId, startsAt])
+}
+
+model AccountUsageBucket {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  kind        String
+  included    Int
+  used        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([accountId, periodStart, kind])
+  @@index([accountId, periodStart])
+  @@index([accountId, kind])
+}
+
+model UsageEvent {
+  id             String   @id @default(cuid())
+  accountId      String
+  account        Account  @relation(fields: [accountId], references: [id])
+  kind           String
+  quantity       Int      @default(1)
+  sourceType     String
+  sourceId       String
+  idempotencyKey String   @unique
+  metadataJson   String?
+  createdAt      DateTime @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, kind])
+  @@index([sourceType, sourceId])
 }
 
 model AppSetting {

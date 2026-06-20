@@ -14,6 +14,7 @@ These documents should match the running application:
 - [`vercel-deployment.md`](vercel-deployment.md): Vercel environment variables, R2 CORS, auth URLs, preview QA, and remaining serverless hardening.
 - [`auth-and-system-handoff.md`](auth-and-system-handoff.md): detailed implementation handoff for Supabase Auth, development owner provisioning, current application flows, OAuth planning, and known gaps.
 - [`store-owner-profile.md`](store-owner-profile.md): hidden-for-MVP public storefront/profile data, onboarding, profile editor, collections, and reviews.
+- [`multi-tenancy-and-usage.md`](multi-tenancy-and-usage.md): public QR design URLs, tenant attribution, and subscription usage metering.
 
 ## Architecture Notes
 

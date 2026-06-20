@@ -5,6 +5,7 @@ import { assertPublicImageUrl, toPublicImageUrl } from "@/src/lib/video/public-u
 import { saveRemoteVideoLocally } from "@/src/lib/video/storage";
 import { buildJewelryVideoPrompt, generateSeedanceVideo } from "@/lib/video/wavespeed";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
 
 export const maxDuration = 300;
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     if ((request.productType ?? "name") !== "name") {
       return NextResponse.json({ error: "Video generation is currently available for name pendant generations only." }, { status: 400 });
     }
+    await ensureUsageAvailable(request.accountId, "design_video_generated");
 
     const requestedResult = body.sourceResultId
       ? request.Results.find(result => result.id === body.sourceResultId && result.status === "succeeded" && result.imageUrl)
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
         const result = await generateSeedanceVideo({ imageUrl: sourceImageUrl, prompt });
         const localVideoUrl = await saveRemoteVideoLocally(result.videoUrl, video.id);
         const completedAt = new Date();
-        await prisma.videoGeneration.update({
+        const updated = await prisma.videoGeneration.update({
           where: { id: video.id },
           data: {
             videoUrl: localVideoUrl,
@@ -87,6 +89,13 @@ export async function POST(req: Request) {
             completedAt,
             durationMs: Math.max(0, completedAt.getTime() - startedMs)
           }
+        });
+        await consumeUsageCredit({
+          accountId: request.accountId,
+          kind: "design_video_generated",
+          sourceType: "VideoGeneration",
+          sourceId: updated.id,
+          metadata: { requestId: request.id }
         });
       } catch (err) {
         console.error(`[video ${video.id}] generation failed:`, err);
@@ -105,6 +114,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ videoId: video.id }, { status: 201 });
   } catch (err) {
+    const usage = usageErrorResponse(err);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     const message = getGenerationErrorMessage(err);
     const status = message.includes("configured") || message.includes("APP_BASE_URL") ? 500 : 400;
     return NextResponse.json({ error: message }, { status });

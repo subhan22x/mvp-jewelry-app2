@@ -19,6 +19,7 @@ type ExtraLink = {
 
 type ProfileEditorProps = {
   publicUrl: string;
+  publicDesignUrl: string;
   displayName: string;
   profileImageUrl: string | null;
   instagramHandle: string;
@@ -51,6 +52,7 @@ function emptyLink(index: number, links: ExtraLink[]) {
 
 export default function ProfileEditor({
   publicUrl,
+  publicDesignUrl,
   displayName,
   profileImageUrl,
   instagramHandle,
@@ -169,7 +171,7 @@ export default function ProfileEditor({
 
   return (
     <section className="space-y-4">
-      <PublicLinkCard publicUrl={publicUrl} />
+      <PublicLinkCard publicUrl={publicUrl} publicDesignUrl={publicDesignUrl} />
 
       <div className="grid rounded-full bg-[#101114] p-1 text-sm font-semibold text-[#8c909f] ring-1 ring-white/10 lg:hidden">
         <div className="grid grid-cols-2">
@@ -291,28 +293,41 @@ function faviconUrl(value: string) {
   return `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url.origin)}`;
 }
 
-function PublicLinkCard({ publicUrl }: { publicUrl: string }) {
-  async function copyLink() {
-    await navigator.clipboard?.writeText(window.location.origin + publicUrl);
+function PublicLinkCard({ publicUrl, publicDesignUrl }: { publicUrl: string; publicDesignUrl: string }) {
+  async function copyLink(path: string) {
+    await navigator.clipboard?.writeText(window.location.origin + path);
   }
 
-  async function shareLink() {
-    const url = window.location.origin + publicUrl;
+  async function shareLink(path: string, title: string) {
+    const url = window.location.origin + path;
     if (navigator.share) {
-      await navigator.share({ title: "Public profile", url });
+      await navigator.share({ title, url });
       return;
     }
     await navigator.clipboard?.writeText(url);
   }
 
   return (
-    <div className="rounded-2xl border border-[#dec47e]/20 bg-[#17191F] p-5 shadow-2xl shadow-black/20">
-      <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#8c909f]">Your public profile link</p>
-      <p className="mt-3 break-all text-xl font-black text-[#f7bc5f]">{publicUrl}</p>
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <button type="button" onClick={copyLink} className="rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-[#e1e2ec] hover:bg-white/10">Copy</button>
-        <button type="button" onClick={shareLink} className="rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-[#e1e2ec] hover:bg-white/10">Share</button>
-        <a href={publicUrl} className="rounded-full border border-white/10 px-3 py-2 text-center text-sm font-semibold text-[#e1e2ec] hover:bg-white/10">View</a>
+    <div className="grid gap-4 rounded-2xl border border-[#dec47e]/20 bg-[#17191F] p-5 shadow-2xl shadow-black/20 md:grid-cols-2">
+      <div className="rounded-xl border border-white/10 bg-[#101114] p-4">
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#8c909f]">Public profile link</p>
+        <p className="mt-3 break-all text-lg font-black text-[#f7bc5f]">{publicUrl}</p>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => copyLink(publicUrl)} className="rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-[#e1e2ec] hover:bg-white/10">Copy</button>
+          <button type="button" onClick={() => shareLink(publicUrl, "Public profile")} className="rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-[#e1e2ec] hover:bg-white/10">Share</button>
+          <a href={publicUrl} className="rounded-full border border-white/10 px-3 py-2 text-center text-sm font-semibold text-[#e1e2ec] hover:bg-white/10">View</a>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-[#f7bc5f]/30 bg-[#211914] p-4">
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#f7bc5f]">QR design link</p>
+        <p className="mt-3 break-all text-lg font-black text-[#ffd88a]">{publicDesignUrl}</p>
+        <p className="mt-2 text-xs leading-5 text-[#c2c6d6]">Use this URL for QR codes. Customers can design without signing in and usage stays tied to this account.</p>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => copyLink(publicDesignUrl)} className="rounded-full border border-[#f7bc5f]/30 px-3 py-2 text-sm font-semibold text-[#ffe5a8] hover:bg-[#f7bc5f]/10">Copy</button>
+          <button type="button" onClick={() => shareLink(publicDesignUrl, "Design custom jewelry")} className="rounded-full border border-[#f7bc5f]/30 px-3 py-2 text-sm font-semibold text-[#ffe5a8] hover:bg-[#f7bc5f]/10">Share</button>
+          <a href={publicDesignUrl} className="rounded-full border border-[#f7bc5f]/30 px-3 py-2 text-center text-sm font-semibold text-[#ffe5a8] hover:bg-[#f7bc5f]/10">Open</a>
+        </div>
       </div>
     </div>
   );

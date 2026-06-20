@@ -71,6 +71,7 @@ function buildQuoteMessage({
   materialKarat,
   stoneType,
   notes,
+  quoteUrl,
 }: {
   price: string;
   estimatedDelivery: string;
@@ -78,21 +79,42 @@ function buildQuoteMessage({
   materialKarat: string;
   stoneType: string;
   notes: string;
+  quoteUrl?: string | null;
 }) {
+  const parsedPrice = Number.parseFloat(price);
   const materialLabel = material
     ? `${material === "gold" && materialKarat ? `${materialKarat.toUpperCase()} ` : ""}${optionLabel(MATERIAL_OPTIONS, material)}`
     : "";
   const lines = [
     "Your custom jewelry quote is ready.",
     "",
-    `Price: $${Number.parseFloat(price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    Number.isFinite(parsedPrice) ? `Price: $${parsedPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "",
     estimatedDelivery ? `Estimated delivery: ${estimatedDelivery}` : "",
     materialLabel ? `Material: ${materialLabel}` : "",
     stoneType ? `Stone: ${optionLabel(STONE_OPTIONS, stoneType)}` : "",
     notes.trim() ? `Message: ${notes.trim()}` : "",
+    quoteUrl ? `Open your quote: ${quoteUrl}` : "",
   ].filter(Boolean);
 
   return lines.join("\n");
+}
+
+function CopyIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M8 8.5A2.5 2.5 0 0 1 10.5 6H17a2.5 2.5 0 0 1 2.5 2.5V15a2.5 2.5 0 0 1-2.5 2.5h-6.5A2.5 2.5 0 0 1 8 15V8.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M6 14.5A2.5 2.5 0 0 1 4.5 12V5.5A2.5 2.5 0 0 1 7 3h6.5A2.5 2.5 0 0 1 16 4.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 export default function SendQuoteForm({
@@ -121,8 +143,13 @@ export default function SendQuoteForm({
   const [error, setError] = useState<string | null>(null);
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [publicQuoteUrl, setPublicQuoteUrl] = useState<string | null>(null);
 
-  function quoteMessage() {
+  const messageBody = quoteMessage(publicQuoteUrl);
+  const encodedMessageBody = encodeURIComponent(messageBody);
+  const smsHref = customerPhone ? `sms:${customerPhone}?&body=${encodedMessageBody}` : `sms:?&body=${encodedMessageBody}`;
+
+  function quoteMessage(quoteUrl = publicQuoteUrl) {
     return buildQuoteMessage({
       price,
       estimatedDelivery: deliveryOption === "custom" ? customDelivery.trim() : deliveryOption,
@@ -130,12 +157,27 @@ export default function SendQuoteForm({
       materialKarat,
       stoneType,
       notes,
+      quoteUrl,
     });
+  }
+
+  async function copyPhone() {
+    if (!customerPhone) {
+      setShareFeedback("No customer phone number is available.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(customerPhone);
+      setShareFeedback("Phone number copied.");
+    } catch {
+      setShareFeedback("Unable to copy the phone number automatically.");
+    }
   }
 
   async function copyMessage() {
     try {
-      await navigator.clipboard.writeText(quoteMessage());
+      await navigator.clipboard.writeText(messageBody);
       setShareFeedback("Message copied.");
     } catch {
       setShareFeedback("Unable to copy automatically. Use Share instead.");
@@ -151,7 +193,7 @@ export default function SendQuoteForm({
     try {
       await navigator.share({
         title: "Customer quote",
-        text: quoteMessage(),
+        text: messageBody,
       });
       setShareFeedback("Share sheet opened.");
     } catch (err) {
@@ -188,8 +230,16 @@ export default function SendQuoteForm({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error ?? "Unable to send quote.");
+      const nextPublicQuoteUrl = typeof data?.publicQuoteUrl === "string" ? data.publicQuoteUrl : null;
+      setPublicQuoteUrl(nextPublicQuoteUrl);
+      const nextMessageBody = quoteMessage(nextPublicQuoteUrl);
+      try {
+        await navigator.clipboard.writeText(nextMessageBody);
+        setShareFeedback(nextPublicQuoteUrl ? "Quote link message copied." : "Message copied.");
+      } catch {
+        setShareFeedback("Quote saved. Copy or message the customer below.");
+      }
       setOpen(false);
-      setShareFeedback(null);
       setShareOpen(true);
       router.refresh();
     } catch (err) {
@@ -206,7 +256,7 @@ export default function SendQuoteForm({
         onClick={() => setOpen(true)}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-[0_0_25px_rgba(59,130,246,0.35)] transition hover:bg-blue-400"
       >
-        Send Quote
+        Prepare Quote
       </button>
 
       {open && (
@@ -223,8 +273,8 @@ export default function SendQuoteForm({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#D1B873]">Quote</p>
-                <h2 className="mt-2 text-2xl font-bold text-white">Send to Customer</h2>
-                <p className="mt-1 text-sm text-[#c2c6d6]">Save the price and mark this quote as sent.</p>
+                <h2 className="mt-2 text-2xl font-bold text-white">Prepare customer message</h2>
+                <p className="mt-1 text-sm text-[#c2c6d6]">Save the quote details and generate a customer link.</p>
               </div>
               <button
                 type="button"
@@ -358,7 +408,7 @@ export default function SendQuoteForm({
               disabled={submitting}
               className="mt-5 w-full rounded-2xl bg-[#3B82F6] px-5 py-3 text-base font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-60"
             >
-              {submitting ? "saving..." : "Send to Customer"}
+              {submitting ? "saving..." : "Create Quote Link"}
             </button>
           </form>
         </div>
@@ -371,13 +421,13 @@ export default function SendQuoteForm({
           aria-label="Share quote"
           className="fixed inset-0 z-[80] flex items-end justify-center bg-black/75 p-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="w-full max-w-md rounded-3xl border border-[#D1B873]/25 bg-[#17191F] p-5 text-[#e1e2ec] shadow-[0_28px_80px_rgba(0,0,0,0.65)]">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#D1B873]/25 bg-[#17191F] p-5 text-[#e1e2ec] shadow-[0_28px_80px_rgba(0,0,0,0.65)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#D1B873]">Quote saved</p>
                 <h2 className="mt-2 text-2xl font-bold text-white">Share with customer</h2>
                 <p className="mt-1 text-sm text-[#c2c6d6]">
-                  Send the prepared quote message to {customerPhone || "the customer"}.
+                  Send the customer this link so they can view the image, quote details, and 3D preview if available.
                 </p>
               </div>
               <button
@@ -389,9 +439,52 @@ export default function SendQuoteForm({
               </button>
             </div>
 
-            <pre className="mt-4 max-h-52 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/35 p-4 font-sans text-sm leading-6 text-white/80">
-              {quoteMessage()}
-            </pre>
+            <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0f1015] shadow-inner shadow-black/30">
+              <div className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-black/25 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8c909f]">To</p>
+                  <p className="mt-1 break-words text-base font-semibold text-white">{customerPhone || "No phone number"}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={copyPhone}
+                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#D1B873]/25 bg-[#D1B873]/10 px-3 text-xs font-semibold text-[#f3d98f] transition hover:bg-[#D1B873]/20 disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={!customerPhone}
+                >
+                  <CopyIcon className="h-4 w-4" />
+                  Copy Phone Number
+                </button>
+              </div>
+              <div className="grid gap-3 px-4 py-4">
+                <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap font-sans text-sm leading-6 text-white/80">
+                  {messageBody}
+                </pre>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={copyMessage}
+                    className="inline-flex h-9 items-center gap-2 rounded-full border border-[#D1B873]/25 bg-[#D1B873]/10 px-3 text-xs font-semibold text-[#f3d98f] transition hover:bg-[#D1B873]/20"
+                  >
+                    <CopyIcon className="h-4 w-4" />
+                    Copy Message
+                  </button>
+                </div>
+                {publicQuoteUrl ? (
+                  <a
+                    href={publicQuoteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-all rounded-[1.25rem] border border-[#D1B873]/25 bg-[#D1B873]/10 px-4 py-3 text-sm font-semibold leading-6 text-[#f3d98f] hover:bg-[#D1B873]/15"
+                  >
+                    {publicQuoteUrl}
+                  </a>
+                ) : (
+                  <div className="rounded-[1.25rem] border border-white/10 bg-black/25 px-4 py-5 text-center text-sm text-[#8c909f]">
+                    Quote link was not returned. Copy the message above or try saving the quote again.
+                  </div>
+                )}
+              </div>
+            </div>
 
             {shareFeedback && (
               <div className="mt-3 rounded-2xl border border-[#D1B873]/25 bg-[#D1B873]/10 px-4 py-3 text-sm text-[#f3d98f]">
@@ -399,20 +492,19 @@ export default function SendQuoteForm({
               </div>
             )}
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={copyMessage}
-                className="rounded-2xl border border-[#D1B873]/30 bg-black/35 px-5 py-3 text-sm font-semibold text-[#f3d98f] transition hover:bg-black/55"
+            <div className="mt-4 grid gap-3">
+              <a
+                href={smsHref}
+                className="rounded-2xl bg-[#D1B873] px-5 py-3 text-center text-sm font-semibold text-[#17120a] transition hover:bg-[#e6cb82]"
               >
-                Copy Message
-              </button>
+                Open Message
+              </a>
               <button
                 type="button"
                 onClick={shareMessage}
-                className="rounded-2xl bg-[#D1B873] px-5 py-3 text-sm font-semibold text-[#17120a] transition hover:bg-[#e6cb82]"
+                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10"
               >
-                Share
+                More Share Options
               </button>
             </div>
           </div>

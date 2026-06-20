@@ -123,7 +123,7 @@ export default function OnboardingPage() {
     setAuthSubmitting(provider);
     setAuthError(null);
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=/onboarding`;
+    const redirectTo = `${window.location.origin}/auth/confirm?next=/onboarding`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo }
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
     setAuthSubmitting("email");
     setAuthError(null);
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=/onboarding`;
+    const redirectTo = `${window.location.origin}/auth/confirm?next=/onboarding`;
     const normalizedEmail = authEmail.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
@@ -148,6 +148,25 @@ export default function OnboardingPage() {
     });
     if (error || !data.user) {
       setAuthError(error?.message ?? "Unable to create your login.");
+      setAuthSubmitting(null);
+      return;
+    }
+    if (!data.session && data.user.identities?.length === 0) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: authPassword
+      });
+      if (signInError || !signInData.session) {
+        setAuthError("This email already has a login. Use the password you created earlier, or log in instead.");
+        setAuthSubmitting(null);
+        return;
+      }
+      const sessionResponse = await fetch("/api/auth/session");
+      if (sessionResponse.ok) {
+        router.replace("/owner");
+        return;
+      }
+      setAuthUserEmail(signInData.user.email ?? normalizedEmail);
       setAuthSubmitting(null);
       return;
     }

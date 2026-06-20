@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/server/db/client';
 import { getDefaultAccountId } from '@/src/lib/account';
+import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
 
 const Body = z.object({
   requestId: z.string().optional(),
+  accountSlug: z.string().min(1).optional(),
   name:      z.string().min(1).max(100),
   phone:     z.string().min(4).max(30),
   email:     z.string().email(),
@@ -15,7 +17,7 @@ export async function POST(req: Request) {
     const body = Body.parse(await req.json());
     const accountId = body.requestId
       ? (await prisma.request.findUnique({ where: { id: body.requestId }, select: { accountId: true } }))?.accountId ?? getDefaultAccountId()
-      : getDefaultAccountId();
+      : await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
     const lead = await prisma.lead.create({ data: { ...body, accountId } });
     return NextResponse.json({
       leadId: lead.id,

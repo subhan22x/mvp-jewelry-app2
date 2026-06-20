@@ -4,15 +4,18 @@
 
 Profile, collections, and reviews are preserved for the product roadmap but hidden from normal MVP navigation.
 
-- `/s/:slug` validates the active/published store and redirects to `/name?account=:slug`.
+- `/s/:slug` validates the active/published store and redirects to the public design entrypoint.
+- `/s/:slug/design` is the QR-code design URL for anonymous customers.
 - `/s/:slug/review` and `/s/:slug/quote` remain accessible by direct URL.
 - `/owner/profile`, `/owner/collections`, and `/owner/reviews` remain accessible by direct URL for internal/admin work.
 - Onboarding and APIs still collect profile, product, collection, and review data so future storefront work does not lose context.
 
 ## Decisions
 
-- Reserved public profile URL: `/s/:slug`. During the MVP this route redirects to the design flow.
+- Reserved public profile URL: `/s/:slug`. During the MVP this route redirects to the tenant-aware public design flow.
+- Reserved public QR design URL: `/s/:slug/design`.
 - Store owners edit their public profile at `/owner/profile`.
+- `/profile` redirects signed-in owners to `/owner/profile`; `/profile/:slug` redirects to `/s/:slug`.
 - Store owners provide one public phone number, which is also used for WhatsApp message links.
 - Product upload during onboarding is optional.
 - Email/password account creation happens at the final onboarding step.
@@ -137,6 +140,8 @@ The owner profile editor also includes best-effort verification helpers:
 - Website and extra link URL checks call `/api/owner/link`
 
 The link verifier is intentionally permissive: any real HTTP response from the domain counts as reachable, including Cloudflare/Shopify protection responses. It only fails malformed, local/internal, DNS, timeout, or no-response cases.
+
+The owner profile editor shows both the public storefront URL and the QR design URL with copy/share/open controls. The QR design URL should be used on printed QR codes so anonymous customer generations and quote requests are attributed to the correct account.
 
 ## Step 5: First Products
 

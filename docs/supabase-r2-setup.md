@@ -162,6 +162,7 @@ The current schema stores public media URLs on the owning rows. A later producti
 - Production requests fail closed when R2 is not configured. Local development may still use `GENERATED_IMAGE_DIR`.
 - Browser uploads use short-lived signed `PUT` URLs so larger images bypass Vercel function request-body limits. Configure the R2 CORS policy in [`vercel-deployment.md`](vercel-deployment.md).
 - New direct browser uploads are stored under `incoming/`. Add lifecycle cleanup for abandoned keys before broad public traffic.
+- Experimental 3D models (`Model3dGeneration.modelUrl`, the "View in 3D" feature) are stored as `generated/<id>.glb` with content-type `model/gltf-binary`. `<model-viewer>` fetches the GLB in the browser, so the R2 bucket's CORS policy must allow `GET` from the app origin in addition to upload `PUT`.
 
 When R2 is fully configured, new generated images and downloaded videos are stored at keys like:
 
@@ -169,7 +170,7 @@ When R2 is fully configured, new generated images and downloaded videos are stor
 generated/<file-name>
 ```
 
-The current implementation stores public R2 URLs directly on `Result.imageUrl`, `VideoGeneration.videoUrl`, and quote snapshot URL fields. The longer-term data model should move this into `MediaAsset` rows with `provider = r2`, `storageKey`, content metadata, and owner references.
+The current implementation stores public R2 URLs directly on `Result.imageUrl`, `VideoGeneration.videoUrl`, `Model3dGeneration.modelUrl`, and quote snapshot URL fields. The longer-term data model should move this into `MediaAsset` rows with `provider = r2`, `storageKey`, content metadata, and owner references.
 
 ## Remaining Production Blockers
 

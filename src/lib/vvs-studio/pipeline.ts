@@ -11,6 +11,7 @@ import {
   submitImageEdit,
   submitImageToVideo,
 } from "./wavespeed-adapter";
+import { consumeUsageCredit, ensureUsageAvailable } from "../usage";
 
 const JOB_POLL_DELAY_MS = 10_000;
 const JOB_LOCK_TTL_MS = 5 * 60_000;
@@ -82,6 +83,7 @@ export async function startVvsVideoPipeline({
   if (!shoot.Uploads.some(upload => upload.angle === "top")) {
     throw new Error("Upload a top-view pendant photo before generating.");
   }
+  await ensureUsageAvailable(accountId, "vvs_video_generated");
 
   const activeJob = await prisma.vvsStudioJob.findFirst({
     where: {
@@ -433,6 +435,15 @@ async function markImageSucceeded(imageGenerationId: string, imageUrl: string, p
     where: { id: gen.shootId },
     data: { status: shootStatus, error: null, updatedAt: completedAt },
   });
+  if (gen.stage === "style_composite") {
+    await consumeUsageCredit({
+      accountId: gen.accountId,
+      kind: "vvs_product_post_generated",
+      sourceType: "VvsStudioImageGeneration",
+      sourceId: gen.id,
+      metadata: { shootId: gen.shootId, stage: gen.stage }
+    });
+  }
 }
 
 async function runVideoStage({
@@ -554,6 +565,13 @@ async function markVideoSucceeded(videoGenerationId: string, videoUrl: string, r
   await prisma.vvsStudioShoot.update({
     where: { id: videoGen.shootId },
     data: { status: "video_succeeded", completedAt, error: null, updatedAt: completedAt },
+  });
+  await consumeUsageCredit({
+    accountId: videoGen.accountId,
+    kind: "vvs_video_generated",
+    sourceType: "VvsStudioVideoGeneration",
+    sourceId: videoGen.id,
+    metadata: { shootId: videoGen.shootId }
   });
 }
 

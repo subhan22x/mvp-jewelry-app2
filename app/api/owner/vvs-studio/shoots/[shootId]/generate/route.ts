@@ -7,6 +7,7 @@ import { buildVvsStudioImagePrompt } from "@/src/lib/vvs-studio/prompt-builder";
 import { generateVvsImage } from "@/src/lib/vvs-studio/image-generator";
 import { readVvsSourceAttachment } from "@/src/lib/vvs-studio/source-storage";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
 
 export const maxDuration = 300;
 
@@ -35,6 +36,13 @@ export async function POST(req: Request, { params }: Ctx) {
   }
   if (!shoot.Uploads.length) {
     return NextResponse.json({ error: "Upload at least one photo before generating." }, { status: 400 });
+  }
+  try {
+    await ensureUsageAvailable(accountId, "vvs_product_post_generated");
+  } catch (err) {
+    const usage = usageErrorResponse(err);
+    if (usage) return NextResponse.json(usage, { status: 402 });
+    throw err;
   }
 
   let body: z.infer<typeof Body>;
@@ -99,7 +107,7 @@ export async function POST(req: Request, { params }: Ctx) {
         generationId: generation.id,
       });
       const completedAt = new Date();
-      await prisma.vvsStudioImageGeneration.update({
+      const updated = await prisma.vvsStudioImageGeneration.update({
         where: { id: generation.id },
         data: {
           status: "succeeded",
@@ -109,6 +117,13 @@ export async function POST(req: Request, { params }: Ctx) {
           durationMs: Math.max(0, completedAt.getTime() - startedMs),
           error: null,
         },
+      });
+      await consumeUsageCredit({
+        accountId,
+        kind: "vvs_product_post_generated",
+        sourceType: "VvsStudioImageGeneration",
+        sourceId: updated.id,
+        metadata: { shootId: shoot.id }
       });
       await prisma.vvsStudioShoot.update({
         where: { id: shoot.id },

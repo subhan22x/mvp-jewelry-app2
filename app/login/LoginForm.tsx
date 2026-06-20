@@ -20,7 +20,7 @@ export default function LoginForm() {
     setOauthSubmitting(provider);
     setError(null);
     const next = safeInternalPath(searchParams.get("next"));
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+    const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`;
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider,

@@ -54,7 +54,8 @@ The application is not fully production SaaS-ready yet. The most important remai
 | `/login` | Owner email/password login. |
 | `/auth/check-email` | Confirmation guidance after signup when email verification is required. |
 | `/auth/callback` | Supabase PKCE/email-confirmation callback that exchanges the code and activates pending owner records. |
-| `/s/:accountSlug` | MVP redirect into `/name?account=:accountSlug` after validating the store. The storefront page is reserved for later. |
+| `/s/:accountSlug` | MVP redirect into `/s/:accountSlug/design` after validating the store. |
+| `/s/:accountSlug/design` | Public QR design entrypoint with tenant attribution. |
 | `/s/:accountSlug/review` | Public customer review form. |
 | `/s/:accountSlug/quote` | Public general quote form. |
 

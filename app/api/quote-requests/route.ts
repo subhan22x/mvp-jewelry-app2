@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
+import { consumeUsageCredit, usageErrorResponse } from "@/src/lib/usage";
 
 const Body = z.object({
   requestId: z.string().min(1),
@@ -85,9 +86,17 @@ export async function POST(req: Request) {
         status: "pending"
       }
     });
+    await consumeUsageCredit({
+      accountId: request.accountId,
+      kind: "quote_requested",
+      sourceType: "QuoteRequest",
+      sourceId: quoteRequest.id
+    });
 
     return NextResponse.json({ quoteRequestId: quoteRequest.id }, { status: 201 });
   } catch (err) {
+    const usage = usageErrorResponse(err);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     const message = err instanceof Error ? err.message : "bad_request";
     return NextResponse.json({ error: message }, { status: 400 });
   }
