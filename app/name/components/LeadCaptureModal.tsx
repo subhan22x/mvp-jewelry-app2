@@ -11,10 +11,11 @@ const PhoneInput = dynamic(
 
 type Props = {
   requestId: string | null;
+  accountSlug?: string;
   onSubmitted: (lead: { leadId: string; name: string; phone: string; email: string }) => void;
 };
 
-export default function LeadCaptureModal({ requestId, onSubmitted }: Props) {
+export default function LeadCaptureModal({ requestId, accountSlug, onSubmitted }: Props) {
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
   const [phone, setPhone]       = useState('');
@@ -58,7 +59,7 @@ export default function LeadCaptureModal({ requestId, onSubmitted }: Props) {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: requestId ?? undefined, name, email, phone }),
+        body: JSON.stringify({ requestId: requestId ?? undefined, accountSlug, name, email, phone }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

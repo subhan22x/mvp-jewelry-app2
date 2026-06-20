@@ -40,6 +40,7 @@ export default async function OwnerProfilePage() {
         {account && (
           <ProfileEditor
             publicUrl={`/s/${account.slug}`}
+            publicDesignUrl={`/s/${account.slug}/design`}
             displayName={account.StoreProfile?.displayName ?? account.name}
             profileImageUrl={account.StoreProfile?.profileImageUrl ?? null}
             instagramHandle={account.StoreProfile?.instagramHandle ?? ""}

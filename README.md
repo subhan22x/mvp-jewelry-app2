@@ -100,13 +100,14 @@ The polished store-owner dashboard lives at `/owner`. It is separate from the cu
 - `/owner/videos` lists all pendant video jobs, including pending, completed, and failed attempts.
 - `/owner/videos/[videoJobId]` shows the selected source image, loading/progress state, final video player, download action, and share/copy action.
 - Completed Wavespeed videos are downloaded into `GENERATED_IMAGE_DIR`, served from `/generated/:file`, and stored in `VideoGeneration.videoUrl`. The original Wavespeed URL is retained in `VideoGeneration.remoteVideoUrl`.
+- Succeeded name-pendant drafts also expose an experimental owner-only `View in 3D` action. It creates a `Model3dGeneration` job through Wavespeed Rodin, stores one GLB in generated-media storage, and opens `/owner/models/:modelJobId` with a rotatable `<model-viewer>` scene plus browser AR support.
 - Visible owner navigation is intentionally limited to Quotes (`/owner`), Design (`/owner/design`), Studio (`/owner/vvs-studio`), and Settings (`/owner/settings`) for the MVP.
 - `/owner/profile`, `/owner/collections`, and `/owner/reviews` remain available by direct URL for internal/admin use, but are hidden from normal owner navigation.
-- `/owner/profile` edits the stored storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links.
+- `/owner/profile` edits the stored storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links. It also exposes copy/share controls for `/s/:slug` and the QR design URL `/s/:slug/design`.
 - The profile editor uses a country-aware phone input and best-effort verifier icons for Instagram, Website, and extra links.
 - `/owner/collections` manages product pieces by fixed categories. Draft pieces use `Product.isActive = false`; published pieces remain stored for the future storefront.
 - `/owner/reviews` shows persisted `StoreReview` rows, filters/searches reviews, and includes a request-review pane for sharing `/s/:slug/review`.
-- During the MVP, `/s/:slug` redirects customers into `/name?account=:slug`. `/s/:slug/review` and `/s/:slug/quote` remain directly accessible.
+- During the MVP, `/s/:slug` redirects customers into `/s/:slug/design`. `/s/:slug/design` is the public QR entrypoint and keeps generated requests, leads, quotes, and usage tied to the store account. `/s/:slug/review` and `/s/:slug/quote` remain directly accessible.
 - The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
 - `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
@@ -153,8 +154,8 @@ Generated files are served through `/generated/:file` during local development. 
 | ---------------------- | ------------------------------------ | --------------------------------------------- |
 | `GEMINI_API_KEY`       | (required)                           | Gemini auth. `GOOGLE_API_KEY` and `IMAGE_API_KEY` are accepted aliases. |
 | `GEMINI_MODEL_ID`      | `gemini-3.1-flash-image-preview`     | Model used by the connector.                  |
-| `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images and downloaded videos are written when R2 is not configured. |
-| `WAVESPEED_API_KEY`    | (required for videos)                | Wavespeed auth for VVS Studio image/video and Seedance video generation. |
+| `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images, downloaded videos, and GLB models are written when R2 is not configured. |
+| `WAVESPEED_API_KEY`    | (required for videos and 3D models)  | Wavespeed auth for VVS Studio image/video, Seedance video generation, and Rodin image-to-3D generation. The key must be active; Wavespeed returns `401 Unauthorized` for invalid or non-topped-up keys. |
 | `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
 | `VVS_WORKER_SECRET`    | (required in production)             | Secret accepted by the VVS Studio durable job worker. |
 | `CRON_SECRET`          | (recommended on Vercel)              | Vercel cron secret. Also accepted by the VVS Studio worker. |
@@ -166,8 +167,11 @@ Generated files are served through `/generated/:file` during local development. 
 | `VIDEO_DURATION_SECONDS` | `7`                                | Seedance video duration, clamped from 4-15 seconds. |
 | `VIDEO_RESOLUTION`     | `720p`                               | Seedance output resolution: `480p`, `720p`, or `1080p`. |
 | `VIDEO_PROMPT`         | built-in fallback                    | Optional exact prompt sent to Seedance.       |
-| `APP_BASE_URL`         | (required for videos)                | Public base URL used so Wavespeed can fetch generated images. |
+| `APP_BASE_URL`         | (required for videos and 3D models)  | Public base URL used so Wavespeed can fetch generated images. |
 | `NEXT_PUBLIC_APP_URL`  | (recommended in production)         | Browser-visible deployed application URL. |
+| `MODEL3D_PROMPT`       | built-in jewelry prompt              | Optional Rodin prompt override for owner `View in 3D` jobs. |
+| `MODEL3D_TIER`         | `Gen-2.5-High`                       | Rodin generation tier. |
+| `MODEL3D_POLL_TIMEOUT_MS` | `180000`                          | Maximum wait for Rodin image-to-3D polling. |
 | `DEFAULT_ACCOUNT_ID`   | (required in production)            | Account receiving root design-wizard requests until storefront-aware links replace this fallback. |
 | `R2_ACCOUNT_ID`        | (required in production)            | Cloudflare account ID for R2 media storage. |
 | `R2_ACCESS_KEY_ID`     | (required in production)            | R2 access key ID. |
@@ -204,7 +208,7 @@ Generated files are served through `/generated/:file` during local development. 
 ## User flow (Name pendant)
 
 ```
-Home
+Home or /s/:slug/design
  └─ Name / Initials
      ├─ Step 0: enter pendant text + choose style
      ├─ Step 1: choose emblem + gold finish
@@ -212,7 +216,7 @@ Home
      ├─ Step 3: two draft tiles appear progressively as each image is generated
      │          (select favourite, preview full-size, download)
      ├─ Step 4: generate a Seedance video from the higher-quality draft
-     └─ Step 5: customer taps Get a quote, creating a QuoteRequest snapshot
+     └─ Step 5: customer taps Get a quote, creating a tenant-scoped QuoteRequest snapshot
 ```
 
 Generation is **asynchronous** — the results screen appears immediately after submitting and tiles fill in one by one as Gemini completes each variant (~10–50 s total). The first image typically appears within 15–20 s.
@@ -239,6 +243,7 @@ Playwright browsers must be installed once: `npx playwright install chromium`.
 app/
   page.tsx                   # responsive marketing landing page
   design/page.tsx            # home screen with style entry cards
+  design/DesignEntry.tsx     # reusable design entry UI for /design and /s/:slug/design
   name/page.tsx              # the 4-step name pendant flow (steps 0–2 + results)
   name/__tests__/            # Vitest unit tests for the name builder
   owner/page.tsx             # owner dashboard: quote requests + Generate Video section
@@ -248,13 +253,19 @@ app/
   owner/reviews/page.tsx     # hidden-MVP review dashboard, direct URL still works
   owner/videos/page.tsx      # all pendant video jobs
   owner/videos/[videoJobId]/page.tsx # video job status/player/download/share page
-  s/[accountSlug]/page.tsx   # validates store, then redirects MVP traffic to /name?account=:slug
+  owner/models/[modelJobId]/page.tsx # experimental 3D model status/viewer/AR page
+  profile/page.tsx           # authenticated shortcut to /owner/profile
+  profile/[accountSlug]/page.tsx # compatibility redirect to /s/:slug
+  s/[accountSlug]/page.tsx   # validates store, then redirects public traffic to /s/:slug/design
+  s/[accountSlug]/design/    # public QR design flow with tenant attribution
   s/[accountSlug]/review/    # public customer review form
   api/requests/route.ts      # POST /api/requests — creates a Request and starts async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
   api/quote-requests/route.ts # POST — persists the customer quote/admin handoff snapshot
   api/owner/video-jobs/route.ts # POST — owner starts a Wavespeed video job for one Result image
   api/owner/video-jobs/[id]/route.ts # GET — owner polls video job status
+  api/owner/model-jobs/route.ts # POST — owner starts a Wavespeed Rodin 3D model job
+  api/owner/model-jobs/[id]/route.ts # GET — owner polls 3D model job status
 
 data/
   pendant-styles.json        # style list shown in the UI
@@ -281,7 +292,7 @@ prisma/
 public/
   pendants/                  # style thumbnails (also used as Gemini reference inputs)
   emblems/                   # emblem assets
-  generated/                 # generated images and downloaded videos output (dev only)
+  generated/                 # generated images, downloaded videos, and GLB models output (dev only)
 ```
 
 The folders `lib/styles/` and `server/db/client.ts` are currently re-export shims pointing at `src/`. See `CLAUDE.md` for why and when they get removed.

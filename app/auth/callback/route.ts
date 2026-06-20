@@ -8,7 +8,12 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next");
   const nextPath = safeInternalPath(next);
-  if (!code) return NextResponse.redirect(new URL("/login?error=missing_confirmation_code", url));
+  if (!code) {
+    const confirmUrl = new URL("/auth/confirm", url);
+    confirmUrl.searchParams.set("next", nextPath);
+    confirmUrl.searchParams.set("error", url.searchParams.get("error") ?? "missing_confirmation_code");
+    return NextResponse.redirect(confirmUrl);
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);

@@ -34,5 +34,5 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const profile = account?.StoreProfile;
   if (!account || account.status !== "active" || !profile?.isPublished) notFound();
 
-  redirect(`/name?account=${encodeURIComponent(account.slug)}`);
+  redirect(`/s/${encodeURIComponent(account.slug)}/design`);
 }

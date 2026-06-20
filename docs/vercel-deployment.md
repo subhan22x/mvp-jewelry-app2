@@ -43,9 +43,9 @@ R2_PUBLIC_BASE_URL="https://media.your-domain.example"
 
 `DEFAULT_ACCOUNT_ID` is still required because the root pendant wizard is not yet storefront-aware. Production now fails closed if that value is missing instead of silently writing customer requests to the seeded demo account.
 
-## R2 Browser Upload CORS
+## R2 Browser CORS
 
-Large browser uploads go directly to R2 through short-lived signed `PUT` URLs. Configure bucket CORS for your local, preview, and production origins:
+Large browser uploads go directly to R2 through short-lived signed `PUT` URLs, and the experimental 3D viewer fetches generated GLB files from R2 in the browser. Configure bucket CORS for your local, preview, and production origins:
 
 ```json
 [
@@ -55,7 +55,7 @@ Large browser uploads go directly to R2 through short-lived signed `PUT` URLs. C
       "https://your-project.vercel.app",
       "https://your-domain.example"
     ],
-    "AllowedMethods": ["PUT"],
+    "AllowedMethods": ["GET", "PUT"],
     "AllowedHeaders": ["Content-Type", "Cache-Control"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3600

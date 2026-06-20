@@ -21,10 +21,11 @@ The runtime schema is account-scoped but not yet production multi-tenant. Most r
 Current domains:
 
 - Identity and tenant shell: `User`, `Account`, `AccountMembership`.
-- Pendant generation: `Request`, `Result`, `ResultRevision`, `VideoGeneration`, `Lead`, `QuoteRequest`.
+- Pendant generation: `Request`, `Result`, `ResultRevision`, `VideoGeneration`, `Model3dGeneration`, `Lead`, `QuoteRequest`.
 - Account configuration: `AppSetting`.
 - Public storefront: `StoreProfile`, `StoreService`, `ProductCollection`, `Product`, `StoreReview`.
 - VVS Studio: `VvsStudioShoot`, `VvsStudioUpload`, `VvsStudioImageGeneration`, `VvsStudioVideoGeneration`, `VvsStudioJob`.
+- Subscription metering: `UsagePlan`, `AccountUsageBucket`, `UsageEvent`.
 
 MVP visibility note: `StoreProfile`, `ProductCollection`, `Product`, and `StoreReview` remain part of the data model even though profile, collections, and reviews are hidden from normal owner/customer navigation. Do not remove these models or intake flows just because the current MVP routes do not expose them.
 
@@ -42,16 +43,21 @@ erDiagram
   ACCOUNT ||--o{ RESULT : owns
   ACCOUNT ||--o{ LEAD : owns
   ACCOUNT ||--o{ VIDEO_GENERATION : owns
+  ACCOUNT ||--o{ MODEL3D_GENERATION : owns
   ACCOUNT ||--o{ QUOTE_REQUEST : owns
   ACCOUNT ||--o{ VVS_STUDIO_SHOOT : owns
   ACCOUNT ||--o{ VVS_STUDIO_UPLOAD : owns
   ACCOUNT ||--o{ VVS_STUDIO_IMAGE_GENERATION : owns
   ACCOUNT ||--o{ VVS_STUDIO_VIDEO_GENERATION : owns
   ACCOUNT ||--o{ VVS_STUDIO_JOB : queues
+  ACCOUNT ||--o{ USAGE_PLAN : subscribes
+  ACCOUNT ||--o{ ACCOUNT_USAGE_BUCKET : consumes
+  ACCOUNT ||--o{ USAGE_EVENT : records
   USER ||--o{ REQUEST : creates
   REQUEST ||--o{ RESULT : produces
   REQUEST ||--o{ RESULT_REVISION : revises
   REQUEST ||--o{ VIDEO_GENERATION : generates
+  REQUEST ||--o{ MODEL3D_GENERATION : generates
   REQUEST ||--o{ QUOTE_REQUEST : snapshots
   RESULT ||--o{ RESULT_REVISION : source_for
   RESULT ||--o{ QUOTE_REQUEST : selected_for
@@ -70,18 +76,20 @@ Important implementation details:
 - `ProductCollection` and `Product` power the deferred public collections grid and hidden-MVP `/owner/collections` manager. `Product.isActive` is the draft/published switch.
 - `StoreReview` stores customer reviews submitted from `/s/:slug/review`.
 - `QuoteRequest` preserves customer selections and owner-adjusted quote fields such as estimated delivery, quote material, karat, and quote stone type.
+- `Model3dGeneration` records owner-triggered experimental image-to-3D jobs for name pendants. It stores the public source image URL, prompt, provider job/model ids, local durable GLB URL, original provider URL, status, errors, and timing.
 - `VvsStudioJob` is the durable Postgres-backed pipeline queue for owner VVS Studio video generation. It records the current stage, attempts, lock fields, run timing, and retryable error state.
 - VVS Studio image/video generation rows record stage, provider profile/version, provider payload JSON, and first/last image references so outputs remain explainable after prompt or model changes.
+- `UsagePlan` stores account-level monthly limits, `AccountUsageBucket` tracks the current period by usage kind, and `UsageEvent` is the immutable idempotent ledger for billable events.
 - Durable media references are currently stored as URL strings on owning rows. A centralized `MediaAsset` model remains planned.
 
 Current gaps before paid SaaS onboarding:
 
 - `User.authUserId` links the application user to Supabase Auth. Owner dashboard context resolves an active membership from the signed-in user.
-- Default account helpers still resolve the seeded demo account for customer-generation paths until storefront-aware design links are completed.
-- Subscription fields exist on `Account`, but Stripe checkout, webhooks, trial gating, and entitlement checks are not implemented.
+- Default account helpers still support seeded demo/internal routes, but public QR design routes resolve the storefront tenant from `/s/:slug/design`.
+- Subscription fields exist on `Account`, and usage metering now exists in the database. Stripe checkout, webhooks, trial gating, and paid plan provisioning are still not implemented.
 - `AppSetting.key` remains globally unique, so owner prompt settings use account-prefixed keys.
 - Media ownership is not centralized in `MediaAsset`.
-- `Lead.requestId` and `VideoGeneration.sourceResultId` remain scalar references instead of Prisma relations.
+- `Lead.requestId`, `VideoGeneration.sourceResultId`, and `Model3dGeneration.sourceResultId` remain scalar references instead of Prisma relations.
 
 ## Legacy MVP Diagram
 

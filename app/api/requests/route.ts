@@ -7,11 +7,14 @@ import { getDefaultAccountId } from '@/src/lib/account';
 import { getNamePromptMode } from '@/src/lib/prompt-mode';
 import { scheduleBackgroundTask } from '@/src/lib/platform/background';
 import { loadStyleOverride } from '@/src/lib/styles/style-overrides';
+import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
 
 export const maxDuration = 300;
 
 const Body = z.object({
   userId: z.string(),
+  accountSlug: z.string().min(1).optional(),
   styleId: z.string(),
   text: z.string(),
   pendantFinish: z.enum(['icedout', 'plain']).default('icedout'),
@@ -61,8 +64,9 @@ function getGenerationErrorMessage(err: unknown): string {
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
-    const accountId = getDefaultAccountId();
+    const accountId = await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
     const isPlain = body.pendantFinish === 'plain';
+    await ensureUsageAvailable(accountId, 'design_image_generated', isPlain ? 2 : 2);
 
     const request = await prisma.request.create({
       data: {
@@ -136,7 +140,7 @@ export async function POST(req: Request) {
           }
         });
         const completedAt = new Date();
-        await prisma.result.update({
+        const updated = await prisma.result.update({
           where: { id: attempt.id },
           data: {
             imageUrl,
@@ -146,6 +150,13 @@ export async function POST(req: Request) {
             completedAt,
             durationMs: Math.max(0, completedAt.getTime() - startedMs)
           }
+        });
+        await consumeUsageCredit({
+          accountId,
+          kind: 'design_image_generated',
+          sourceType: 'Result',
+          sourceId: updated.id,
+          metadata: { requestId: request.id, variant: v.variant }
         });
       } catch (err) {
         console.error(`[variant ${v.variant}] generation failed:`, err);
@@ -164,6 +175,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
+    const usage = usageErrorResponse(err);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400 });
   }
 }

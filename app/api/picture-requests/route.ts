@@ -10,6 +10,8 @@ import { saveGeneratedImage } from '@/lib/styles/connector';
 import { getDefaultAccountId } from '@/src/lib/account';
 import { scheduleBackgroundTask } from '@/src/lib/platform/background';
 import { directUploadReferenceSchema, readDirectUpload } from '@/src/lib/storage/direct-upload';
+import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
 
 export const maxDuration = 300;
 
@@ -17,6 +19,7 @@ const MAX_UPLOAD_BYTES = Number(process.env.PICTURE_UPLOAD_MAX_BYTES ?? 10 * 102
 
 const Fields = z.object({
   userId: z.string().min(1),
+  accountSlug: z.string().min(1).optional(),
   styleId: z.string().min(1),
   primaryMetal: z.enum(['rose_gold', 'white_gold', 'yellow_gold'])
 });
@@ -64,9 +67,11 @@ export async function POST(req: Request) {
     const parsed = Fields.parse(isJson ? json : {
       userId: form!.get('userId'),
       styleId: form!.get('styleId'),
+      accountSlug: form!.get('accountSlug') || undefined,
       primaryMetal: form!.get('primaryMetal')
     });
-    const accountId = getDefaultAccountId();
+    const accountId = await resolveAccountIdFromSlug(parsed.accountSlug) ?? getDefaultAccountId();
+    await ensureUsageAvailable(accountId, 'design_image_generated');
 
     const imageValue = form?.get('image');
     const directImage = isJson ? directUploadReferenceSchema.parse(json?.imageUpload) : null;
@@ -145,7 +150,7 @@ export async function POST(req: Request) {
           variant: prepared.variant
         });
         const completedAt = new Date();
-        await prisma.result.update({
+        const updated = await prisma.result.update({
           where: { id: attempt.id },
           data: {
             imageUrl,
@@ -155,6 +160,13 @@ export async function POST(req: Request) {
             completedAt,
             durationMs: Math.max(0, completedAt.getTime() - startedMs)
           }
+        });
+        await consumeUsageCredit({
+          accountId,
+          kind: 'design_image_generated',
+          sourceType: 'Result',
+          sourceId: updated.id,
+          metadata: { requestId: request.id, productType: 'picture' }
         });
       } catch (err) {
         console.error('[picture pendant] generation failed:', err);
@@ -176,6 +188,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
     await removeTempDir(tempDir);
+    const usage = usageErrorResponse(err);
+    if (usage) return jsonError(usage.error, 402);
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? 'Invalid picture pendant request.' : err.message ?? 'bad_request';
     return jsonError(message);
   }

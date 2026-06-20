@@ -34,7 +34,8 @@ Hidden from normal navigation but kept alive by direct URL:
 
 Customer routing:
 
-- `/s/:slug` validates the active/published store and redirects to `/name?account=:slug`.
+- `/s/:slug` validates the active/published store and redirects to `/s/:slug/design`.
+- `/s/:slug/design` is the public QR design entrypoint with tenant attribution.
 - `/s/:slug/review` remains accessible by direct URL.
 - `/s/:slug/quote` remains accessible by direct URL.
 
@@ -52,6 +53,7 @@ Data collection stays on:
 - Owner dashboard:
   - `/owner` is quote review.
   - `/owner/design` embeds the main customer pendant wizard inside owner context.
+  - `/owner/models/:modelJobId` is the owner-only experimental 3D viewer for generated name-pendant models.
   - `/owner/vvs-studio` is the owner Studio home for social/product content generation.
 - Customer design flow:
   - name pendant and picture pendant generation produce quote requests for owner review.
@@ -82,6 +84,14 @@ Data collection stays on:
 - Generated Posts should show only real VVS Studio generated media. Do not show placeholders when empty.
 - Do not reintroduce manual post scheduling unless the user asks.
 - The image flow should visually mirror the video flow, but generates still product photography with 4:3 or 9:16 output.
+
+## Owner 3D Models
+
+- "View in 3D" is experimental and owner-only from `/owner`.
+- It applies only to succeeded name-pendant `Result` images.
+- The pipeline mirrors owner video jobs: create `Model3dGeneration`, submit Wavespeed Rodin, poll in request-scoped background work, download the GLB to generated-media storage, then poll the viewer page.
+- Real provider generation requires a public source image URL. Localhost source images are rejected by `assertPublicImageUrl`; use a deployed/preview URL or a tunnel for end-to-end provider testing.
+- GLB files served from R2 need browser `GET` CORS because `<model-viewer>` fetches them client-side.
 
 ## Deployment Notes
 
