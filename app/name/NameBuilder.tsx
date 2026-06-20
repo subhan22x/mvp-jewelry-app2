@@ -190,9 +190,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
   const [leadContact, setLeadContact] = useState<LeadContact | null>(null);
-  const [pendingGenerateAfterLead, setPendingGenerateAfterLead] = useState(false);
-  const [quoteStatus, setQuoteStatus] = useState<"idle" | "submitting" | "submitted">("idle");
-  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   // Incremented on each new generation kick-off; stale poll callbacks check this
   // before applying state so a cancelled request can't jump the user to step 4.
@@ -320,8 +317,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
       setShowAccessCodePrompt(false);
       setVideoStatus(null);
       setVideoError(null);
-      setQuoteStatus("idle");
-      setQuoteError(null);
     }
     const prevStep = step === 4 || step === 5 ? 2 : ((step - 1) as Step);
     setStep(prevStep as Step);
@@ -347,11 +342,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
 
   const handleAcceptDesign = async () => {
     if (isGenerating) return;
-    if (accountSlug && !leadContact) {
-      setPendingGenerateAfterLead(true);
-      setShowLeadCapture(true);
-      return;
-    }
     const trimmedLines = lines.map(entry => entry.trim()).filter(Boolean);
     if (!trimmedLines.length) return;
 
@@ -380,7 +370,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
       emblem: emblemValue,
       size: pendantSize,
       metalType,
-      stoneType
+      stoneType,
+      diamondQuality
     };
 
     setGenerationError(null);
@@ -390,8 +381,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
     setEditPrompt("");
     setRevisionError(null);
     setLeadContact(null);
-    setQuoteStatus("idle");
-    setQuoteError(null);
     setIsGenerating(true);
 
     const epoch = ++generationEpochRef.current;
@@ -596,8 +585,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
 
     setVideoError(null);
     setVideoStatus(null);
-    setQuoteStatus("idle");
-    setQuoteError(null);
     setIsVideoGenerating(true);
 
     const epoch = ++videoEpochRef.current;
@@ -660,43 +647,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
     }
   };
 
-  const handleQuoteRequest = async () => {
-    if (quoteStatus === "submitting" || quoteStatus === "submitted") return;
-    if (!capturedRequestId) {
-      setQuoteError("Missing request id for this generation.");
-      return;
-    }
-    if (!selectedGeneration?.src) {
-      setQuoteError("Select the design image you want quoted first.");
-      return;
-    }
-
-    setQuoteError(null);
-    setQuoteStatus("submitting");
-    try {
-      const response = await fetch("/api/quote-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId: capturedRequestId,
-          videoId: videoStatus?.id,
-          designedImageUrl: selectedGeneration.src,
-          videoUrl: videoStatus?.videoUrl,
-          diamondQuality: isPlain ? undefined : diamondQuality,
-          customerName: leadContact?.name,
-          customerPhone: leadContact?.phone,
-          customerEmail: leadContact?.email
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error ?? "Failed to send quote request.");
-      setQuoteStatus("submitted");
-    } catch (error) {
-      setQuoteStatus("idle");
-      setQuoteError(error instanceof Error ? error.message : "Something went wrong.");
-    }
-  };
-
   // Clean up any pending poll on unmount
   useEffect(() => {
     return () => {
@@ -705,13 +655,6 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
       if (revisionPollTimeoutRef.current) clearTimeout(revisionPollTimeoutRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!pendingGenerateAfterLead || !leadContact) return;
-    setPendingGenerateAfterLead(false);
-    void handleAcceptDesign();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingGenerateAfterLead, leadContact]);
 
   useEffect(() => {
     function applyTourStep(value: number | "done" | null) {
@@ -1407,14 +1350,14 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                   </div>
                   <p className="mt-4 text-xs text-[var(--theme-text-muted)]">
                     {selectedGeneration
-                      ? `${selectedGeneration.label} selected for quote`
-                      : "Select one image before requesting a quote"}
+                      ? `${selectedGeneration.label} selected`
+                      : "Select an image to preview or download"}
                     <span className="mx-2 text-[var(--theme-text-muted)]/50">•</span>
                     {revisionGenerations.length} of 2 revisions used
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-col gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -1429,31 +1372,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                   >
                     Download
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleQuoteRequest}
-                    disabled={!selectedGeneration?.src || isGenerating || quoteStatus !== "idle"}
-                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${
-                      quoteStatus === "submitted"
-                        ? "cursor-default bg-emerald-600 text-white"
-                        : selectedGeneration?.src && !isGenerating
-                          ? "bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]"
-                          : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"
-                    }`}
-                  >
-                    {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "Get a quote"}
-                  </button>
                 </div>
-                {quoteStatus === "submitted" && (
-                  <div className="rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">
-                    your Design has been sent! We will reach back soon through email or text
-                  </div>
-                )}
-                {quoteError && (
-                  <div className="rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                    {quoteError}
-                  </div>
-                )}
+                {leadContact ? <div className="rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">Your design and contact details were sent to the store. They can prepare a quote from any generated option.</div> : null}
                 {videoError && (
                   <div className="rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                     {videoError}
@@ -1502,22 +1422,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                   )}
 
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    {videoStatus?.videoUrl ? (
-                      <button
-                        type="button"
-                        onClick={handleQuoteRequest}
-                        disabled={quoteStatus !== "idle"}
-                        className={`flex-1 rounded-2xl px-5 py-3 text-center text-base font-semibold text-white transition ${
-                          quoteStatus === "submitted"
-                            ? "cursor-default bg-emerald-600"
-                            : quoteStatus === "submitting"
-                              ? "cursor-wait bg-[var(--theme-accent)]/70"
-                              : "bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]"
-                        }`}
-                      >
-                        {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "Get a quote"}
-                      </button>
-                    ) : (
+                    {!videoStatus?.videoUrl ? (
                       <button
                         type="button"
                         disabled
@@ -1525,18 +1430,9 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                       >
                         {isVideoGenerating ? "generating..." : "no video yet"}
                       </button>
-                    )}
+                    ) : null}
                   </div>
-                  {quoteStatus === "submitted" && (
-                    <div className="mt-4 rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">
-                      your Design has been sent! We will reach back soon through email or test
-                    </div>
-                  )}
-                  {quoteError && (
-                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                      {quoteError}
-                    </div>
-                  )}
+                  {leadContact ? <div className="mt-4 rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">Your design and contact details were sent to the store automatically.</div> : null}
                 </div>
               </div>
             )}

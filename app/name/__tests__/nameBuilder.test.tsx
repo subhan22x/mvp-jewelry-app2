@@ -663,12 +663,12 @@ describe("Step 4 — Progressive loading & Results", () => {
     expect(screen.getByText(/choose your favourite/i)).toBeInTheDocument();
   });
 
-  it("does not auto-select a draft before quote request", async () => {
+  it("does not auto-select a customer draft", async () => {
     const { user } = await setup();
     await toStep4(user);
     expect(screen.getByRole("button", { name: /^draft 1$/i })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: /^draft 2$/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /^get a quote$/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^get a quote$/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^download$/i })).toBeDisabled();
   });
 
@@ -709,14 +709,13 @@ describe("Step 4 — Progressive loading & Results", () => {
     expect(screen.getByRole("button", { name: /^draft 2$/i })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("shows the quote action without the results-page video button", async () => {
+  it("shows automatic quote handoff without a quote or video action", async () => {
     const { user } = await setup();
     await toStep4(user);
     expect(screen.queryByRole("button", { name: /^continue$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^get a quote$/i })).toBeDisabled();
-    await tap(user, screen.getByRole("button", { name: /^draft 1$/i }));
-    expect(screen.getByRole("button", { name: /^get a quote$/i })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /^get a quote$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^generate video$/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/sent to the store/i)).toBeInTheDocument();
   });
 
   it("opens the selected draft in a new tab from download", async () => {
@@ -794,7 +793,7 @@ describe("Step 4 — Progressive loading & Results", () => {
     );
   });
 
-  it("sends the selected revision image with the quote request", async () => {
+  it("keeps a generated revision selected for the owner quote workflow", async () => {
     const { user } = await setup();
     await toStep4(user);
     await tap(user, screen.getByLabelText(/edit draft 1/i));
@@ -804,14 +803,8 @@ describe("Step 4 — Progressive loading & Results", () => {
     await tap(user, screen.getByRole("button", { name: /create revision/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /^rev 1$/i })).toHaveAttribute("aria-pressed", "true"));
 
-    mockQuotePostSuccess();
-    await tap(user, screen.getByRole("button", { name: /get a quote/i }));
-
-    const quoteCall = mockFetch.mock.calls.find(([url, init]) => url === "/api/quote-requests" && init?.method === "POST");
-    expect(quoteCall).toBeTruthy();
-    expect(JSON.parse(quoteCall![1].body)).toEqual(expect.objectContaining({
-      designedImageUrl: "/generated/req-test-rev1.png"
-    }));
+    expect(screen.getByText(/rev 1 selected/i)).toBeInTheDocument();
+    expect(mockFetch.mock.calls.some(([url]) => url === "/api/quote-requests")).toBe(false);
   });
 
   it("global back button shows confirm dialog when generations exist", async () => {

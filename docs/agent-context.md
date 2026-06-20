@@ -51,12 +51,15 @@ Data collection stays on:
 - Auth: Supabase Auth, linked to application `User` and `AccountMembership` rows.
 - Durable media target: Cloudflare R2. Local generated paths are development or temporary processing only.
 - Owner dashboard:
-  - `/owner` is quote review.
+  - `/owner` is request-centric quote review. An eligible request has one `Prepare Quote` action; standalone 3D and quick-video actions must route into quote preparation.
   - `/owner/design` embeds the main customer pendant wizard inside owner context.
-  - `/owner/models/:modelJobId` is the owner-only experimental 3D viewer for generated name-pendant models.
+  - The `3D Models` view filters shared quote preview cards that contain 3D media. It is not a separate model-job experience.
+  - Legacy `/owner/models/:modelJobId` and video-job pages redirect into the related quote flow when the job is bound to a quote.
   - `/owner/vvs-studio` is the owner Studio home for social/product content generation.
 - Customer design flow:
-  - name pendant and picture pendant generation produce quote requests for owner review.
+  - every `Request`-backed generation family becomes quote-eligible once it has a successful image and captured customer contact.
+  - eligibility automatically creates exactly one private draft `QuoteRequest`; customer interaction with a request-quote control is not required.
+  - VVS Studio remains owner-only and separate from this automatic rule unless a VVS output is deliberately associated with customer contact.
   - generated/request media should be durable in R2 for production.
 - Internal tools:
   - `/internal/generations` is for prompt/output review and style/font tooling.
@@ -85,13 +88,19 @@ Data collection stays on:
 - Do not reintroduce manual post scheduling unless the user asks.
 - The image flow should visually mirror the video flow, but generates still product photography with 4:3 or 9:16 output.
 
-## Owner 3D Models
+## Quote Preparation And Preview Media
 
-- "View in 3D" is experimental and owner-only from `/owner`.
-- It applies only to succeeded name-pendant `Result` images.
-- The pipeline mirrors owner video jobs: create `Model3dGeneration`, submit Wavespeed Rodin, poll in request-scoped background work, download the GLB to generated-media storage, then poll the viewer page.
+- `QuoteRequest.requestId` is nullable for general/manual quotes and unique when present, enforcing one automatic draft per generated request.
+- The owner selects the exact `Result` or `ResultRevision` used in the quote. Never infer the selection from the newest or highest-numbered image.
+- `Image only` is the default preview mode. `Image + 3D` and `Image + Video` are optional and must be offered only when the generation family supports them.
+- Creating a quote link does not publish it. The quote remains private until preparation is finalized and its selected paid-media job, if any, succeeds.
+- Automatic private quote drafts do not consume a usage credit; the billable quote milestone remains the owner sending/publishing the quote.
+- `previewMediaType`, `resultId`/`resultRevisionId`, `model3dId`, and `videoId` are explicit quote associations. Public preview code must not discover the latest media job implicitly.
+- Owner and customer surfaces render the same quote preview card. The card owns the image/3D or image/video selector and all completed 3D/video presentation.
+- 3D generation creates `Model3dGeneration`, submits Wavespeed Rodin, polls in request-scoped background work, downloads the GLB to generated-media storage, and attaches the succeeded job to its quote.
 - Real provider generation requires a public source image URL. Localhost source images are rejected by `assertPublicImageUrl`; use a deployed/preview URL or a tunnel for end-to-end provider testing.
 - GLB files served from R2 need browser `GET` CORS because `<model-viewer>` fetches them client-side.
+- Historical quote, video, and model rows are backfilled only when account/request/source ownership can be matched safely; ambiguous records remain unbound for manual review.
 
 ## Deployment Notes
 

@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requestFindUnique: vi.fn(),
   leadFindFirst: vi.fn(),
-  quoteRequestCreate: vi.fn()
+  leadCreate: vi.fn(),
+  quoteRequestUpdateMany: vi.fn(),
+  ensureDraftQuote: vi.fn()
+}));
+
+vi.mock("@/src/lib/quotes/ensure-draft-quote", () => ({
+  ensureDraftQuoteForRequest: mocks.ensureDraftQuote
 }));
 
 vi.mock("@/server/db/client", () => ({
@@ -12,10 +18,11 @@ vi.mock("@/server/db/client", () => ({
       findUnique: mocks.requestFindUnique
     },
     lead: {
-      findFirst: mocks.leadFindFirst
+      findFirst: mocks.leadFindFirst,
+      create: mocks.leadCreate
     },
     quoteRequest: {
-      create: mocks.quoteRequestCreate
+      updateMany: mocks.quoteRequestUpdateMany
     }
   }
 }));
@@ -72,10 +79,12 @@ describe("/api/quote-requests", () => {
     vi.clearAllMocks();
     mocks.requestFindUnique.mockResolvedValue(baseRequest);
     mocks.leadFindFirst.mockResolvedValue(null);
-    mocks.quoteRequestCreate.mockResolvedValue({ id: "quote-test" });
+    mocks.leadCreate.mockResolvedValue({ id: "lead-test" });
+    mocks.ensureDraftQuote.mockResolvedValue({ ok: true, quoteRequestId: "quote-test", created: false });
+    mocks.quoteRequestUpdateMany.mockResolvedValue({ count: 1 });
   });
 
-  it("creates a quote request snapshot from the better model image and customer choices", async () => {
+  it("reuses the automatic quote draft and updates customer metadata", async () => {
     const { POST } = await import("../route");
 
     const response = await POST(new Request("http://test.local/api/quote-requests", {
@@ -91,34 +100,17 @@ describe("/api/quote-requests", () => {
       })
     }));
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ quoteRequestId: "quote-test" });
-    expect(mocks.quoteRequestCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        requestId: "req-test",
-        resultId: "result-1",
-        videoId: "video-test",
-        designedImageUrl: "/generated/req-test-v1.png",
-        videoUrl: "https://cdn.example.com/video.mp4",
-        generatedAt: new Date("2026-05-05T12:01:30.000Z"),
-        productType: "name",
-        pendantFinish: "icedout",
-        styleId: "gotti",
-        text: "Xavier",
-        twoTone: true,
-        primaryMetal: "rose_gold",
-        secondaryMetal: "white_gold",
-        emblem: "moneybag",
-        plainColor: null,
-        plainMetal: null,
-        plainKarat: null,
-        plainChain: null,
+    expect(mocks.ensureDraftQuote).toHaveBeenCalledWith("req-test");
+    expect(mocks.quoteRequestUpdateMany).toHaveBeenCalledWith({
+      where: { id: "quote-test", status: "pending" },
+      data: {
         diamondQuality: "vvs",
         customerName: "Rox",
         customerPhone: "+15555551212",
-        customerEmail: "rox@example.com",
-        status: "pending"
-      })
+        customerEmail: "rox@example.com"
+      }
     });
   });
 
@@ -135,15 +127,34 @@ describe("/api/quote-requests", () => {
       body: JSON.stringify({ requestId: "req-test", diamondQuality: "vs" })
     }));
 
-    expect(response.status).toBe(201);
-    expect(mocks.quoteRequestCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+    expect(response.status).toBe(200);
+    expect(mocks.quoteRequestUpdateMany).toHaveBeenCalledWith({
+      where: { id: "quote-test", status: "pending" },
+      data: {
         customerName: "Customer",
         customerPhone: "+15555550000",
         customerEmail: "customer@example.com",
         diamondQuality: "vs"
-      })
+      }
     });
+  });
+
+  it("does not let the compatibility endpoint mutate a non-pending quote", async () => {
+    const { POST } = await import("../route");
+    mocks.quoteRequestUpdateMany.mockResolvedValue({ count: 0 });
+
+    const response = await POST(new Request("http://test.local/api/quote-requests", {
+      method: "POST",
+      body: JSON.stringify({
+        requestId: "req-test",
+        customerName: "Changed",
+        customerPhone: "+15555550001",
+        customerEmail: "changed@example.com"
+      })
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ quoteRequestId: "quote-test" });
   });
 
   it("rejects quote requests without customer contact information", async () => {
@@ -157,6 +168,6 @@ describe("/api/quote-requests", () => {
 
     expect(response.status).toBe(400);
     expect(json.error).toMatch(/customer contact/i);
-    expect(mocks.quoteRequestCreate).not.toHaveBeenCalled();
+    expect(mocks.quoteRequestUpdateMany).not.toHaveBeenCalled();
   });
 });

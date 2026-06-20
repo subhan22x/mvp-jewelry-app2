@@ -149,7 +149,7 @@ describe('/picture-pendants', () => {
     expect(body.get('image')).toBeInstanceOf(File);
   });
 
-  it('sends generated picture pendants as quote requests', async () => {
+  it('automatically hands generated picture pendants to the store', async () => {
     const { user } = await setup();
     await uploadPicture(user);
     await click(user, screen.getByRole('button', { name: /^next$/i }));
@@ -166,27 +166,8 @@ describe('/picture-pendants', () => {
     });
     await click(user, screen.getByRole('button', { name: /^submit$/i }));
 
-    mockQuoteSuccess();
-    await click(user, await screen.findByRole('button', { name: /get a quote/i }));
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/quote-requests', expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: expect.any(String)
-      }));
-    });
-
-    const quoteCall = mockFetch.mock.calls.find(([url]) => url === '/api/quote-requests');
-    expect(quoteCall).toBeTruthy();
-    const quoteBody = JSON.parse(quoteCall?.[1]?.body as string);
-    expect(quoteBody).toMatchObject({
-      requestId: 'picture-req',
-      designedImageUrl: '/generated/picture-req-v1.png',
-      customerName: 'Royal Ice',
-      customerPhone: '+15551234567',
-      customerEmail: 'royal@example.com'
-    });
-    expect(screen.getByText(/your Design has been sent/i)).toBeInTheDocument();
+    expect(await screen.findByText(/sent to the store automatically/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /get a quote/i })).not.toBeInTheDocument();
+    expect(mockFetch.mock.calls.some(([url]) => url === '/api/quote-requests')).toBe(false);
   });
 });

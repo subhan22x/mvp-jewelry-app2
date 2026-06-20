@@ -8,17 +8,18 @@ async function findPublicQuoteModel(token: string) {
     where: { publicToken: token },
     select: {
       accountId: true,
-      resultId: true,
+      model3dId: true,
+      previewMediaType: true,
       status: true
     }
   });
 
-  if (!quote || !PUBLIC_STATUSES.has(quote.status) || !quote.resultId) return null;
+  if (!quote || !PUBLIC_STATUSES.has(quote.status) || quote.previewMediaType !== "model3d" || !quote.model3dId) return null;
 
   return prisma.model3dGeneration.findFirst({
     where: {
       accountId: quote.accountId,
-      sourceResultId: quote.resultId,
+      id: quote.model3dId,
       status: "succeeded",
       modelUrl: { not: null }
     },

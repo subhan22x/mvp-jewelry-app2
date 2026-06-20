@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/server/db/client';
 import { getDefaultAccountId } from '@/src/lib/account';
 import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
+import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
 
 const Body = z.object({
   requestId: z.string().optional(),
@@ -15,10 +16,21 @@ const Body = z.object({
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
-    const accountId = body.requestId
-      ? (await prisma.request.findUnique({ where: { id: body.requestId }, select: { accountId: true } }))?.accountId ?? getDefaultAccountId()
-      : await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
+    const request = body.requestId
+      ? await prisma.request.findUnique({ where: { id: body.requestId }, select: { accountId: true } })
+      : null;
+    if (body.requestId && !request) {
+      return NextResponse.json({ error: "Request not found." }, { status: 404 });
+    }
+    const accountId = request?.accountId
+      ?? await resolveAccountIdFromSlug(body.accountSlug)
+      ?? getDefaultAccountId();
     const lead = await prisma.lead.create({ data: { ...body, accountId } });
+    if (lead.requestId) {
+      await ensureDraftQuoteForRequest(lead.requestId).catch(error => {
+        console.error(`[quote draft ${lead.requestId}] automatic creation failed:`, error);
+      });
+    }
     return NextResponse.json({
       leadId: lead.id,
       name: lead.name,

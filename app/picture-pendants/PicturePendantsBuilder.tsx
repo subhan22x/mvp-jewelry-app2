@@ -61,9 +61,6 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
   const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [capturedRequestId, setCapturedRequestId] = useState<string | null>(null);
   const [leadContact, setLeadContact] = useState<LeadContact | null>(null);
-  const [pendingGenerateAfterLead, setPendingGenerateAfterLead] = useState(false);
-  const [quoteStatus, setQuoteStatus] = useState<"idle" | "submitting" | "submitted">("idle");
-  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   const styleColumns = buildStyleColumns(picturePendantStyles);
   const activeStyle = availableStyles.find(style => style.id === styleId) ?? null;
@@ -102,8 +99,6 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
     setGenerationError(null);
     setCapturedRequestId(null);
     setLeadContact(null);
-    setQuoteStatus("idle");
-    setQuoteError(null);
   };
 
   const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
@@ -134,8 +129,6 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
       cancelPolling();
       setGeneration(null);
       setShowLeadCapture(false);
-      setQuoteStatus("idle");
-      setQuoteError(null);
     }
     setStep(prev => ((prev - 1) as Step));
   };
@@ -147,16 +140,9 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
 
   const handleGenerate = async () => {
     if (isGenerating || !imageFile || !activeStyle) return;
-    if (accountSlug && !leadContact) {
-      setPendingGenerateAfterLead(true);
-      setShowLeadCapture(true);
-      return;
-    }
 
     setGeneration(null);
     setGenerationError(null);
-    setQuoteStatus("idle");
-    setQuoteError(null);
     setIsGenerating(true);
 
     const epoch = ++generationEpochRef.current;
@@ -236,48 +222,6 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
       setIsGenerating(false);
     }
   };
-
-  const handleQuoteRequest = async () => {
-    if (!generation || quoteStatus === "submitting" || quoteStatus === "submitted") return;
-    if (!capturedRequestId) {
-      setQuoteError("Missing request id for this generation.");
-      return;
-    }
-    if (!leadContact) {
-      setQuoteError("Please enter your contact information before requesting a quote.");
-      setShowLeadCapture(true);
-      return;
-    }
-
-    setQuoteError(null);
-    setQuoteStatus("submitting");
-    try {
-      const response = await fetch("/api/quote-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId: capturedRequestId,
-          designedImageUrl: generation.src,
-          customerName: leadContact.name,
-          customerPhone: leadContact.phone,
-          customerEmail: leadContact.email
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error ?? "Failed to send quote request.");
-      setQuoteStatus("submitted");
-    } catch (error) {
-      setQuoteStatus("idle");
-      setQuoteError(error instanceof Error ? error.message : "Something went wrong.");
-    }
-  };
-
-  useEffect(() => {
-    if (!pendingGenerateAfterLead || !leadContact) return;
-    setPendingGenerateAfterLead(false);
-    void handleGenerate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingGenerateAfterLead, leadContact]);
 
   return (
     <>
@@ -511,7 +455,7 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="flex flex-col gap-3">
                     <button
                       type="button"
                       onClick={() => { if (!confirmDiscardGeneration()) return; cancelPolling(); setGeneration(null); setShowLeadCapture(false); setStep(1); }}
@@ -519,33 +463,8 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
                     >
                       back
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleQuoteRequest}
-                      disabled={!generation || quoteStatus !== "idle"}
-                      className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${
-                        quoteStatus === "submitted"
-                          ? "cursor-default bg-emerald-600 text-white"
-                          : quoteStatus === "submitting"
-                            ? "cursor-wait bg-blue-500/70 text-white"
-                            : generation
-                              ? "bg-blue-500 text-white hover:bg-blue-400"
-                              : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"
-                      }`}
-                    >
-                      {quoteStatus === "submitting" ? "sending..." : quoteStatus === "submitted" ? "sent" : "get a quote"}
-                    </button>
                   </div>
-                  {quoteStatus === "submitted" && (
-                    <div className="mt-4 rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">
-                      your Design has been sent! We will reach back soon through email or test
-                    </div>
-                  )}
-                  {quoteError && (
-                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                      {quoteError}
-                    </div>
-                  )}
+                  {leadContact ? <div className="mt-4 rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">Your design and contact details were sent to the store automatically.</div> : null}
                 </div>
               )}
             </section>
@@ -631,7 +550,6 @@ export default function PicturePendantsBuilder({ accountSlug, backHref = "/desig
           onSubmitted={(lead) => {
             setLeadContact(lead);
             setShowLeadCapture(false);
-            setQuoteError(null);
           }}
         />
       )}

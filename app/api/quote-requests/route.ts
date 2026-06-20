@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { consumeUsageCredit, usageErrorResponse } from "@/src/lib/usage";
+import { usageErrorResponse } from "@/src/lib/usage";
+import { ensureDraftQuoteForRequest } from "@/src/lib/quotes/ensure-draft-quote";
 
 const Body = z.object({
   requestId: z.string().min(1),
@@ -27,10 +28,7 @@ export async function POST(req: Request) {
     const body = Body.parse(await req.json());
     const request = await prisma.request.findUnique({
       where: { id: body.requestId },
-      include: {
-        Results: { orderBy: { variant: "asc" } },
-        Videos: { orderBy: { createdAt: "desc" } }
-      }
+      select: { id: true, accountId: true }
     });
 
     if (!request) {
@@ -48,52 +46,36 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const betterResult = request.Results.find(result => result.variant === 1 && result.status === "succeeded" && result.imageUrl)
-      ?? request.Results.find(result => result.status === "succeeded" && result.imageUrl)
-      ?? null;
-    const video = body.videoId
-      ? request.Videos.find(entry => entry.id === body.videoId) ?? null
-      : request.Videos.find(entry => entry.status === "succeeded" && entry.videoUrl) ?? request.Videos[0] ?? null;
+    if (!latestLead) {
+      await prisma.lead.create({
+        data: {
+          accountId: request.accountId,
+          requestId: request.id,
+          name: contact.name,
+          phone: contact.phone,
+          email: contact.email
+        }
+      });
+    }
 
-    const quoteRequest = await prisma.quoteRequest.create({
+    const ensured = await ensureDraftQuoteForRequest(request.id);
+    if (!ensured.ok) {
+      return NextResponse.json({ error: "A successful generated image is required before preparing a quote." }, { status: 409 });
+    }
+    const update = await prisma.quoteRequest.updateMany({
+      where: { id: ensured.quoteRequestId, status: "pending" },
       data: {
-        accountId: request.accountId,
-        requestId: request.id,
-        resultId: betterResult?.id ?? null,
-        videoId: video?.id ?? null,
-        designedImageUrl: body.designedImageUrl ?? betterResult?.imageUrl ?? video?.sourceImageUrl ?? null,
-        videoUrl: body.videoUrl ?? video?.videoUrl ?? null,
-        generatedAt: betterResult?.completedAt ?? betterResult?.createdAt ?? request.createdAt,
-        productType: request.productType,
-        pendantFinish: request.pendantFinish,
-        styleId: request.styleId,
-        text: request.text,
-        twoTone: request.twoTone,
-        primaryMetal: request.primaryMetal,
-        secondaryMetal: request.secondaryMetal,
-        emblem: request.emblem,
-        size: request.size,
-        metalType: request.metalType,
-        stoneType: request.stoneType,
-        plainColor: request.plainColor,
-        plainMetal: request.plainMetal,
-        plainKarat: request.plainKarat,
-        plainChain: request.plainChain,
-        diamondQuality: body.diamondQuality ?? null,
         customerName: contact.name,
         customerPhone: contact.phone,
         customerEmail: contact.email,
-        status: "pending"
+        ...(body.diamondQuality ? { diamondQuality: body.diamondQuality } : {})
       }
     });
-    await consumeUsageCredit({
-      accountId: request.accountId,
-      kind: "quote_requested",
-      sourceType: "QuoteRequest",
-      sourceId: quoteRequest.id
-    });
+    if (update.count === 0) {
+      return NextResponse.json({ quoteRequestId: ensured.quoteRequestId }, { status: 200 });
+    }
 
-    return NextResponse.json({ quoteRequestId: quoteRequest.id }, { status: 201 });
+    return NextResponse.json({ quoteRequestId: ensured.quoteRequestId }, { status: ensured.created ? 201 : 200 });
   } catch (err) {
     const usage = usageErrorResponse(err);
     if (usage) return NextResponse.json(usage, { status: 402 });

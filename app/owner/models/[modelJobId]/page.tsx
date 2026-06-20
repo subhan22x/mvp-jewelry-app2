@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/server/db/client";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import { proxiedOwnerModelUrl } from "@/src/lib/model3d/proxy";
@@ -17,6 +17,11 @@ export default async function OwnerModelJobPage({ params }: { params: Promise<{ 
   const model = await prisma.model3dGeneration.findFirst({
     where: { id: modelJobId, accountId },
     include: {
+      QuoteRequests: {
+        select: { id: true, status: true },
+        orderBy: { createdAt: "desc" },
+        take: 1
+      },
       request: {
         select: {
           text: true,
@@ -30,6 +35,10 @@ export default async function OwnerModelJobPage({ params }: { params: Promise<{ 
   });
 
   if (!model) notFound();
+  const boundQuote = model.QuoteRequests[0];
+  if (boundQuote) {
+    redirect(`/owner/quotes/${boundQuote.id}/${["sent", "fulfilled", "closed"].includes(boundQuote.status) ? "preview" : "media"}`);
+  }
 
   return (
     <main className="min-h-dvh bg-[#101114] px-4 py-8 text-[#e1e2ec] md:px-6">
