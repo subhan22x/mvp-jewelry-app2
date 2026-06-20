@@ -32,7 +32,7 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
     href: category.href === "/pendants" || category.href === "/bracelets" ? withBase(category.href) : category.href
   }));
   return (
-    <main className="min-h-dvh px-4 py-8 text-[var(--theme-text)] md:px-8">
+    <main data-tour-id="design-entry" className="min-h-dvh px-4 py-8 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-8 sm:px-6 md:px-12">
         <div className="mb-8 flex min-h-10 items-center justify-center">
           <DesignProgressBar current={0} />

@@ -1,49 +1,19 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
-import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
+import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { slugify } from "@/src/lib/slug";
 import { createClient } from "@/src/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const serviceSchema = z.object({
-  kind: z.string().min(1),
-  title: z.string().min(1),
-  description: z.string().optional(),
-  ctaLabel: z.string().min(1),
-  href: z.string().optional().nullable(),
-  isActive: z.boolean().default(false),
-  sortOrder: z.number().int().default(0)
-});
-
-const productSchema = z.object({
-  clientId: z.string().min(1),
-  name: z.string().min(1),
-  category: z.string().min(1),
-  priceMode: z.enum(["set", "ask"]).default("ask"),
-  priceLabel: z.string().optional(),
-  variantLabels: z.array(z.string()).default([])
-});
-
 const onboardingSchema = z.object({
-  businessName: z.string().min(2),
-  city: z.string().optional(),
-  country: z.string().optional(),
-  yearStarted: z.string().optional(),
-  instagramHandle: z.string().optional(),
-  slug: z.string().min(2),
-  headline: z.string().optional(),
-  bio: z.string().optional(),
-  phone: z.string().optional(),
-  whatsappPhone: z.string().optional(),
-  themeKey: z.string().default("black_gold"),
-  coverPreset: z.string().optional(),
-  coverOverlayOpacity: z.number().int().min(0).max(85).default(27),
-  coverTextColor: z.enum(["light", "dark"]).default("light"),
-  services: z.array(serviceSchema).default([]),
-  products: z.array(productSchema).max(2).default([])
+  businessName: z.string().trim().min(2),
+  ownerName: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
+  instagramHandle: z.string().trim().optional()
 });
 
 function jsonError(message: string, status = 400) {
@@ -59,165 +29,122 @@ function cleanHandle(handle?: string | null) {
   return handle?.trim().replace(/^@/, "") || null;
 }
 
+async function uniqueSlug(base: string, tx: Prisma.TransactionClient): Promise<string> {
+  const normalized = slugify(base) || "store";
+  for (let i = 0; i < 20; i += 1) {
+    const candidate = i === 0 ? normalized : `${normalized}-${i + 1}`;
+    const existing = await tx.account.findUnique({ where: { slug: candidate }, select: { id: true } });
+    if (!existing) return candidate;
+  }
+  return `${normalized}-${Date.now()}`;
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const { data, error: authError } = await supabase.auth.getUser();
-  if (authError || !data.user) return jsonError("Sign up or log in before publishing your profile.", 401);
-  const authEmail = data.user.email?.toLowerCase() ?? null;
+  if (authError || !data.user) return jsonError("Sign up or log in before creating your studio.", 401);
 
   const form = await req.formData();
   const rawPayload = form.get("payload");
   if (typeof rawPayload !== "string") return jsonError("Missing onboarding payload.");
 
-  const parsed = onboardingSchema.safeParse(JSON.parse(rawPayload));
-  if (!parsed.success) {
-    return jsonError(parsed.error.issues[0]?.message ?? "Invalid onboarding payload.");
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawPayload);
+  } catch {
+    return jsonError("Invalid onboarding payload.");
   }
 
-  const body = parsed.data;
-  const slug = slugify(body.slug);
-  if (!slug) return jsonError("Choose a valid profile URL.");
+  const parsed = onboardingSchema.safeParse(payload);
+  if (!parsed.success) return jsonError(parsed.error.issues[0]?.message ?? "Invalid onboarding payload.");
 
-  const [existingAccount, existingUser, existingEmailUser] = await Promise.all([
-    prisma.account.findUnique({ where: { slug } }),
-    prisma.user.findUnique({ where: { authUserId: data.user.id } }),
-    authEmail ? prisma.user.findUnique({ where: { email: authEmail } }) : Promise.resolve(null)
+  const body = parsed.data;
+  const authEmail = data.user.email?.toLowerCase() ?? null;
+  const [existingUser, existingEmailUser] = await Promise.all([
+    prisma.user.findUnique({ where: { authUserId: data.user.id }, select: { id: true } }),
+    authEmail
+      ? prisma.user.findUnique({ where: { email: authEmail }, select: { id: true, authUserId: true } })
+      : Promise.resolve(null)
   ]);
-  if (existingAccount) return jsonError("That profile URL is already taken.");
   if (existingUser) return jsonError("This login already has a store profile.");
-  if (existingEmailUser) return jsonError("An account with this email already exists.");
+  if (existingEmailUser && existingEmailUser.authUserId !== data.user.id) {
+    return jsonError("An account with this email already exists.");
+  }
 
   const accountId = crypto.randomUUID();
   const uploadPrefix = `accounts/${accountId}`;
-  const profileImage = fileFromForm(form, "profileImage");
-  const coverImage = fileFromForm(form, "coverImage");
-  const directProfileImage = parseDirectUploadReference(form.get("profileImageUpload"), "onboarding");
-  const directCoverImage = parseDirectUploadReference(form.get("coverImageUpload"), "onboarding");
+  const logoFile = fileFromForm(form, "logo");
+  const directLogo = parseDirectUploadReference(form.get("logoUpload"), "onboarding");
+  const logoUrl = directLogo
+    ? useDirectPublicUpload(directLogo)
+    : logoFile
+      ? await savePublicUpload(logoFile, `${uploadPrefix}/profile`, "logo")
+      : null;
 
-  const [profileImageUrl, coverImageUrl] = await Promise.all([
-    directProfileImage ? Promise.resolve(useDirectPublicUpload(directProfileImage)) : profileImage ? savePublicUpload(profileImage, `${uploadPrefix}/profile`, "profile") : Promise.resolve(null),
-    directCoverImage ? Promise.resolve(useDirectPublicUpload(directCoverImage)) : coverImage ? savePublicUpload(coverImage, `${uploadPrefix}/profile`, "cover") : Promise.resolve(null)
-  ]);
-
-  const productImageUrls = new Map<string, string>();
-  for (const product of body.products) {
-    const file = fileFromForm(form, `productImage:${product.clientId}`);
-    const directFile = parseDirectUploadReference(form.get(`productImageUpload:${product.clientId}`), "onboarding");
-    if (!file && !directFile) continue;
-    const imageUrl = directFile
-      ? useDirectPublicUpload(directFile)
-      : await savePublicUpload(file!, `${uploadPrefix}/products`, product.clientId);
-    productImageUrls.set(product.clientId, imageUrl);
-  }
-
-  const now = new Date();
-
-  let account;
-  account = await prisma.account.create({
-    data: {
-      id: accountId,
-      name: body.businessName,
-      slug,
-      logoUrl: profileImageUrl,
-      themeKey: body.themeKey,
-      status: "active",
-      StoreProfile: {
-        create: {
-          displayName: body.businessName,
-          headline: body.headline || null,
-          bio: body.bio || null,
-          profileImageUrl,
-          coverImageUrl,
-          coverPreset: body.coverPreset || null,
-          coverOverlayOpacity: body.coverOverlayOpacity,
-          coverTextColor: body.coverTextColor,
-          phone: body.phone || null,
-          whatsappPhone: body.whatsappPhone || null,
-          websiteUrl: null,
-          extraLinksJson: null,
-          instagramHandle: cleanHandle(body.instagramHandle),
-          city: body.city || null,
-          country: body.country || null,
-          yearStarted: body.yearStarted || null,
-          statusLabel: "Taking Orders",
-          verificationLabel: "VVS Verified",
-          isPublished: true
-        }
-      },
-      Memberships: {
-        create: {
-          role: "owner",
-          status: "active",
-          user: {
-            create: {
-              authUserId: data.user.id,
-              storeName: body.businessName,
-              email: authEmail,
-              name: body.businessName,
-              phone: body.phone || body.whatsappPhone || null,
-              role: "store_owner"
+  const account = await prisma.$transaction(async (tx) => {
+    const slug = await uniqueSlug(body.businessName, tx);
+    return tx.account.create({
+      data: {
+        id: accountId,
+        name: body.businessName,
+        slug,
+        logoUrl,
+        themeKey: "classic_black_gold",
+        status: "active",
+        StoreProfile: {
+          create: {
+            displayName: body.businessName,
+            profileImageUrl: logoUrl,
+            phone: body.phone || null,
+            instagramHandle: cleanHandle(body.instagramHandle),
+            isPublished: false
+          }
+        },
+        Memberships: {
+          create: {
+            role: "owner",
+            status: "active",
+            user: {
+              create: {
+                authUserId: data.user.id,
+                storeName: body.businessName,
+                email: authEmail,
+                name: body.ownerName || null,
+                phone: body.phone || null,
+                role: "store_owner"
+              }
             }
           }
+        },
+        StoreServices: {
+          create: [
+            {
+              kind: "quote",
+              title: "Custom Quote Requests",
+              description: "Customers can request a quote for a custom piece.",
+              ctaLabel: "Get Quote",
+              href: "/picture-pendants",
+              sortOrder: 0,
+              isActive: true
+            },
+            {
+              kind: "design_custom",
+              title: "Design Custom",
+              description: "Customers can design a custom pendant.",
+              ctaLabel: "Design Custom",
+              href: "/pendants",
+              sortOrder: 1,
+              isActive: true
+            }
+          ]
         }
-      },
-      StoreServices: {
-        create: body.services.map(service => ({
-          title: service.title,
-          description: service.description || null,
-          kind: service.kind,
-          ctaLabel: service.ctaLabel,
-          href: service.href || null,
-          sortOrder: service.sortOrder,
-          isActive: service.isActive
-        }))
-      },
-      ProductCollections: {
-        create: ["chain", "pendant", "ring", "bracelet", "watch", "grillz", "earrings", "trophy", "other"].map((category, index) => ({
-          title: category.replace(/\b\w/g, char => char.toUpperCase()),
-          slug: category,
-          sortOrder: index,
-          isActive: true
-        }))
       }
-    }
+    });
   });
-
-  for (const [index, product] of body.products.entries()) {
-    const imageUrl = productImageUrls.get(product.clientId);
-    if (!imageUrl) continue;
-
-    const collection = await prisma.productCollection.findUnique({
-      where: {
-        accountId_slug: {
-          accountId: account.id,
-          slug: product.category
-        }
-      }
-    });
-    if (!collection) continue;
-
-    await prisma.product.create({
-      data: {
-        accountId: account.id,
-        collectionId: collection.id,
-        name: product.name,
-        slug: `${slugify(product.name) || "piece"}-${index + 1}`,
-        imageUrl,
-        priceLabel: product.priceMode === "set" ? product.priceLabel || null : "Ask for price",
-        priceMode: product.priceMode,
-        category: product.category,
-        variantLabelsJson: JSON.stringify(product.variantLabels),
-        isFeatured: index === 0,
-        sortOrder: index,
-        createdAt: now
-      }
-    });
-  }
 
   return NextResponse.json({
     accountId: account.id,
     slug: account.slug,
-    profileUrl: `/s/${account.slug}`,
-    ownerUrl: "/owner"
+    ownerUrl: "/design?tour=1"
   });
 }

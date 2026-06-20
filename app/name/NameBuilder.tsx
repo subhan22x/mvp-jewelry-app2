@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TOUR_STEP_EVENT, TOUR_STORAGE_KEY } from "@/src/lib/tour/steps";
 import Image from "next/image";
 import ThemedImageOption from "../components/ThemedImageOption";
 import ThemedOptionButton from "../components/ThemedOptionButton";
@@ -711,6 +712,50 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
     void handleAcceptDesign();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingGenerateAfterLead, leadContact]);
+
+  useEffect(() => {
+    function applyTourStep(value: number | "done" | null) {
+      if (value === 1) {
+        setStep(0);
+        setShowLeadCapture(false);
+      } else if (value === 2) {
+        setStep(1);
+        setShowLeadCapture(false);
+      } else if (value === 3) {
+        setStep(1);
+        setShowLeadCapture(true);
+      } else if (value === "done") {
+        setShowLeadCapture(false);
+      }
+    }
+
+    function readStoredStep() {
+      const raw = localStorage.getItem(TOUR_STORAGE_KEY);
+      if (raw === "done") return applyTourStep("done");
+      const parsed = raw === null ? null : Number.parseInt(raw, 10);
+      applyTourStep(Number.isFinite(parsed) ? parsed : null);
+    }
+
+    function onStorage(event: StorageEvent) {
+      if (event.key !== TOUR_STORAGE_KEY) return;
+      if (event.newValue === "done") return applyTourStep("done");
+      const parsed = event.newValue === null ? null : Number.parseInt(event.newValue, 10);
+      applyTourStep(Number.isFinite(parsed) ? parsed : null);
+    }
+
+    function onTourStep(event: Event) {
+      const value = (event as CustomEvent<number | "done">).detail;
+      applyTourStep(value);
+    }
+
+    readStoredStep();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(TOUR_STEP_EVENT, onTourStep);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(TOUR_STEP_EVENT, onTourStep);
+    };
+  }, []);
 
   return (
     <>
