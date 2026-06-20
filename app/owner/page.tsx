@@ -6,6 +6,7 @@ import GenerateVideoButton from "./GenerateVideoButton";
 import OwnerFrame from "./OwnerFrame";
 import MarkFulfilledButton from "./MarkFulfilledButton";
 import View3dButton from "./View3dButton";
+import { getOwnerDashboardMetrics } from "@/src/lib/owner/dashboard-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,15 @@ function formatDate(value: Date | null) {
     hour: "numeric",
     minute: "2-digit"
   }).format(value);
+}
+
+function formatUsd(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(cents / 100);
 }
 
 function isToday(value: Date | null) {
@@ -129,12 +139,8 @@ function generationMatches(row: GenerationRow, query: string, filter: string) {
 }
 
 async function getOwnerData(accountId: string) {
-  const [quoteCount, totalGenerations, pendingQuotes, sentQuotes, fulfilledQuotes, generations] = await Promise.all([
-    prisma.quoteRequest.count({ where: { accountId } }),
-    prisma.result.count({ where: { accountId } }),
-    prisma.quoteRequest.count({ where: { accountId, status: "pending" } }),
-    prisma.quoteRequest.count({ where: { accountId, status: "sent" } }),
-    prisma.quoteRequest.count({ where: { accountId, status: "fulfilled" } }),
+  const [metrics, generations] = await Promise.all([
+    getOwnerDashboardMetrics(accountId),
     prisma.result.findMany({
       where: { accountId },
       orderBy: [{ createdAt: "desc" }],
@@ -186,7 +192,7 @@ async function getOwnerData(accountId: string) {
   ]);
 
   return {
-    metrics: { quoteCount, totalGenerations, pendingQuotes, sentQuotes, fulfilledQuotes },
+    metrics,
     generations
   };
 }
@@ -206,12 +212,15 @@ function FilterChip({ href, active, children }: { href: string; active: boolean;
   );
 }
 
-function MetricCard({ label, value, accent = false }: { label: string; value: number; accent?: boolean }) {
+function MetricCard({ label, value, suffix, accent = false }: { label: string; value: React.ReactNode; suffix?: string; accent?: boolean }) {
   return (
     <div className={`relative min-w-0 overflow-hidden rounded-xl border p-4 ${accent ? "border-[#D1B873]/20 bg-[#17191F]" : "border-white/5 bg-[#17191F]"}`}>
       {accent && <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-[#f7bc5f]/10 blur-xl" aria-hidden />}
       <span className={`text-[12px] font-semibold uppercase tracking-wider ${accent ? "text-[#f7bc5f]" : "text-[#8c909f]"}`}>{label}</span>
-      <div className={`mt-1 text-[28px] font-bold ${accent ? "text-[#f7bc5f]" : "text-[#e1e2ec]"}`}>{value}</div>
+      <div className={`mt-1 flex min-w-0 items-baseline gap-1.5 ${accent ? "text-[#f7bc5f]" : "text-[#e1e2ec]"}`}>
+        <span className="min-w-0 break-words text-[28px] font-bold leading-tight">{value}</span>
+        {suffix && <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8c909f]">{suffix}</span>}
+      </div>
     </div>
   );
 }
@@ -426,12 +435,11 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           <p className="mt-2 text-[15px] text-[#c2c6d6]">Review generations, send quotes, create videos, and manage saved 3D models</p>
         </section>
 
-        <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-5">
-          <MetricCard label="Quote Requests" value={data.metrics.quoteCount} />
-          <MetricCard label="Total Generations" value={data.metrics.totalGenerations} />
-          <MetricCard label="Pending Quotes" value={data.metrics.pendingQuotes} accent />
+        <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-4">
           <MetricCard label="Sent Quotes" value={data.metrics.sentQuotes} />
-          <MetricCard label="Fulfilled" value={data.metrics.fulfilledQuotes} />
+          <MetricCard label="Pending Quotes" value={data.metrics.pendingQuotes} accent />
+          <MetricCard label="Designs on Plan" value={`${data.metrics.designUsage.used} / ${data.metrics.designUsage.included}`} suffix="used" />
+          <MetricCard label="Potential Revenue" value={formatUsd(data.metrics.potentialRevenueCents)} />
         </section>
 
         <section className="flex min-w-0 flex-col gap-4">
