@@ -60,19 +60,19 @@ export default function StoreBrandIdentity() {
   const showLogo = Boolean(brand.logoUrl && !imageFailed);
 
   return (
-    <div className="mt-3 flex min-h-14 items-center justify-center" data-store-brand>
+    <div className="mt-3 flex min-h-20 items-center justify-center" data-store-brand>
       {showLogo && brand.logoStyle === "wordmark" ? (
-        <div className="flex h-14 w-44 items-center justify-center px-2">
+        <div className="flex h-20 w-56 items-center justify-center px-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={brand.logoUrl!}
             alt={`${brand.displayName} logo`}
-            className="max-h-12 max-w-full object-contain"
+            className="max-h-16 max-w-full object-contain"
             onError={() => setImageFailed(true)}
           />
         </div>
       ) : showLogo ? (
-        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={brand.logoUrl!}

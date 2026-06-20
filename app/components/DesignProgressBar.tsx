@@ -16,14 +16,14 @@ export default function DesignProgressBar({ current, className = "" }: DesignPro
 
   return (
     <div className={`flex w-full max-w-[320px] flex-col ${className}`}>
-      <div className="flex w-[212px] flex-col gap-1.5 self-center">
+      <div className="flex w-[176px] flex-col gap-1 self-center">
         <div className="grid grid-cols-4 items-center justify-items-center">
           {DESIGN_STEPS.map((label, index) => {
             const isActive = index === activeIndex;
             const isComplete = index < activeIndex;
 
             return (
-              <div key={index} className="relative flex h-4 w-full items-center justify-center">
+              <div key={index} className="relative flex h-3 w-full items-center justify-center">
                 {index > 0 && (
                   <span
                     aria-hidden="true"
@@ -40,8 +40,8 @@ export default function DesignProgressBar({ current, className = "" }: DesignPro
                   data-design-progress-step={label}
                   data-active={isActive ? "true" : "false"}
                   className={cx(
-                    "relative z-10 block h-[9px] rounded-full border",
-                    isActive ? "w-[26px]" : "w-[9px]",
+                    "relative z-10 block h-[7px] rounded-full border",
+                    isActive ? "w-5" : "w-[7px]",
                     isActive || isComplete
                       ? "border-[color:var(--theme-script)] bg-[var(--theme-script)]"
                       : "border-[color:var(--theme-text)] bg-[var(--theme-text)]",
@@ -58,7 +58,7 @@ export default function DesignProgressBar({ current, className = "" }: DesignPro
             <span
               key={label}
               className={cx(
-                "text-[10px] font-semibold leading-tight",
+                "text-[9px] font-semibold leading-tight",
                 index === activeIndex ? "text-[var(--theme-script)]" : "text-[var(--theme-text)]"
               )}
             >
