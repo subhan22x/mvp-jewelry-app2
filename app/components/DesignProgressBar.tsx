@@ -1,3 +1,5 @@
+import StoreBrandIdentity from "./StoreBrandIdentity";
+
 const DESIGN_STEPS = ["Style", "Customize", "Review", "Quote"] as const;
 
 type DesignProgressBarProps = {
@@ -13,56 +15,59 @@ export default function DesignProgressBar({ current, className = "" }: DesignPro
   const activeIndex = Math.max(0, Math.min(current, DESIGN_STEPS.length - 1));
 
   return (
-    <div className={`flex w-[212px] flex-col gap-1.5 ${className}`}>
-      <div className="grid grid-cols-4 items-center justify-items-center">
-        {DESIGN_STEPS.map((label, index) => {
-          const isActive = index === activeIndex;
-          const isComplete = index < activeIndex;
+    <div className={`flex w-full max-w-[320px] flex-col ${className}`}>
+      <div className="flex w-[212px] flex-col gap-1.5 self-center">
+        <div className="grid grid-cols-4 items-center justify-items-center">
+          {DESIGN_STEPS.map((label, index) => {
+            const isActive = index === activeIndex;
+            const isComplete = index < activeIndex;
 
-          return (
-            <div key={index} className="relative flex h-4 w-full items-center justify-center">
-              {index > 0 && (
+            return (
+              <div key={index} className="relative flex h-4 w-full items-center justify-center">
+                {index > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className={cx(
+                      "absolute right-1/2 top-1/2 h-px w-full -translate-y-1/2",
+                      index <= activeIndex
+                        ? "bg-[var(--theme-script)] opacity-80"
+                        : "bg-[var(--theme-text)] opacity-[0.72]"
+                    )}
+                  />
+                )}
                 <span
                   aria-hidden="true"
+                  data-design-progress-step={label}
+                  data-active={isActive ? "true" : "false"}
                   className={cx(
-                    "absolute right-1/2 top-1/2 h-px w-full -translate-y-1/2",
-                    index <= activeIndex
-                      ? "bg-[var(--theme-script)] opacity-80"
-                      : "bg-[var(--theme-text)] opacity-[0.72]"
+                    "relative z-10 block h-[9px] rounded-full border",
+                    isActive ? "w-[26px]" : "w-[9px]",
+                    isActive || isComplete
+                      ? "border-[color:var(--theme-script)] bg-[var(--theme-script)]"
+                      : "border-[color:var(--theme-text)] bg-[var(--theme-text)]",
+                    isActive && "shadow-[0_0_16px_var(--theme-selected-glow)]"
                   )}
                 />
-              )}
-              <span
-                aria-hidden="true"
-                data-design-progress-step={label}
-                data-active={isActive ? "true" : "false"}
-                className={cx(
-                  "relative z-10 block h-[9px] rounded-full border",
-                  isActive ? "w-[26px]" : "w-[9px]",
-                  isActive || isComplete
-                    ? "border-[color:var(--theme-script)] bg-[var(--theme-script)]"
-                    : "border-[color:var(--theme-text)] bg-[var(--theme-text)]",
-                  isActive && "shadow-[0_0_16px_var(--theme-selected-glow)]"
-                )}
-              />
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            );
+          })}
+        </div>
 
-      <div className="grid grid-cols-4 text-center">
-        {DESIGN_STEPS.map((label, index) => (
-          <span
-            key={label}
-            className={cx(
-              "text-[10px] font-semibold leading-tight",
-              index === activeIndex ? "text-[var(--theme-script)]" : "text-[var(--theme-text)]"
-            )}
-          >
-            {label}
-          </span>
-        ))}
+        <div className="grid grid-cols-4 text-center">
+          {DESIGN_STEPS.map((label, index) => (
+            <span
+              key={label}
+              className={cx(
+                "text-[10px] font-semibold leading-tight",
+                index === activeIndex ? "text-[var(--theme-script)]" : "text-[var(--theme-text)]"
+              )}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
+      <StoreBrandIdentity />
     </div>
   );
 }
