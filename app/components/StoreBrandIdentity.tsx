@@ -14,6 +14,12 @@ const FALLBACK_BRAND: StoreBrand = {
   logoStyle: "wordmark"
 };
 
+const FLAWLESS_BRAND: StoreBrand = {
+  displayName: "Flawless",
+  logoUrl: "/landing/flawless-lettering-logo.png",
+  logoStyle: "wordmark"
+};
+
 function accountSlugFromPath(pathname: string) {
   const match = pathname.match(/^\/s\/([^/]+)\/design(?:\/|$)/);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
@@ -26,6 +32,12 @@ export default function StoreBrandIdentity() {
   useEffect(() => {
     const controller = new AbortController();
     if (process.env.NODE_ENV === "test") return () => controller.abort();
+
+    if (new URLSearchParams(window.location.search).get("brand") === "flawless") {
+      setBrand(FLAWLESS_BRAND);
+      setImageFailed(false);
+      return () => controller.abort();
+    }
 
     const accountSlug = accountSlugFromPath(window.location.pathname);
     const query = accountSlug ? `?accountSlug=${encodeURIComponent(accountSlug)}` : "";
@@ -60,14 +72,14 @@ export default function StoreBrandIdentity() {
   const showLogo = Boolean(brand.logoUrl && !imageFailed);
 
   return (
-    <div className="mt-3 flex min-h-11 items-center justify-center" data-store-brand>
+    <div className="mt-3 flex min-h-14 items-center justify-center" data-store-brand>
       {showLogo && brand.logoStyle === "wordmark" ? (
-        <div className="flex h-11 max-w-36 items-center justify-center px-2">
+        <div className="flex h-14 w-44 items-center justify-center px-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={brand.logoUrl!}
             alt={`${brand.displayName} logo`}
-            className="max-h-9 max-w-full object-contain"
+            className="max-h-12 max-w-full object-contain"
             onError={() => setImageFailed(true)}
           />
         </div>
