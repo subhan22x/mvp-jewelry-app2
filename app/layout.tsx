@@ -1,13 +1,19 @@
 import "./globals.css";
+import { Suspense } from "react";
 import { Figtree } from "next/font/google";
 import localFont from "next/font/local";
 import ThemeSwitcher from "./ThemeSwitcher";
 import ThemeStyles from "./ThemeStyles";
+import GuidedTour from "./components/GuidedTour";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 const nostalgic = localFont({
   src: "../public/fonts/perfectly-nostalgic-bold-italic.ttf",
   variable: "--font-nostalgic"
+});
+const theShuffle = localFont({
+  src: "../public/fonts/TheShuffle-Regular.ttf",
+  variable: "--font-the-shuffle"
 });
 
 export const metadata = { title: "Pendant MVP", description: "Custom pendant ideation" };
@@ -45,13 +51,16 @@ const browserPermissionErrorGuard = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${figtree.variable} ${nostalgic.variable}`}>
+    <html lang="en" className={`${figtree.variable} ${nostalgic.variable} ${theShuffle.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: browserPermissionErrorGuard }} />
         <ThemeStyles />
       </head>
       <body className="min-h-dvh">
         {children}
+        <Suspense>
+          <GuidedTour />
+        </Suspense>
         <ThemeSwitcher />
       </body>
     </html>

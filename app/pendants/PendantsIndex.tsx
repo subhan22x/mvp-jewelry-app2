@@ -1,6 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import DesignProgressBar from "../components/DesignProgressBar";
+import NameBuilder from "../name/NameBuilder";
+import { TOUR_STEP_EVENT, TOUR_STORAGE_KEY } from "@/src/lib/tour/steps";
 
 type CardConfig = {
   id: string;
@@ -27,6 +32,33 @@ const baseCardClass =
   "group relative flex min-h-[208px] flex-col items-center justify-between rounded-[28px] border border-white/15 bg-black/90 p-5 text-center transition hover:border-white/35";
 
 export default function PendantsIndex({ basePath }: { basePath?: string } = {}) {
+  const [tourStep, setTourStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    function parse(value: string | number | "done" | null) {
+      if (typeof value === "number") return value;
+      if (value === null || value === "done") return null;
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    setTourStep(parse(localStorage.getItem(TOUR_STORAGE_KEY)));
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === TOUR_STORAGE_KEY) setTourStep(parse(event.newValue));
+    };
+    const onTourStep = (event: Event) => setTourStep(parse((event as CustomEvent<number | "done">).detail));
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(TOUR_STEP_EVENT, onTourStep);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(TOUR_STEP_EVENT, onTourStep);
+    };
+  }, []);
+
+  if (tourStep !== null && tourStep >= 1 && tourStep <= 3 && !basePath) {
+    return <NameBuilder mode="icedout" backHref="/design" />;
+  }
+
   const pendantBase = basePath ? `${basePath}/pendants` : "/pendants";
   const visibleCards = cards.map(card => {
     if (!card.href || card.href === "#") return card;
