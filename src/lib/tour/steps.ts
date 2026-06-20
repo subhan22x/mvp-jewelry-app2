@@ -10,7 +10,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     index: 0,
     route: "/design",
-    body: "This is what customers see first, when you scan a QR code or they go through your website",
+    body: "This is what customers see first, when they scan a QR code or go through your site",
     placement: "bottom"
   },
   {
@@ -34,7 +34,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     index: 4,
     route: "/owner",
-    body: "once the customer is done, the quote request is sent to you — you respond to it through the admin panel",
+    body: "once the customer is done, you draft the quote price and text them the preview link",
     placement: "center",
     isLast: true
   }
