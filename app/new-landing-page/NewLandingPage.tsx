@@ -82,6 +82,21 @@ export default function NewLandingPage({ className }: { className?: string }) {
         /* Accent line on the pillar headings — matches the homepage h1 <em>
            (gold TheShuffle script, own line, slightly larger, upright). */
         .nl-accent { display: block; margin-top: 0.12em; color: #d4924a; font-family: var(--font-shuffle), cursive; font-size: 1.08em; font-weight: 400; font-style: normal; letter-spacing: 0; line-height: 1; }
+        /* Yellow highlighter bar under key heading words. A pseudo-element
+           paints the marker stroke low and behind the text (z-index -1) so the
+           white glyphs stay fully legible — the bar underlines rather than
+           strikes through, even when the phrase wraps across lines. */
+        .nl-mark { position: relative; }
+        .nl-mark::before {
+          content: "";
+          position: absolute;
+          z-index: -1;
+          left: -0.04em; right: -0.04em;
+          bottom: 0.02em;
+          height: 0.12em;
+          background: rgba(235,180,103,0.7);
+          border-radius: 2px;
+        }
         /* Desktop: show the whole product shot inside the centred band. Mobile:
            the box is tall and narrow, so cover (instead of contain) fills it,
            and negative margins (cancelling the band padding) let the image
@@ -183,7 +198,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     color: "#fff",
                   }}
                 >
-                  Design Custom Jewelry and take orders
+                  <span className="nl-mark">Design Custom Jewelry</span> and take orders
                   <em className="nl-accent">in minutes</em>
                 </span>
                 <span
@@ -430,7 +445,8 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     color: "#fff",
                   }}
                 >
-                  Create Stunning social media visuals for your Brand
+                  <span className="nl-mark">Create Stunning</span> social media{" "}
+                  <span className="nl-mark">visuals</span> for your Brand
                   <em className="nl-accent">in minutes</em>
                 </span>
                 {/* Live marching reel carousel, shared with the /studio hero.
