@@ -1,6 +1,15 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { VvsStyleDefinition } from "./styles";
 
-export type VvsPipelineStage = "source_refine" | "style_composite" | "last_shot" | "video";
+export type VvsPipelineStage =
+  | "source_refine"
+  | "style_composite"
+  | "last_shot"
+  | "video"
+  | "image_source_cleanup"
+  | "image_hero_shot"
+  | "image_macro_shot";
 
 export type VvsGenerationProfile = {
   id: string;
@@ -70,6 +79,55 @@ export const LAST_SHOT_PROFILE: VvsGenerationProfile = {
   params: SOURCE_REFINE_PROFILE.params,
   promptTemplate:
     "give me more zoomed in angled shot from a different angle that shows the depth and scale of the pendant, the camera being closer to the pendant makes it look bigger, dont change anything in the scene except the camera position, make the diamonds look like diamonds a bit more and make the jewelry piece readable, add a lighting from the top so the depth of the lettering on the pendants is apparent",
+};
+
+function readImagePostPrompt(fileName: string) {
+  return fs.readFileSync(path.join(process.cwd(), "src/lib/vvs-studio/image-post-prompts", fileName), "utf8").trim();
+}
+
+const IMAGE_POST_PARAMS = {
+  quality: "medium",
+  resolution: "1k",
+  aspect_ratio: "9:16",
+  output_format: "png",
+  enable_sync_mode: false,
+  enable_base64_output: false,
+};
+
+export const IMAGE_SOURCE_CLEANUP_PROFILE: VvsGenerationProfile = {
+  id: "vvs-image-post-source-cleanup",
+  version: "2026-06-21.1",
+  stage: "image_source_cleanup",
+  provider: "wavespeed",
+  modelId: "openai/gpt-image-2/edit",
+  active: true,
+  trafficWeight: 100,
+  params: IMAGE_POST_PARAMS,
+  promptTemplate: readImagePostPrompt("source-cleanup.jsonp"),
+};
+
+export const IMAGE_HERO_SHOT_PROFILE: VvsGenerationProfile = {
+  id: "vvs-image-post-hero-shot",
+  version: "2026-06-21.1",
+  stage: "image_hero_shot",
+  provider: "wavespeed",
+  modelId: "nano-banana-2/edit-fast",
+  active: true,
+  trafficWeight: 100,
+  params: IMAGE_POST_PARAMS,
+  promptTemplate: readImagePostPrompt("hero-shot.jsonp"),
+};
+
+export const IMAGE_MACRO_SHOT_PROFILE: VvsGenerationProfile = {
+  id: "vvs-image-post-macro-right",
+  version: "2026-06-21.1",
+  stage: "image_macro_shot",
+  provider: "wavespeed",
+  modelId: "openai/gpt-image-2/edit",
+  active: true,
+  trafficWeight: 100,
+  params: IMAGE_POST_PARAMS,
+  promptTemplate: readImagePostPrompt("macro-right.jsonp"),
 };
 
 const VIDEO_PROMPT = `Cinematic ultra realistic 3d promotional video of the attached Jewelry Pendant.

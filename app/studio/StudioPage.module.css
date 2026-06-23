@@ -27,6 +27,18 @@
 .page *::after { box-sizing: border-box; }
 .page ::selection { background: var(--cyan); color: var(--ink); }
 
+/* Embedded variant: the studio body lives inside the merged landing page's
+   second pillar, so drop the full-viewport min-height and the fixed
+   background attachment that only make sense for a standalone route. The
+   width clamps keep it from blowing past the pillar (its grid row) on mobile. */
+.embedded {
+  min-height: 0;
+  background-attachment: scroll;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 @keyframes vRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
 
 /* ── NAV ─────────────────────────────────────────────── */
@@ -190,16 +202,6 @@
   object-fit: cover;
   border-radius: 14px;
   background: #0a1a2c;
-}
-.reelTime {
-  position: absolute;
-  left: 9px;
-  bottom: 9px;
-  z-index: 3;
-  font-family: var(--font-jbmono), monospace;
-  font-size: 9px;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
 /* ── BANDS ───────────────────────────────────────────── */

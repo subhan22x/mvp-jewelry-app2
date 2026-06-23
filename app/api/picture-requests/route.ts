@@ -12,6 +12,7 @@ import { scheduleBackgroundTask } from '@/src/lib/platform/background';
 import { directUploadReferenceSchema, readDirectUpload } from '@/src/lib/storage/direct-upload';
 import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
+import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
 
 export const maxDuration = 300;
 
@@ -167,6 +168,9 @@ export async function POST(req: Request) {
           sourceType: 'Result',
           sourceId: updated.id,
           metadata: { requestId: request.id, productType: 'picture' }
+        });
+        await ensureDraftQuoteForRequest(request.id).catch(error => {
+          console.error(`[quote draft ${request.id}] automatic creation failed:`, error);
         });
       } catch (err) {
         console.error('[picture pendant] generation failed:', err);

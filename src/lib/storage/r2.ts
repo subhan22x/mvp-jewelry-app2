@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "node:stream";
 
@@ -100,6 +100,35 @@ export function r2PublicUrl(key: string) {
   return `${config.publicBaseUrl}/${key.replace(/^\/+/, "")}`;
 }
 
+export const R2_URL_PREFIX = "r2://";
+
+export function parseR2Key(value: string | null | undefined): string | null {
+  if (!value || typeof value !== "string") return null;
+  if (!value.startsWith(R2_URL_PREFIX)) return null;
+  const key = value.slice(R2_URL_PREFIX.length).replace(/^\/+/, "");
+  return key.length > 0 ? key : null;
+}
+
+export async function createPresignedR2GetUrl({
+  key,
+  expiresInSeconds = 10 * 60
+}: {
+  key: string;
+  expiresInSeconds?: number;
+}): Promise<string> {
+  const config = getR2Config();
+  if (!config) throw new Error("R2 is not configured.");
+
+  return getSignedUrl(
+    getClient(config),
+    new GetObjectCommand({
+      Bucket: config.bucketName,
+      Key: key.replace(/^\/+/, "")
+    }),
+    { expiresIn: expiresInSeconds }
+  );
+}
+
 export async function uploadToR2({
   key,
   body,
@@ -158,4 +187,19 @@ export async function readFromR2(key: string) {
     buffer: await streamToBuffer(response.Body),
     contentType: response.ContentType ?? "application/octet-stream"
   };
+}
+
+export async function deleteFromR2(key: string) {
+  const config = getR2Config();
+  if (!config) throw new Error("R2 is not configured.");
+  await getClient(config).send(new DeleteObjectCommand({
+    Bucket: config.bucketName,
+    Key: key.replace(/^\/+/, ""),
+  }));
+}
+
+export function r2KeyFromPublicUrl(value: string) {
+  const config = getR2Config();
+  if (!config || !value.startsWith(`${config.publicBaseUrl}/`)) return null;
+  return decodeURIComponent(value.slice(config.publicBaseUrl.length + 1));
 }

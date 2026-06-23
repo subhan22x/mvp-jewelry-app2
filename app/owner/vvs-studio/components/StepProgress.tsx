@@ -1,14 +1,15 @@
 "use client";
 
-const STEPS = ["Capture", "Details", "Theme", "Image", "Video"];
+const DEFAULT_STEPS = ["Capture", "Details", "Theme", "Image", "Video"] as const;
 
-export default function StepProgress({ current }: { current: number }) {
-  const clampedCurrent = Math.max(0, Math.min(current, STEPS.length - 1));
+export default function StepProgress({ current, steps = DEFAULT_STEPS }: { current: number; steps?: readonly string[] }) {
+  const clampedCurrent = Math.max(0, Math.min(current, steps.length - 1));
+  const columns = { gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` };
 
   return (
     <div className="mx-auto flex w-[230px] flex-col gap-1.5">
-      <div className="grid grid-cols-5 items-center justify-items-center">
-        {STEPS.map((_, index) => (
+      <div className="grid items-center justify-items-center" style={columns}>
+        {steps.map((_, index) => (
           <div key={index} className="relative flex h-3 w-full items-center justify-center">
             {index > 0 && (
               <span
@@ -31,8 +32,8 @@ export default function StepProgress({ current }: { current: number }) {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-5 text-center">
-        {STEPS.map((label, index) => (
+      <div className="grid text-center" style={columns}>
+        {steps.map((label, index) => (
           <span
             key={label}
             style={{

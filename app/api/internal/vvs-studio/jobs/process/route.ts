@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { processVvsStudioJobs } from "@/src/lib/vvs-studio/pipeline";
+import { processVvsStudioJobsUntilIdle } from "@/src/lib/vvs-studio/pipeline";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ function authorized(req: Request) {
 
 export async function POST(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const results = await processVvsStudioJobs(3);
+  const results = await processVvsStudioJobsUntilIdle(240_000);
   return NextResponse.json({ results });
 }
 

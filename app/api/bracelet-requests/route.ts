@@ -7,6 +7,7 @@ import { getDefaultAccountId } from "@/src/lib/account";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
 import { resolveAccountIdFromSlug } from "@/src/lib/tenant";
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
+import { ensureDraftQuoteForRequest } from "@/src/lib/quotes/ensure-draft-quote";
 
 export const maxDuration = 300;
 
@@ -116,7 +117,8 @@ export async function POST(req: Request) {
         emblem: "none",
         size: null,
         metalType: body.metalType,
-        stoneType: isWomens ? null : body.stoneType
+        stoneType: isWomens ? null : body.stoneType,
+        diamondQuality: isWomens ? null : body.diamondQuality
       }
     });
 
@@ -165,6 +167,9 @@ export async function POST(req: Request) {
           sourceType: "Result",
           sourceId: updated.id,
           metadata: { requestId: request.id, productType: "bracelet", productLine: body.productLine, variant: 1 }
+        });
+        await ensureDraftQuoteForRequest(request.id).catch(error => {
+          console.error(`[quote draft ${request.id}] automatic creation failed:`, error);
         });
       } catch (err) {
         console.error("[bracelet] generation failed:", err);

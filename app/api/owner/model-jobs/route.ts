@@ -14,7 +14,10 @@ const MODEL_FORMAT = "glb";
 const RODIN_MODEL_ID = "hyper3d/rodin-v2.5/image-to-3d";
 
 const Body = z.object({
-  resultId: z.string().min(1)
+  resultId: z.string().min(1).optional(),
+  quoteId: z.string().min(1).optional()
+}).refine(body => Boolean(body.resultId) !== Boolean(body.quoteId), {
+  message: "Provide exactly one quoteId or resultId."
 });
 
 function getGenerationErrorMessage(err: unknown) {
@@ -30,24 +33,47 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const accountId = owner.accountId;
+    const quote = body.quoteId
+      ? await prisma.quoteRequest.findFirst({
+          where: { id: body.quoteId, accountId },
+          select: {
+            id: true,
+            requestId: true,
+            resultId: true,
+            designedImageUrl: true,
+            status: true
+          }
+        })
+      : null;
+    if (body.quoteId && !quote) return NextResponse.json({ error: "Quote not found." }, { status: 404 });
+    if (quote && (!quote.requestId || !quote.resultId || !quote.designedImageUrl)) {
+      return NextResponse.json({ error: "Select a generated quote image before creating a 3D preview." }, { status: 400 });
+    }
+    const selectedResultId = quote?.resultId ?? body.resultId;
+    if (!selectedResultId) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
     const result = await prisma.result.findUnique({
-      where: { id: body.resultId },
+      where: { id: selectedResultId },
       include: { request: true }
     });
 
     if (!result) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
     if (result.accountId !== accountId) return NextResponse.json({ error: "Generation result not found." }, { status: 404 });
-    if (result.status !== "succeeded" || !result.imageUrl) {
+    const selectedImageUrl = quote?.designedImageUrl ?? result.imageUrl;
+    if (result.status !== "succeeded" || !selectedImageUrl) {
       return NextResponse.json({ error: "This generation image is not ready for 3D generation." }, { status: 400 });
     }
     if ((result.request.productType ?? "name") !== "name") {
       return NextResponse.json({ error: "3D generation is available for name pendant generations only." }, { status: 400 });
     }
 
+    const sourceImageUrl = toPublicImageUrl(req, selectedImageUrl);
+    assertPublicImageUrl(sourceImageUrl);
+
     const reusableModel = await prisma.model3dGeneration.findFirst({
       where: {
         accountId,
         sourceResultId: result.id,
+        sourceImageUrl,
         OR: [
           { status: "pending" },
           { status: "succeeded", modelUrl: { not: null } }
@@ -57,6 +83,12 @@ export async function POST(req: Request) {
       select: { id: true, status: true }
     });
     if (reusableModel) {
+      if (quote) {
+        await prisma.quoteRequest.update({
+          where: { id: quote.id },
+          data: { model3dId: reusableModel.id, previewMediaType: "model3d", status: "priced" }
+        });
+      }
       return NextResponse.json(
         { modelJobId: reusableModel.id, status: reusableModel.status, reused: true },
         { status: 200 }
@@ -65,8 +97,6 @@ export async function POST(req: Request) {
 
     await ensureUsageAvailable(accountId, "design_3d_generated");
 
-    const sourceImageUrl = toPublicImageUrl(req, result.imageUrl);
-    assertPublicImageUrl(sourceImageUrl);
     const prompt = buildModel3dPrompt();
     const startedAt = new Date();
     const model = await prisma.model3dGeneration.create({
@@ -82,6 +112,12 @@ export async function POST(req: Request) {
         startedAt
       }
     });
+    if (quote) {
+      await prisma.quoteRequest.update({
+        where: { id: quote.id },
+        data: { model3dId: model.id, previewMediaType: "model3d", status: "priced" }
+      });
+    }
 
     scheduleBackgroundTask((async () => {
       const startedMs = startedAt.getTime();

@@ -6,6 +6,7 @@ import { getVvsPipelineSettings } from "./pipeline-settings";
 import { renderPrompt, type VvsGenerationProfile, type VvsPipelineStage } from "./prompt-profiles";
 import {
   pollWavespeedJob,
+  deleteStoredVvsImage,
   saveRemoteVvsImage,
   saveRemoteVvsVideo,
   submitImageEdit,
@@ -18,6 +19,7 @@ const JOB_LOCK_TTL_MS = 5 * 60_000;
 const PROVIDER_INPUT_PREFIX = "vvs-studio/provider-inputs";
 
 type JobStage = VvsPipelineStage | "save_video" | "complete";
+type ImagePostStage = "image_source_cleanup" | "image_hero_shot" | "image_macro_shot";
 
 function nowPlus(ms: number) {
   return new Date(Date.now() + ms);
@@ -59,6 +61,111 @@ function providerProfilesForShoot(settings: Awaited<ReturnType<typeof getVvsPipe
     last_shot: settings.profiles.last_shot,
     video: videoProfile,
   };
+}
+
+function imagePostProfiles(settings: Awaited<ReturnType<typeof getVvsPipelineSettings>>) {
+  return {
+    image_source_cleanup: settings.profiles.image_source_cleanup,
+    image_hero_shot: settings.profiles.image_hero_shot,
+    image_macro_shot: settings.profiles.image_macro_shot,
+  };
+}
+
+type ImagePostSelection = {
+  profiles: Record<ImagePostStage, VvsGenerationProfile>;
+  style: { key: string; backgroundAsset: string; placementPrompt: string };
+};
+
+function imagePostSelectionFromJob(job: { profileSelectionJson: string | null }, fallback: ImagePostSelection): ImagePostSelection {
+  if (!job.profileSelectionJson) return fallback;
+  try {
+    const parsed = JSON.parse(job.profileSelectionJson) as Partial<ImagePostSelection>;
+    if (parsed.profiles?.image_source_cleanup && parsed.profiles.image_hero_shot && parsed.profiles.image_macro_shot && parsed.style) {
+      return parsed as ImagePostSelection;
+    }
+  } catch {
+    // Older queued jobs did not contain a full executable snapshot.
+  }
+  return fallback;
+}
+
+export async function startVvsImagePostPipeline({ accountId, shootId }: { accountId: string; shootId: string }) {
+  const shoot = await prisma.vvsStudioShoot.findUnique({
+    where: { id: shootId },
+    include: { Uploads: true },
+  });
+  if (!shoot || shoot.accountId !== accountId) throw new Error("Shoot not found.");
+  if (shoot.pieceType && shoot.pieceType !== "pendant") throw new Error("VVS image posts currently support pendants only.");
+  if (!shoot.Uploads.some(upload => upload.angle === "top")) throw new Error("Upload a top-view pendant photo before generating.");
+
+  const settings = await getVvsPipelineSettings(accountId);
+  const style = styleFromSettings(settings, shoot.visualStyle);
+  if (!style) throw new Error("Choose a supported VVS image style before generating.");
+  await ensureUsageAvailable(accountId, "vvs_product_post_generated");
+
+  const activeJob = await prisma.vvsStudioJob.findFirst({
+    where: { shootId: shoot.id, kind: "image_post_pipeline", status: { in: ["queued", "running"] } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (activeJob) return activeJob;
+
+  const completedJob = await prisma.vvsStudioJob.findFirst({
+    where: { shootId: shoot.id, kind: "image_post_pipeline", status: "succeeded" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (completedJob) return completedJob;
+
+  const failedJob = await prisma.vvsStudioJob.findFirst({
+    where: { shootId: shoot.id, kind: "image_post_pipeline", status: "failed" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (failedJob) {
+    const retried = await prisma.vvsStudioJob.update({
+      where: { id: failedJob.id },
+      data: { status: "queued", attempts: 0, lockedAt: null, lockedBy: null, runAfter: new Date(), error: null, completedAt: null },
+    });
+    await prisma.vvsStudioShoot.update({
+      where: { id: shoot.id },
+      data: { status: "generating_image", error: null, completedAt: null, updatedAt: new Date() },
+    });
+    return retried;
+  }
+
+  const aspectRatio = shoot.aspectRatio === "four_three" ? "4:3" : "9:16";
+  const baseProfiles = imagePostProfiles(settings);
+  const withAspectRatio = (profile: VvsGenerationProfile): VvsGenerationProfile => ({
+    ...profile,
+    params: { ...profile.params, aspect_ratio: aspectRatio },
+  });
+  const profiles = {
+    image_source_cleanup: withAspectRatio(baseProfiles.image_source_cleanup),
+    image_hero_shot: withAspectRatio(baseProfiles.image_hero_shot),
+    image_macro_shot: withAspectRatio(baseProfiles.image_macro_shot),
+  };
+  const job = await prisma.vvsStudioJob.create({
+    data: {
+      id: crypto.randomUUID(),
+      accountId,
+      shootId: shoot.id,
+      kind: "image_post_pipeline",
+      status: "queued",
+      currentStage: "image_source_cleanup",
+      profileSelectionJson: safeJson({
+        profiles: {
+          image_source_cleanup: profileSnapshot(profiles.image_source_cleanup),
+          image_hero_shot: profileSnapshot(profiles.image_hero_shot),
+          image_macro_shot: profileSnapshot(profiles.image_macro_shot),
+        },
+        style: { key: style.key, backgroundAsset: style.backgroundAsset, placementPrompt: style.placementPrompt },
+      }),
+    },
+  });
+
+  await prisma.vvsStudioShoot.update({
+    where: { id: shoot.id },
+    data: { status: "generating_image", error: null, completedAt: null, updatedAt: new Date() },
+  });
+  return job;
 }
 
 export async function startVvsVideoPipeline({
@@ -153,6 +260,9 @@ function profileSnapshot(profile: VvsGenerationProfile) {
     provider: profile.provider,
     modelId: profile.modelId,
     params: profile.params,
+    promptTemplate: profile.promptTemplate,
+    active: profile.active,
+    trafficWeight: profile.trafficWeight,
   };
 }
 
@@ -262,6 +372,20 @@ async function completeJob(jobId: string, shootId: string) {
   ]);
 }
 
+async function completeImagePostJob(jobId: string, shootId: string) {
+  const completedAt = new Date();
+  await prisma.$transaction([
+    prisma.vvsStudioJob.update({
+      where: { id: jobId },
+      data: { status: "succeeded", currentStage: "complete", lockedAt: null, lockedBy: null, completedAt, error: null, updatedAt: completedAt },
+    }),
+    prisma.vvsStudioShoot.update({
+      where: { id: shootId },
+      data: { status: "image_succeeded", completedAt, error: null, updatedAt: completedAt },
+    }),
+  ]);
+}
+
 async function ensureProviderUrlFromUpload(upload: {
   id: string;
   accountId: string;
@@ -289,6 +413,7 @@ async function ensureProviderUrlFromUpload(upload: {
 }
 
 async function ensurePendingImageGeneration({
+  jobId,
   accountId,
   shootId,
   stage,
@@ -297,7 +422,11 @@ async function ensurePendingImageGeneration({
   profile,
   styleKey,
   sourceImageGenerationId,
+  outputRole,
+  inputManifest,
+  retentionExpiresAt,
 }: {
+  jobId: string;
   accountId: string;
   shootId: string;
   stage: VvsPipelineStage;
@@ -306,9 +435,12 @@ async function ensurePendingImageGeneration({
   profile: VvsGenerationProfile;
   styleKey?: string;
   sourceImageGenerationId?: string;
+  outputRole?: string;
+  inputManifest?: unknown;
+  retentionExpiresAt?: Date;
 }) {
   const existing = await prisma.vvsStudioImageGeneration.findFirst({
-    where: { shootId, stage },
+    where: { jobId, stage, status: { in: ["pending", "succeeded"] } },
     orderBy: { createdAt: "desc" },
   });
   if (existing) return existing;
@@ -318,9 +450,13 @@ async function ensurePendingImageGeneration({
       id: crypto.randomUUID(),
       accountId,
       shootId,
+      jobId,
       variant,
       stage,
       sourceImageGenerationId,
+      outputRole,
+      inputManifestJson: safeJson(inputManifest),
+      retentionExpiresAt,
       styleKey,
       status: "pending",
       prompt,
@@ -345,6 +481,9 @@ async function runImageStage({
   variant,
   styleKey,
   sourceImageGenerationId,
+  outputRole,
+  inputManifest,
+  retentionExpiresAt,
   nextStage,
 }: {
   jobId: string;
@@ -357,9 +496,13 @@ async function runImageStage({
   variant: number;
   styleKey?: string;
   sourceImageGenerationId?: string;
+  outputRole?: string;
+  inputManifest?: unknown;
+  retentionExpiresAt?: Date;
   nextStage: JobStage;
 }) {
   const gen = await ensurePendingImageGeneration({
+    jobId,
     accountId,
     shootId,
     stage,
@@ -368,13 +511,22 @@ async function runImageStage({
     profile,
     styleKey,
     sourceImageGenerationId,
+    outputRole,
+    inputManifest,
+    retentionExpiresAt,
   });
 
   if (gen.status === "succeeded" && gen.imageUrl) {
-    await prisma.vvsStudioJob.update({
-      where: { id: jobId },
-      data: { currentStage: nextStage, updatedAt: new Date() },
-    });
+    if (gen.outputRole === "shot_1" && gen.jobId) {
+      await consumeUsageCredit({
+        accountId: gen.accountId,
+        kind: "vvs_product_post_generated",
+        sourceType: "VvsStudioJob",
+        sourceId: gen.jobId,
+        metadata: { shootId: gen.shootId, stage: gen.stage },
+      });
+    }
+    await releaseJob(jobId, nextStage, 0);
     return;
   }
 
@@ -392,7 +544,7 @@ async function runImageStage({
     if (submitted.status === "completed" && submitted.immediateOutputUrl) {
       const imageUrl = await saveRemoteVvsImage(submitted.immediateOutputUrl, gen.id);
       await markImageSucceeded(gen.id, imageUrl, submitted.payload, nextStage === "video" ? "image_finalized" : "generating_image");
-      await prisma.vvsStudioJob.update({ where: { id: jobId }, data: { currentStage: nextStage, updatedAt: new Date() } });
+      await releaseJob(jobId, nextStage, 0);
       return;
     }
 
@@ -415,11 +567,12 @@ async function runImageStage({
 
   const imageUrl = await saveRemoteVvsImage(polled.outputUrl, gen.id);
   await markImageSucceeded(gen.id, imageUrl, polled.payload, nextStage === "video" ? "image_finalized" : "generating_image");
-  await prisma.vvsStudioJob.update({ where: { id: jobId }, data: { currentStage: nextStage, updatedAt: new Date() } });
+  await releaseJob(jobId, nextStage, 0);
 }
 
 async function markImageSucceeded(imageGenerationId: string, imageUrl: string, payload: unknown, shootStatus: string) {
   const completedAt = new Date();
+  const existing = await prisma.vvsStudioImageGeneration.findUnique({ where: { id: imageGenerationId }, select: { startedAt: true } });
   const gen = await prisma.vvsStudioImageGeneration.update({
     where: { id: imageGenerationId },
     data: {
@@ -427,7 +580,7 @@ async function markImageSucceeded(imageGenerationId: string, imageUrl: string, p
       imageUrl,
       providerPayloadJson: safeJson(payload),
       completedAt,
-      durationMs: undefined,
+      durationMs: existing?.startedAt ? Math.max(0, completedAt.getTime() - existing.startedAt.getTime()) : null,
       error: null,
     },
   });
@@ -435,12 +588,12 @@ async function markImageSucceeded(imageGenerationId: string, imageUrl: string, p
     where: { id: gen.shootId },
     data: { status: shootStatus, error: null, updatedAt: completedAt },
   });
-  if (gen.stage === "style_composite") {
+  if (gen.stage === "style_composite" || gen.outputRole === "shot_1") {
     await consumeUsageCredit({
       accountId: gen.accountId,
       kind: "vvs_product_post_generated",
-      sourceType: "VvsStudioImageGeneration",
-      sourceId: gen.id,
+      sourceType: gen.outputRole === "shot_1" ? "VvsStudioJob" : "VvsStudioImageGeneration",
+      sourceId: gen.outputRole === "shot_1" && gen.jobId ? gen.jobId : gen.id,
       metadata: { shootId: gen.shootId, stage: gen.stage }
     });
   }
@@ -575,6 +728,122 @@ async function markVideoSucceeded(videoGenerationId: string, videoUrl: string, r
   });
 }
 
+async function processImagePostJob(
+  job: NonNullable<Awaited<ReturnType<typeof claimNextJob>>>,
+  shoot: Awaited<ReturnType<typeof prisma.vvsStudioShoot.findUnique>> & { Uploads: Array<{
+    id: string;
+    accountId: string;
+    shootId: string;
+    angle: string;
+    storageKey: string;
+    imageUrl: string;
+    normalizedContentType: string;
+  }> },
+  settings: Awaited<ReturnType<typeof getVvsPipelineSettings>>,
+  style: NonNullable<ReturnType<typeof styleFromSettings>>,
+) {
+  const liveProfiles = imagePostProfiles(settings);
+  const selection = imagePostSelectionFromJob(job, {
+    profiles: liveProfiles,
+    style: { key: style.key, backgroundAsset: style.backgroundAsset, placementPrompt: style.placementPrompt },
+  });
+  const stage = job.currentStage as JobStage;
+
+  if (stage === "image_source_cleanup") {
+    const topUpload = shoot.Uploads.find(upload => upload.angle === "top");
+    if (!topUpload) throw new Error("Top-view pendant upload is required.");
+    const sourceUrl = await ensureProviderUrlFromUpload(topUpload);
+    const profile = selection.profiles.image_source_cleanup;
+    await runImageStage({
+      jobId: job.id,
+      accountId: job.accountId,
+      shootId: shoot.id,
+      stage: "image_source_cleanup",
+      profile,
+      prompt: renderPrompt(profile),
+      imageUrls: [sourceUrl],
+      variant: 0,
+      outputRole: "hidden_intermediate",
+      inputManifest: [{ type: "upload", uploadId: topUpload.id, angle: "top", url: sourceUrl }],
+      retentionExpiresAt: nowPlus(90 * 24 * 60 * 60_000),
+      nextStage: "image_hero_shot",
+    });
+    return;
+  }
+
+  const cleanup = await prisma.vvsStudioImageGeneration.findFirst({
+    where: { jobId: job.id, stage: "image_source_cleanup", status: "succeeded", imageUrl: { not: null } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!cleanup?.imageUrl) throw new Error("Source cleanup is not ready.");
+
+  if (stage === "image_hero_shot") {
+    const cleanedUrl = publicStoredImageUrl(null, cleanup.imageUrl);
+    const backgroundUrl = publicAssetUrl(selection.style.backgroundAsset);
+    assertPublicImageUrl(cleanedUrl);
+    assertPublicImageUrl(backgroundUrl);
+    const profile = selection.profiles.image_hero_shot;
+    const snapshotStyle = {
+      ...style,
+      backgroundAsset: selection.style.backgroundAsset,
+      placementPrompt: selection.style.placementPrompt,
+    };
+    await runImageStage({
+      jobId: job.id,
+      accountId: job.accountId,
+      shootId: shoot.id,
+      stage: "image_hero_shot",
+      profile,
+      prompt: renderPrompt(profile, snapshotStyle),
+      imageUrls: [cleanedUrl, backgroundUrl],
+      variant: 1,
+      styleKey: selection.style.key,
+      sourceImageGenerationId: cleanup.id,
+      outputRole: "shot_1",
+      inputManifest: [
+        { type: "generation", generationId: cleanup.id, role: "cleaned_product", url: cleanedUrl },
+        { type: "style_background", styleKey: selection.style.key, url: backgroundUrl },
+      ],
+      nextStage: "image_macro_shot",
+    });
+    return;
+  }
+
+  const hero = await prisma.vvsStudioImageGeneration.findFirst({
+    where: { jobId: job.id, stage: "image_hero_shot", status: "succeeded", imageUrl: { not: null } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!hero?.imageUrl) throw new Error("First post shot is not ready.");
+
+  if (stage === "image_macro_shot") {
+    const heroUrl = publicStoredImageUrl(null, hero.imageUrl);
+    assertPublicImageUrl(heroUrl);
+    const profile = selection.profiles.image_macro_shot;
+    await runImageStage({
+      jobId: job.id,
+      accountId: job.accountId,
+      shootId: shoot.id,
+      stage: "image_macro_shot",
+      profile,
+      prompt: renderPrompt(profile),
+      imageUrls: [heroUrl],
+      variant: 2,
+      styleKey: selection.style.key,
+      sourceImageGenerationId: hero.id,
+      outputRole: "shot_2",
+      inputManifest: [{ type: "generation", generationId: hero.id, role: "shot_1", url: heroUrl }],
+      nextStage: "complete",
+    });
+    return;
+  }
+
+  const macro = await prisma.vvsStudioImageGeneration.findFirst({
+    where: { jobId: job.id, stage: "image_macro_shot", status: "succeeded", imageUrl: { not: null } },
+  });
+  if (!macro?.imageUrl) throw new Error("Second post shot is not ready.");
+  await completeImagePostJob(job.id, shoot.id);
+}
+
 async function processClaimedJob(job: NonNullable<Awaited<ReturnType<typeof claimNextJob>>>) {
   const shoot = await prisma.vvsStudioShoot.findUnique({
     where: { id: job.shootId },
@@ -584,7 +853,12 @@ async function processClaimedJob(job: NonNullable<Awaited<ReturnType<typeof clai
   const settings = await getVvsPipelineSettings(job.accountId);
   const style = styleFromSettings(settings, shoot.visualStyle);
   if (!style) throw new Error("Unsupported VVS style.");
-  if (shoot.pieceType && shoot.pieceType !== "pendant") throw new Error("VVS video generation currently supports pendants only.");
+  if (shoot.pieceType && shoot.pieceType !== "pendant") throw new Error("VVS Studio generation currently supports pendants only.");
+
+  if (job.kind === "image_post_pipeline") {
+    await processImagePostJob(job, shoot, settings, style);
+    return;
+  }
 
   const profiles = providerProfilesForShoot(settings, shoot.videoDurationSeconds);
   const stage = job.currentStage as JobStage;
@@ -692,6 +966,11 @@ export async function processNextVvsStudioJob() {
     return { processed: true, jobId: job.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : "VVS video job failed.";
+    const completedAt = new Date();
+    await prisma.vvsStudioImageGeneration.updateMany({
+      where: { jobId: job.id, stage: job.currentStage, status: "pending" },
+      data: { status: "failed", error: message, completedAt },
+    });
     await failJob(job, message);
     return { processed: true, jobId: job.id, error: message };
   }
@@ -705,4 +984,51 @@ export async function processVvsStudioJobs(limit = 2) {
     if (!result.processed) break;
   }
   return results;
+}
+
+export async function processVvsStudioJobsUntilIdle(maxDurationMs = 240_000) {
+  const deadline = Date.now() + maxDurationMs;
+  const results: Array<Awaited<ReturnType<typeof processNextVvsStudioJob>>> = [];
+
+  while (Date.now() < deadline) {
+    const result = await processNextVvsStudioJob();
+    results.push(result);
+    if (result.processed) continue;
+
+    const next = await prisma.vvsStudioJob.findFirst({
+      where: { status: "queued" },
+      orderBy: { runAfter: "asc" },
+      select: { runAfter: true },
+    });
+    if (!next) break;
+    const delay = Math.min(Math.max(next.runAfter.getTime() - Date.now(), 250), 10_000);
+    if (Date.now() + delay >= deadline) break;
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+
+  await purgeExpiredVvsImageIntermediates();
+  return results;
+}
+
+export async function purgeExpiredVvsImageIntermediates(limit = 25) {
+  const expired = await prisma.vvsStudioImageGeneration.findMany({
+    where: {
+      outputRole: "hidden_intermediate",
+      retentionExpiresAt: { lte: new Date() },
+      imageUrl: { not: null },
+    },
+    orderBy: { retentionExpiresAt: "asc" },
+    take: limit,
+    select: { id: true, imageUrl: true },
+  });
+
+  for (const artifact of expired) {
+    if (!artifact.imageUrl) continue;
+    await deleteStoredVvsImage(artifact.imageUrl);
+    await prisma.vvsStudioImageGeneration.update({
+      where: { id: artifact.id },
+      data: { imageUrl: null },
+    });
+  }
+  return expired.length;
 }
