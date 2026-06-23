@@ -367,17 +367,19 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 >
                   Create Stunning social media visuals for your Brand &ndash; in minutes
                 </span>
-                {/* Live marching reel carousel, shared with the /studio hero. */}
+                {/* Live marching reel carousel, shared with the /studio hero.
+                    Here it runs the 3-slot ring with wider cards so the reels
+                    read larger and clearer in the banner. */}
                 <span
                   style={{
                     position: "relative",
                     zIndex: 1,
                     flex: "0 0 auto",
                     alignSelf: "center",
-                    width: "clamp(140px, 42%, 430px)",
+                    width: "clamp(170px, 48%, 500px)",
                   }}
                 >
-                  <ReelsCarousel />
+                  <ReelsCarousel slots={3} reelWidth="30%" />
                 </span>
               </div>
             </button>
