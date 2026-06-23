@@ -8,7 +8,6 @@ import AngleUploadCard from "../components/AngleUploadCard";
 import type {
   VvsGoldColor,
   VvsMetalType,
-  VvsMood,
   VvsPieceType,
   VvsStoneSetting,
   VvsUploadedFile,
@@ -26,6 +25,7 @@ const DIM = "#606068";
 type ImageStep = "capture" | "details" | "theme" | "generating" | "result";
 type ImageAspectRatio = "four_three" | "story";
 type Uploads = Partial<Record<"top" | "left" | "right", VvsUploadedFile>>;
+type GeneratedImage = { id: string; url: string };
 
 type StyleOption = {
   value: VvsVisualStyle;
@@ -64,13 +64,6 @@ const STONE_SETTINGS: { value: VvsStoneSetting; label: string }[] = [
   { value: "invisible", label: "Invisible" },
 ];
 
-const MOODS: { value: VvsMood; label: string }[] = [
-  { value: "luxury", label: "Luxury" },
-  { value: "street", label: "Street" },
-  { value: "editorial", label: "Editorial" },
-  { value: "minimal", label: "Minimal" },
-];
-
 const RATIOS: { value: ImageAspectRatio; label: string; sub: string; width: number; height: number }[] = [
   { value: "four_three", label: "Post", sub: "4:3 Instagram feed", width: 48, height: 36 },
   { value: "story", label: "Story", sub: "9:16 Reels / TikTok", width: 29, height: 52 },
@@ -83,6 +76,8 @@ const STEP_INDEX: Record<ImageStep, number> = {
   generating: 3,
   result: 3,
 };
+
+const IMAGE_FLOW_STEPS = ["Capture", "Details", "Theme", "Image"] as const;
 
 function Chip({
   label,
@@ -503,68 +498,171 @@ function Header({ step, onHome }: { step: ImageStep; onHome: () => void }) {
         </button>
       </div>
       <div style={{ marginTop: 8, display: "flex", justifyContent: "center" }}>
-        <StepProgress current={STEP_INDEX[step]} />
+        <StepProgress current={STEP_INDEX[step]} steps={IMAGE_FLOW_STEPS} />
       </div>
     </header>
   );
 }
 
-function LoadingState() {
+function LoadingState({ stage }: { stage: string }) {
+  const copy = stage === "image_source_cleanup"
+    ? ["Preparing your product", "Cleaning the source photo while preserving the pendant details."]
+    : ["Creating your first photo", "Placing the cleaned product into the selected studio environment."];
   return (
     <div style={{ minHeight: "calc(100dvh - 190px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, textAlign: "center" }}>
       <div style={{ width: 96, height: 96, borderRadius: "50%", border: `3px solid ${GOLD}44`, borderTopColor: GOLD, animation: "vvs-image-spin 1s linear infinite", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ color: GOLD, fontSize: 28 }}>*</span>
       </div>
       <div>
-        <h1 style={{ margin: 0, fontFamily: "'Figtree', sans-serif", fontSize: 28, color: TEXT }}>Generating...</h1>
-        <p style={{ margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif", color: "#9c9da6" }}>Creating your studio product photo</p>
+        <h1 style={{ margin: 0, fontFamily: "'Figtree', sans-serif", fontSize: 28, color: TEXT }}>
+          {copy[0]}
+        </h1>
+        <p style={{ margin: "8px 0 0", fontFamily: "'DM Sans', sans-serif", color: "#9c9da6", lineHeight: 1.5 }}>
+          {copy[1]}
+        </p>
       </div>
     </div>
   );
 }
 
-function ResultState({ imageUrl, onNew }: { imageUrl: string; onNew: () => void }) {
+function SparkleIcon() {
+  return <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>✦</span>;
+}
+
+function ResultState({
+  images,
+  selectedIndex,
+  caption,
+  onSelect,
+  onCaptionChange,
+  onCaptionBlur,
+  onGenerateCaption,
+  generatingSecond,
+}: {
+  images: GeneratedImage[];
+  selectedIndex: number;
+  caption: string;
+  onSelect: (index: number) => void;
+  onCaptionChange: (value: string) => void;
+  onCaptionBlur: () => void;
+  onGenerateCaption: () => void;
+  generatingSecond: boolean;
+}) {
+  function saveImages() {
+    images.forEach((image, index) => {
+      const link = document.createElement("a");
+      link.href = image.url;
+      link.download = `vvs-studio-image-${index + 1}.png`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <h1 style={{ margin: 0, fontFamily: "'Figtree', sans-serif", fontSize: 24, color: TEXT }}>Studio product photo</h1>
-      <div style={{ borderRadius: 16, border: `1px solid ${BORDER}`, overflow: "hidden", background: "#050505" }}>
-        <img src={imageUrl} alt="Generated studio product photo" style={{ display: "block", width: "100%", maxHeight: "62dvh", objectFit: "contain" }} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <div>
+        <h1 style={{ margin: 0, fontFamily: "'Figtree', sans-serif", fontSize: 25, color: TEXT }}>Studio product photos</h1>
+        <p style={{ margin: "6px 0 0", color: DIM, fontFamily: "'DM Sans', sans-serif", fontSize: 13 }}>Choose the image you want to open or caption.</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <a
-          href={imageUrl}
-          target="_blank"
-          rel="noreferrer"
+
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", scrollSnapType: "x mandatory", padding: "2px 2px 8px" }}>
+        {images.map((image, index) => {
+          const active = selectedIndex === index;
+          return (
+            <button
+              key={image.id}
+              type="button"
+              onClick={() => onSelect(index)}
+              aria-label={`Select generated image ${index + 1}`}
+              style={{
+                position: "relative",
+                flex: "0 0 calc(88% - 8px)",
+                aspectRatio: "4 / 5",
+                scrollSnapAlign: "start",
+                padding: 0,
+                overflow: "hidden",
+                borderRadius: 15,
+                border: `2px solid ${active ? GOLD : BORDER}`,
+                background: "#08080a",
+                cursor: "pointer",
+              }}
+            >
+              <img src={image.url} alt={`Generated studio product photo ${index + 1}`} style={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }} />
+              <span style={{ position: "absolute", top: 12, left: 12, borderRadius: 999, padding: "5px 9px", background: "rgba(10,10,12,0.82)", border: `1px solid ${active ? GOLD : BORDER}`, color: active ? GOLD : SOFT, fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700 }}>
+                {index + 1} of {images.length}
+              </span>
+            </button>
+          );
+        })}
+        {images.length === 1 && generatingSecond ? (
+          <div
+            style={{
+              flex: "0 0 calc(88% - 8px)",
+              aspectRatio: "4 / 5",
+              scrollSnapAlign: "start",
+              borderRadius: 15,
+              border: `1.5px dashed #50505a`,
+              background: PANEL,
+              color: GOLD,
+              cursor: "wait",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 15,
+              fontWeight: 700,
+            }}
+          >
+            <span style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px solid ${GOLD}`, display: "grid", placeItems: "center", fontSize: 20, animation: "vvs-image-spin 1s linear infinite" }}>✦</span>
+            Creating detail shot
+          </div>
+        ) : null}
+      </div>
+
+      <section style={{ borderRadius: 14, border: `1px solid ${BORDER}`, background: PANEL, padding: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+          <label htmlFor="studio-caption" style={{ color: SOFT, fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em" }}>CAPTION</label>
+          <button type="button" onClick={onGenerateCaption} style={{ minHeight: 34, borderRadius: 8, border: `1px solid ${GOLD}88`, background: `${GOLD}12`, color: GOLD, padding: "0 11px", display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 700 }}>
+            <SparkleIcon /> Auto-generate
+          </button>
+        </div>
+        <textarea
+          id="studio-caption"
+          value={caption}
+          onChange={event => onCaptionChange(event.target.value)}
+          onBlur={onCaptionBlur}
+          maxLength={300}
+          placeholder="Write a caption for this post..."
+          style={{ width: "100%", minHeight: 104, resize: "vertical", boxSizing: "border-box", borderRadius: 9, border: `1px solid ${BORDER}`, background: BG, color: TEXT, padding: 12, outline: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 14, lineHeight: 1.5 }}
+        />
+        <div style={{ marginTop: 6, color: DIM, textAlign: "right", fontFamily: "'DM Sans', sans-serif", fontSize: 11 }}>{caption.length} / 300</div>
+      </section>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+        <button
+          type="button"
+          onClick={saveImages}
           style={{
             height: 48,
             borderRadius: 8,
-            border: `1.5px solid ${GOLD}`,
+            border: `1.5px solid ${GOLD}cc`,
             color: GOLD,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            textDecoration: "none",
+            background: "transparent",
+            cursor: "pointer",
             fontFamily: "'DM Sans', sans-serif",
+            fontSize: 14,
             fontWeight: 700,
           }}
         >
-          Open image
-        </a>
-        <button
-          type="button"
-          onClick={onNew}
-          style={{
-            height: 48,
-            borderRadius: 8,
-            border: 0,
-            background: GOLD,
-            color: "#050505",
-            fontFamily: "'DM Sans', sans-serif",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          New post
+          {images.length === 1 ? "Save image" : `Save ${images.length} images`}
         </button>
       </div>
     </div>
@@ -583,10 +681,15 @@ export default function ShowcasePostFlow() {
   const [metalType, setMetalType] = useState<VvsMetalType | "">("");
   const [goldColor, setGoldColor] = useState<VvsGoldColor | "">("");
   const [stoneSetting, setStoneSetting] = useState<VvsStoneSetting>();
-  const [mood, setMood] = useState<VvsMood>("luxury");
+  const mood = "luxury";
   const [aspectRatio, setAspectRatio] = useState<ImageAspectRatio>("four_three");
   const [error, setError] = useState<string | null>(null);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [pipelineStage, setPipelineStage] = useState("image_source_cleanup");
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [caption, setCaption] = useState("");
+  const [activeShootId, setActiveShootId] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -634,19 +737,33 @@ export default function ShowcasePostFlow() {
     return abortRef.current.signal;
   }
 
-  async function pollImageGeneration(generationId: string, signal: AbortSignal) {
+  async function pollImagePipeline(shootId: string, jobId: string, signal: AbortSignal) {
     while (!signal.aborted) {
       await new Promise(resolve => window.setTimeout(resolve, 2500));
       if (signal.aborted) return;
-      const response = await fetch(`/api/owner/vvs-studio/generations/${generationId}`, { signal });
+      const response = await fetch(`/api/owner/vvs-studio/shoots/${shootId}`, { signal });
       if (!response.ok) throw new Error(`Poll failed: HTTP ${response.status}`);
-      const data = await response.json() as { status: string; imageUrl?: string | null; error?: string | null };
-      if (data.status === "succeeded" && data.imageUrl) {
-        setGeneratedImageUrl(data.imageUrl);
+      const data = await response.json() as {
+        imageGenerations: Array<{ id: string; stage: string | null; status: string; imageUrl?: string | null }>;
+        jobs: Array<{ id: string; status: string; currentStage: string; error?: string | null }>;
+      };
+      const job = data.jobs.find(item => item.id === jobId);
+      if (!job) throw new Error("Image pipeline job was not found.");
+      setPipelineStage(job.currentStage);
+      const shots = data.imageGenerations
+        .filter(item => item.status === "succeeded" && item.imageUrl && (item.stage === "image_hero_shot" || item.stage === "image_macro_shot"))
+        .sort((a, b) => (a.stage === "image_hero_shot" ? -1 : 1))
+        .map(item => ({ id: item.id, url: item.imageUrl! }));
+      if (shots.length) {
+        setGeneratedImages(shots);
+        setSelectedImageIndex(shots.length - 1);
         setStep("result");
+      }
+      if (job.status === "succeeded") {
+        setPipelineRunning(false);
         return;
       }
-      if (data.status === "failed") throw new Error(data.error || "Image generation failed.");
+      if (job.status === "failed") throw new Error(job.error || "Image generation failed.");
     }
   }
 
@@ -654,6 +771,8 @@ export default function ShowcasePostFlow() {
     if (!uploads.top?.localFile || !visualStyle || !pieceType || !mood || !aspectRatio) return;
     const signal = cancelPending();
     setError(null);
+    setPipelineStage("image_source_cleanup");
+    setPipelineRunning(true);
     setStep("generating");
 
     try {
@@ -666,6 +785,7 @@ export default function ShowcasePostFlow() {
       const createData = await createResponse.json().catch(() => ({}));
       if (!createResponse.ok) throw new Error(createData.error ?? "Failed to create shoot.");
       const shootId = createData.shootId as string;
+      setActiveShootId(shootId);
 
       await Promise.all(
         (["top", "left", "right"] as const)
@@ -703,7 +823,7 @@ export default function ShowcasePostFlow() {
       const patchData = await patchResponse.json().catch(() => ({}));
       if (!patchResponse.ok) throw new Error(patchData.error ?? "Failed to save shoot details.");
 
-      const generateResponse = await fetch(`/api/owner/vvs-studio/shoots/${shootId}/generate`, {
+      const generateResponse = await fetch(`/api/owner/vvs-studio/shoots/${shootId}/start-image-pipeline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -711,37 +831,40 @@ export default function ShowcasePostFlow() {
       });
       const generateData = await generateResponse.json().catch(() => ({}));
       if (!generateResponse.ok) throw new Error(generateData.error ?? "Failed to start image generation.");
-      await pollImageGeneration(generateData.generationId as string, signal);
+      await pollImagePipeline(shootId, generateData.jobId as string, signal);
     } catch (err) {
       if (signal.aborted) return;
+      setPipelineRunning(false);
       setError(err instanceof Error ? err.message : "Image generation failed.");
-      setStep("theme");
+      setStep(generatedImages.length ? "result" : "theme");
     }
-  }
-
-  function resetFlow() {
-    abortRef.current?.abort();
-    Object.values(uploads).forEach(upload => {
-      if (upload?.previewUrl) URL.revokeObjectURL(upload.previewUrl);
-    });
-    setUploads({});
-    setVisualStyle(undefined);
-    setPieceType("pendant");
-    setEngravingText("");
-    setPrice("");
-    setMetalType("");
-    setGoldColor("");
-    setStoneSetting(undefined);
-    setMood("luxury");
-    setAspectRatio("four_three");
-    setGeneratedImageUrl(null);
-    setError(null);
-    setStep("capture");
   }
 
   const canProceedCapture = Boolean(visualStyle && uploads.top);
   const canProceedDetails = Boolean(pieceType);
   const canGenerate = Boolean(mood && aspectRatio && uploads.top && visualStyle);
+
+  async function saveCaption(value: string) {
+    if (!activeShootId) return;
+    const response = await fetch(`/api/owner/vvs-studio/shoots/${activeShootId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caption: value }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setError(data.error ?? "Failed to save caption.");
+    }
+  }
+
+  function generateCaption() {
+    const styleLabel = STYLE_OPTIONS.find(option => option.value === visualStyle)?.label ?? "studio";
+    const metal = goldColor ? goldColor.replace(/_/g, " ") : metalType ? metalType.replace(/_/g, " ") : "fine jewelry";
+    const subject = engravingText ? `${engravingText} pendant` : `${pieceType} design`;
+    const nextCaption = `${subject} in ${metal}, photographed in the ${styleLabel} studio style. Crafted to stand out from every angle.`.slice(0, 300);
+    setCaption(nextCaption);
+    void saveCaption(nextCaption);
+  }
 
   function renderCapture() {
     return (
@@ -778,7 +901,7 @@ export default function ShowcasePostFlow() {
         <div style={{ height: 1, background: BORDER }} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TEXT }}>Capture Pendant</span>
+          <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TEXT }}>Upload Your Product</span>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: DIM, lineHeight: 1.5 }}>
             Top view is required. Extra angles are saved as reference for the still.
           </span>
@@ -786,6 +909,17 @@ export default function ShowcasePostFlow() {
             <AngleUploadCard angle="top" label="Top View" sub="Straight down" guideSrc="/vvs-studio/guide-top.jpg" upload={uploads.top} onFile={handleFile} onRemove={handleRemove} />
             <AngleUploadCard angle="left" label="Left Angle" sub="45 deg left" guideSrc="/vvs-studio/guide-left.jpg" upload={uploads.left} onFile={handleFile} onRemove={handleRemove} />
             <AngleUploadCard angle="right" label="Right Angle" sub="45 deg right" guideSrc="/vvs-studio/guide-right.jpg" upload={uploads.right} onFile={handleFile} onRemove={handleRemove} />
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: BORDER }} />
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>ASPECT RATIO</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            {RATIOS.map(option => (
+              <RatioCard key={option.value} option={option} active={aspectRatio === option.value} onClick={() => setAspectRatio(option.value)} />
+            ))}
           </div>
         </div>
 
@@ -862,24 +996,6 @@ export default function ShowcasePostFlow() {
       <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
         <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 22, fontWeight: 700, color: TEXT }}>Choose Aesthetic</span>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>MOOD</span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {MOODS.map(option => (
-              <Chip key={option.value} label={option.label} active={mood === option.value} onClick={() => setMood(option.value)} />
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>ASPECT RATIO</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            {RATIOS.map(option => (
-              <RatioCard key={option.value} option={option} active={aspectRatio === option.value} onClick={() => setAspectRatio(option.value)} />
-            ))}
-          </div>
-        </div>
-
         {error && (
           <div style={{ borderRadius: 10, border: "1px solid #7f2f2f", background: "#301819", color: "#ffd2d2", padding: 12, fontFamily: "'DM Sans', sans-serif", fontSize: 13 }}>
             {error}
@@ -918,8 +1034,19 @@ export default function ShowcasePostFlow() {
     if (step === "capture") return renderCapture();
     if (step === "details") return renderDetails();
     if (step === "theme") return renderTheme();
-    if (step === "generating") return <LoadingState />;
-    return <ResultState imageUrl={generatedImageUrl ?? ""} onNew={resetFlow} />;
+    if (step === "generating") return <LoadingState stage={pipelineStage} />;
+    return (
+      <ResultState
+        images={generatedImages}
+        selectedIndex={selectedImageIndex}
+        caption={caption}
+        onSelect={setSelectedImageIndex}
+        onCaptionChange={setCaption}
+        onCaptionBlur={() => void saveCaption(caption)}
+        onGenerateCaption={generateCaption}
+        generatingSecond={pipelineRunning && generatedImages.length === 1}
+      />
+    );
   }
 
   return (
