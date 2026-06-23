@@ -79,6 +79,9 @@ export default function NewLandingPage({ className }: { className?: string }) {
         .nl-feature { display: flex; min-height: 76vh; max-width: 520px; flex-direction: column; justify-content: center; transition: opacity .4s ease; }
         .nl-timeline { display: flex; }
         .nl-pillar-inner { width: 100%; max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: clamp(16px, 4vw, 48px); padding: clamp(24px, 4vw, 48px) clamp(20px, 5vw, 56px); text-align: left; }
+        /* Accent line on the pillar headings — matches the homepage h1 <em>
+           (gold TheShuffle script, own line, slightly larger, upright). */
+        .nl-accent { display: block; margin-top: 0.12em; color: #d4924a; font-family: var(--font-shuffle), cursive; font-size: 1.08em; font-weight: 400; font-style: normal; letter-spacing: 0; line-height: 1; }
         /* Desktop: show the whole product shot inside the centred band. Mobile:
            the box is tall and narrow, so cover (instead of contain) fills it,
            and negative margins (cancelling the band padding) let the image
@@ -97,6 +100,18 @@ export default function NewLandingPage({ className }: { className?: string }) {
           .nl-features-grid { grid-template-columns: auto minmax(0,1fr); gap: 22px; padding: 30px 20px 80px; }
           .nl-feature { min-height: 32vh; justify-content: flex-start; padding: 12px 0; opacity: 1 !important; }
           .nl-timeline { display: none !important; }
+        }
+        /* "Where it goes" channel cards (3 across), below the feature scroll. */
+        .nl-channels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1160px; margin: 0 auto; padding: 0 clamp(20px,5vw,56px) clamp(64px,8vw,110px); }
+        .nl-channel { display: flex; flex-direction: column; overflow: hidden; padding: clamp(20px,2.4vw,28px); border: 1px solid rgba(237,228,212,0.09); border-radius: 18px; background: linear-gradient(165deg, #15120d, rgba(21,18,13,0.35)); transition: transform .2s ease, border-color .2s ease; }
+        .nl-channel:hover { transform: translateY(-4px); border-color: rgba(237,228,212,0.2); }
+        .nl-channel-icon { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/7; margin: calc(-1 * clamp(20px,2.4vw,28px)) calc(-1 * clamp(20px,2.4vw,28px)) clamp(18px,2vw,22px); background: rgba(255,255,255,0.025); }
+        .nl-channel-icon svg { width: 54px; height: 54px; fill: none; stroke: rgba(212,146,74,0.55); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .nl-channel-n { display: block; color: #d4924a; font-family: var(--font-jbmono), monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; }
+        .nl-channel-title { margin: 10px 0 0; color: #fff; font-size: clamp(17px,1.5vw,20px); font-weight: 700; }
+        .nl-channel-body { margin: 10px 0 0; color: #91877b; font-size: 14px; line-height: 1.6; }
+        @media (max-width: 760px) {
+          .nl-channels { grid-template-columns: 1fr; padding-bottom: 64px; }
         }
       `}</style>
 
@@ -168,7 +183,8 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     color: "#fff",
                   }}
                 >
-                  Design Custom Jewelry and take orders &ndash; in minutes
+                  Design Custom Jewelry and take orders
+                  <em className="nl-accent">in minutes</em>
                 </span>
                 <span
                   className="nl-hero-imgbox"
@@ -328,6 +344,55 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     ))}
                   </div>
                 </div>
+
+                {/* Three "where it goes" cards, laid out horizontally below the
+                    feature scroll (mirrors the live homepage's channel cards). */}
+                <div className="nl-channels">
+                  {([
+                    {
+                      n: "01",
+                      title: "Put it in your Store",
+                      body: "Customers scan one QR code, design their piece on the spot, and get a fully specced prototype before they walk out.",
+                      icon: (
+                        <svg viewBox="0 0 48 48" aria-hidden>
+                          <rect x="10" y="10" width="12" height="12" rx="2" />
+                          <rect x="26" y="10" width="12" height="12" rx="2" />
+                          <rect x="10" y="26" width="12" height="12" rx="2" />
+                          <rect x="26" y="26" width="12" height="12" rx="2" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      n: "02",
+                      title: "Add it to your IG bio",
+                      body: "Visitors who would otherwise bounce can design their own piece while you capture a complete lead.",
+                      icon: (
+                        <svg viewBox="0 0 48 48" aria-hidden>
+                          <rect x="8" y="12" width="32" height="22" rx="2" />
+                          <path d="M4 40h40" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      n: "03",
+                      title: "Run it alongside your Meta Ads",
+                      body: "Send ad traffic to an interactive design tool and receive warm leads who have already chosen what they want.",
+                      icon: (
+                        <svg viewBox="0 0 48 48" aria-hidden>
+                          <rect x="16" y="8" width="16" height="32" rx="3" />
+                          <path d="M22 34h4" />
+                        </svg>
+                      ),
+                    },
+                  ] as const).map((c) => (
+                    <div key={c.n} className="nl-channel">
+                      <div className="nl-channel-icon">{c.icon}</div>
+                      <span className="nl-channel-n">{c.n}</span>
+                      <h3 className="nl-channel-title">{c.title}</h3>
+                      <p className="nl-channel-body">{c.body}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </article>
@@ -365,7 +430,8 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     color: "#fff",
                   }}
                 >
-                  Create Stunning social media visuals for your Brand &ndash; in minutes
+                  Create Stunning social media visuals for your Brand
+                  <em className="nl-accent">in minutes</em>
                 </span>
                 {/* Live marching reel carousel, shared with the /studio hero.
                     Here it runs the 3-slot ring with wider cards so the reels
