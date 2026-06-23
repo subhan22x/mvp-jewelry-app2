@@ -141,7 +141,7 @@ function tabLinkClass(active: boolean) {
   }`;
 }
 
-function InternalTabs({ active }: { active: "review" | "text-renderer" | "style-editor" }) {
+function InternalTabs({ active }: { active: "review" | "text-renderer" | "style-editor" | "vvs" }) {
   return (
     <nav className="mt-5 flex flex-wrap gap-2">
       <a href="/internal/generations" className={tabLinkClass(active === "review")}>
@@ -152,6 +152,9 @@ function InternalTabs({ active }: { active: "review" | "text-renderer" | "style-
       </a>
       <a href="/internal/generations?tab=style-editor" className={tabLinkClass(active === "style-editor")}>
         Style Editor
+      </a>
+      <a href="/internal/vvs-generations" className={tabLinkClass(active === "vvs")}>
+        VVS Generations
       </a>
     </nav>
   );
