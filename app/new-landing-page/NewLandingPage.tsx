@@ -151,11 +151,11 @@ export default function NewLandingPage({ className }: { className?: string }) {
           }}
         >
           <Image
-            src="/new-landing/logo.png"
-            alt="VVS Design"
+            src="/new-landing/growjewelry-logo.png"
+            alt="Grow Jewelry"
             width={160}
             height={44}
-            style={{ height: 26, width: "auto", display: "block" }}
+            style={{ height: 64, width: "auto", display: "block", mixBlendMode: "screen" }}
           />
         </nav>
 
@@ -698,11 +698,11 @@ export default function NewLandingPage({ className }: { className?: string }) {
           }}
         >
           <Image
-            src="/new-landing/logo.png"
-            alt="VVS Design"
+            src="/new-landing/growjewelry-logo.png"
+            alt="Grow Jewelry"
             width={120}
             height={33}
-            style={{ height: 22, width: "auto", opacity: 0.9 }}
+            style={{ height: 40, width: "auto", opacity: 0.9, mixBlendMode: "screen" }}
           />
           <div
             style={{
