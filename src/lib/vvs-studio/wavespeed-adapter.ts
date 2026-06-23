@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from "../storage/r2";
+import { assertDurableMediaStorageConfigured, deleteFromR2, isR2Configured, r2KeyFromPublicUrl, uploadToR2 } from "../storage/r2";
 import type { VvsGenerationProfile } from "./prompt-profiles";
 
 const WAVESPEED_API_BASE = "https://api.wavespeed.ai/api/v3";
@@ -243,4 +243,18 @@ export function saveRemoteVvsVideo(remoteUrl: string, videoGenerationId: string)
     id: videoGenerationId,
     fallbackExtension: ".mp4",
   });
+}
+
+export async function deleteStoredVvsImage(imageUrl: string) {
+  const r2Key = r2KeyFromPublicUrl(imageUrl);
+  if (r2Key) {
+    await deleteFromR2(r2Key);
+    return;
+  }
+  if (!imageUrl.startsWith("/generated/vvs-studio/generated-images/")) return;
+  const relative = imageUrl.replace(/^\/generated\//, "");
+  const target = path.resolve(GENERATED_DIR, relative);
+  const root = path.resolve(GENERATED_DIR);
+  if (!target.startsWith(`${root}${path.sep}`)) throw new Error("Refusing to delete media outside the generated directory.");
+  await fs.rm(target, { force: true });
 }

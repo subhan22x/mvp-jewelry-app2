@@ -1,5 +1,8 @@
 import { prisma } from "@/server/db/client";
 import {
+  IMAGE_HERO_SHOT_PROFILE,
+  IMAGE_MACRO_SHOT_PROFILE,
+  IMAGE_SOURCE_CLEANUP_PROFILE,
   LAST_SHOT_PROFILE,
   SOURCE_REFINE_PROFILE,
   STYLE_COMPOSITE_PROFILE,
@@ -50,6 +53,9 @@ export async function getVvsPipelineSettings(accountId: string) {
   const config = parseConfig(row?.value);
   return {
     profiles: {
+      image_source_cleanup: applyProfileOverride(IMAGE_SOURCE_CLEANUP_PROFILE, config),
+      image_hero_shot: applyProfileOverride(IMAGE_HERO_SHOT_PROFILE, config),
+      image_macro_shot: applyProfileOverride(IMAGE_MACRO_SHOT_PROFILE, config),
       source_refine: applyProfileOverride(SOURCE_REFINE_PROFILE, config),
       style_composite: applyProfileOverride(STYLE_COMPOSITE_PROFILE, config),
       last_shot: applyProfileOverride(LAST_SHOT_PROFILE, config),
