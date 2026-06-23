@@ -3,6 +3,7 @@ import { prisma } from "@/server/db/client";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import OwnerFrame from "../../../OwnerFrame";
 import QuotePreparationForm, { type QuoteImageOption } from "./QuotePreparationForm";
+import { quoteSelectionDefaults } from "@/src/lib/quotes/quote-selection-defaults";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,17 @@ export default async function PrepareQuotePage({ params }: { params: Promise<{ q
     : quote.resultId
       ? `result:${quote.resultId}`
       : imageOptions[0]?.key ?? null;
+  const selectionDefaults = quoteSelectionDefaults({
+    quoteMaterial: quote.quoteMaterial,
+    quoteMaterialKarat: quote.quoteMaterialKarat,
+    quoteStoneType: quote.quoteStoneType,
+    metalType: quote.metalType ?? quote.request?.metalType ?? null,
+    stoneType: quote.stoneType ?? quote.request?.stoneType ?? null,
+    plainMetal: quote.plainMetal ?? quote.request?.plainMetal ?? null,
+    plainKarat: quote.plainKarat ?? quote.request?.plainKarat ?? null,
+    primaryMetal: quote.primaryMetal ?? quote.request?.primaryMetal ?? null,
+    pendantFinish: quote.pendantFinish ?? quote.request?.pendantFinish ?? null
+  });
 
   return (
     <OwnerFrame active="Quotes">
@@ -74,9 +86,9 @@ export default async function PrepareQuotePage({ params }: { params: Promise<{ q
             quotedPriceCents: quote.quotedPriceCents,
             quoteNotes: quote.quoteNotes,
             estimatedDelivery: quote.estimatedDelivery,
-            quoteMaterial: quote.quoteMaterial,
-            quoteMaterialKarat: quote.quoteMaterialKarat,
-            quoteStoneType: quote.quoteStoneType,
+            quoteMaterial: selectionDefaults.material,
+            quoteMaterialKarat: selectionDefaults.materialKarat,
+            quoteStoneType: selectionDefaults.stoneType,
             designedImageUrl: quote.designedImageUrl
           }}
           imageOptions={imageOptions}

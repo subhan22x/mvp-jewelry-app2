@@ -32,6 +32,7 @@ type QuoteData = {
 const DELIVERY_OPTIONS = ["1 week", "2 weeks", "3-4 weeks", "6-8 weeks"];
 const MATERIAL_OPTIONS = [
   ["gold", "Gold"],
+  ["gold_plated", "Gold plated"],
   ["silver", "Silver"],
   ["platinum", "Platinum"]
 ] as const;
