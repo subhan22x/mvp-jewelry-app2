@@ -87,7 +87,7 @@ export default function OwnerFrame({
           <div className="flex min-w-0 items-center gap-3">
             <MobileOwnerNav active={active} />
             <Link href="/owner" className="flex h-10 min-w-0 items-center">
-              <Image src="/landing/flawless-lettering-logo.png" alt="Flawless" width={150} height={60} className="h-10 w-auto object-contain" priority />
+              <Image src="/new-landing/growjewelry-logo.png" alt="Grow Jewelry" width={150} height={42} className="h-8 w-auto object-contain" style={{ mixBlendMode: "screen" }} priority />
             </Link>
           </div>
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-[#17191F] text-xs font-bold text-[#D1B873]">
