@@ -515,7 +515,11 @@ model VvsStudioImageGeneration {
   shoot         VvsStudioShoot @relation(fields: [shootId], references: [id])
 
   variant       Int            @default(1)
-  stage         String?        @default("style_composite") // source_refine | style_composite | last_shot
+  stage         String?        @default("style_composite") // video stages plus image_source_cleanup | image_hero_shot | image_macro_shot
+  jobId         String?
+  outputRole    String?        // hidden_intermediate | shot_1 | shot_2
+  inputManifestJson String?
+  retentionExpiresAt DateTime?
   sourceImageGenerationId String?
   styleKey      String?
   // pending | succeeded | failed
@@ -538,6 +542,8 @@ model VvsStudioImageGeneration {
   @@index([accountId, createdAt])
   @@index([accountId, status])
   @@index([shootId, createdAt])
+  @@index([jobId, stage])
+  @@index([retentionExpiresAt])
 }
 
 model VvsStudioVideoGeneration {

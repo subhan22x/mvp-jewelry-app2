@@ -8,8 +8,6 @@ export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ shootId: string }> };
 
-// Backward-compatible alias. Image posts are always generated as one durable
-// three-step job with exactly two publishable shots.
 export async function POST(_req: Request, { params }: Ctx) {
   const { shootId } = await params;
   const owner = await getOwnerContext();
@@ -23,12 +21,7 @@ export async function POST(_req: Request, { params }: Ctx) {
     if (process.env.VERCEL) waitUntil(worker);
     else void worker;
 
-    return NextResponse.json({
-      jobId: job.id,
-      status: job.status,
-      currentStage: job.currentStage,
-      pipeline: "image_post_pipeline",
-    }, { status: 201 });
+    return NextResponse.json({ jobId: job.id, status: job.status, currentStage: job.currentStage }, { status: 201 });
   } catch (error) {
     const usage = usageErrorResponse(error);
     if (usage) return NextResponse.json(usage, { status: 402 });
