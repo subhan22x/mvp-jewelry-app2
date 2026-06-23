@@ -160,7 +160,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
               height={44}
               style={{ height: 48, width: "auto", display: "block", mixBlendMode: "screen" }}
             />
-            <p style={{ margin: 0, paddingLeft: 56, color: "#91877b", fontSize: 10.5, fontWeight: 400, letterSpacing: "0.01em" }}>
+            <p style={{ margin: 0, paddingLeft: 28, color: "#91877b", fontSize: 10.5, fontWeight: 400, letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
               Grow your business with AI
             </p>
           </div>
