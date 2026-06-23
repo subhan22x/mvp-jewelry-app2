@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import StudioContent from "../studio/StudioContent";
 import ReelsCarousel from "../studio/ReelsCarousel";
