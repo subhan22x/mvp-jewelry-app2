@@ -116,18 +116,15 @@ export default function NewLandingPage({ className }: { className?: string }) {
           .nl-feature { min-height: 32vh; justify-content: flex-start; padding: 12px 0; opacity: 1 !important; }
           .nl-timeline { display: none !important; }
         }
-        /* "Where it goes" channel cards (3 across), below the feature scroll. */
-        .nl-channels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1160px; margin: 0 auto; padding: 0 clamp(20px,5vw,56px) clamp(64px,8vw,110px); }
-        .nl-channel { display: flex; flex-direction: column; overflow: hidden; padding: clamp(20px,2.4vw,28px); border: 1px solid rgba(237,228,212,0.09); border-radius: 18px; background: linear-gradient(165deg, #15120d, rgba(21,18,13,0.35)); transition: transform .2s ease, border-color .2s ease; }
-        .nl-channel:hover { transform: translateY(-4px); border-color: rgba(237,228,212,0.2); }
-        .nl-channel-icon { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/7; margin: calc(-1 * clamp(20px,2.4vw,28px)) calc(-1 * clamp(20px,2.4vw,28px)) clamp(18px,2vw,22px); background: rgba(255,255,255,0.025); }
-        .nl-channel-icon svg { width: 54px; height: 54px; fill: none; stroke: rgba(212,146,74,0.55); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        .nl-channel-n { display: block; color: #d4924a; font-family: var(--font-jbmono), monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; }
-        .nl-channel-title { margin: 10px 0 0; color: #fff; font-size: clamp(17px,1.5vw,20px); font-weight: 700; }
-        .nl-channel-body { margin: 10px 0 0; color: #91877b; font-size: 14px; line-height: 1.6; }
-        @media (max-width: 760px) {
-          .nl-channels { grid-template-columns: 1fr; padding-bottom: 64px; }
-        }
+        /* "Where it goes" channel cards — always 3 across, compact enough for mobile. */
+        .nl-channels { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px,2vw,18px); max-width: 1160px; margin: 0 auto; padding: 0 clamp(12px,4vw,56px) clamp(40px,6vw,80px); }
+        .nl-channel { display: flex; flex-direction: column; overflow: hidden; padding: clamp(12px,2vw,22px); border: 1px solid rgba(237,228,212,0.09); border-radius: clamp(10px,2vw,18px); background: linear-gradient(165deg, #15120d, rgba(21,18,13,0.35)); transition: transform .2s ease, border-color .2s ease; }
+        .nl-channel:hover { transform: translateY(-3px); border-color: rgba(237,228,212,0.2); }
+        .nl-channel-icon { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/7; margin: calc(-1 * clamp(12px,2vw,22px)) calc(-1 * clamp(12px,2vw,22px)) clamp(10px,1.5vw,16px); background: rgba(255,255,255,0.025); }
+        .nl-channel-icon svg { width: clamp(28px,5vw,48px); height: clamp(28px,5vw,48px); fill: none; stroke: rgba(212,146,74,0.55); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .nl-channel-n { display: block; color: #d4924a; font-family: var(--font-jbmono), monospace; font-size: clamp(9px,1.5vw,11px); letter-spacing: 0.12em; text-transform: uppercase; }
+        .nl-channel-title { margin: 6px 0 0; color: #fff; font-size: clamp(11px,2.2vw,18px); font-weight: 700; line-height: 1.2; }
+        .nl-channel-body { margin: 6px 0 0; color: #91877b; font-size: clamp(10px,1.6vw,13px); line-height: 1.5; }
       `}</style>
 
       <div
