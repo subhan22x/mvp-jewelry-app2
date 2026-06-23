@@ -142,32 +142,43 @@ export default function NewLandingPage({ className }: { className?: string }) {
         <nav
           style={{
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
-            gap: 4,
-            minHeight: "clamp(120px, 18vh, 240px)",
-            padding: "clamp(36px, 7vw, 80px) clamp(20px, 5cqw, 44px)",
+            justifyContent: "space-between",
+            gap: 16,
+            padding: "clamp(16px, 3vw, 28px) clamp(20px, 5vw, 56px)",
             background: "#0a0907",
           }}
         >
-          <Image
-            src="/new-landing/growjewelry-logo.png"
-            alt="Grow Jewelry"
-            width={160}
-            height={44}
-            style={{ height: 64, width: "auto", display: "block", mixBlendMode: "screen" }}
-          />
-          <p style={{
-            margin: 0,
-            color: "#91877b",
-            fontSize: 15,
-            lineHeight: 1.5,
-            fontWeight: 400,
-            letterSpacing: "0.01em",
-          }}>
-            Grow your business with AI
-          </p>
+          {/* Logo + subtitle */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Image
+              src="/new-landing/growjewelry-logo.png"
+              alt="Grow Jewelry"
+              width={160}
+              height={44}
+              style={{ height: 48, width: "auto", display: "block", mixBlendMode: "screen" }}
+            />
+            <p style={{ margin: 0, color: "#91877b", fontSize: 13, fontWeight: 400, letterSpacing: "0.01em" }}>
+              Grow your business with AI
+            </p>
+          </div>
+
+          {/* Nav actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 18, flexShrink: 0 }}>
+            <Link href="/login" style={{ color: "#91877b", fontSize: 14, textDecoration: "none" }}>
+              Log in
+            </Link>
+            <Link href="/onboarding" style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "10px 20px", borderRadius: 999, fontSize: 14, fontWeight: 700,
+              background: "linear-gradient(165deg, #ebb467, #d4924a)",
+              color: "#1b1006", textDecoration: "none",
+              boxShadow: "0 0 0 1px rgba(235,180,103,0.32), 0 10px 24px -12px rgba(212,146,74,0.8)",
+            }}>
+              Start free <span>→</span>
+            </Link>
+          </div>
         </nav>
 
         {/* PILLARS */}
