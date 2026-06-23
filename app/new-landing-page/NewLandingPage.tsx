@@ -142,9 +142,10 @@ export default function NewLandingPage({ className }: { className?: string }) {
         <nav
           style={{
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: 16,
+            gap: 10,
             minHeight: "clamp(120px, 18vh, 240px)",
             padding: "clamp(36px, 7vw, 80px) clamp(20px, 5cqw, 44px)",
             background: "#0a0907",
@@ -157,6 +158,16 @@ export default function NewLandingPage({ className }: { className?: string }) {
             height={44}
             style={{ height: 64, width: "auto", display: "block", mixBlendMode: "screen" }}
           />
+          <p style={{
+            margin: 0,
+            color: "#91877b",
+            fontSize: 15,
+            lineHeight: 1.5,
+            fontWeight: 400,
+            letterSpacing: "0.01em",
+          }}>
+            Grow your business with AI
+          </p>
         </nav>
 
         {/* PILLARS */}
