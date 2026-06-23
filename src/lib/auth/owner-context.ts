@@ -8,6 +8,7 @@ export type OwnerContext = {
   userId: string;
   accountId: string;
   email: string | null;
+  role: string;
 };
 
 export async function getOwnerContext(): Promise<OwnerContext | null> {
@@ -21,6 +22,7 @@ export async function getOwnerContext(): Promise<OwnerContext | null> {
     select: {
       id: true,
       email: true,
+      role: true,
       Memberships: {
         where: { status: "active", account: { status: "active" } },
         select: { accountId: true },
@@ -37,7 +39,8 @@ export async function getOwnerContext(): Promise<OwnerContext | null> {
     authUserId: data.user.id,
     userId: user.id,
     accountId: membership.accountId,
-    email: user.email
+    email: user.email,
+    role: user.role
   };
 }
 

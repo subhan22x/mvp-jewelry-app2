@@ -90,6 +90,7 @@ model Request {
   size           String?
   metalType      String?
   stoneType      String?
+  diamondQuality String?  // vs | vvs
   plainColor     String?
   plainMetal     String?
   plainKarat     String?
@@ -145,6 +146,7 @@ model ResultRevision {
   completedAt    DateTime?
   durationMs     Int?
   createdAt      DateTime @default(now())
+  QuoteRequests  QuoteRequest[]
 
   @@index([accountId, requestId])
   @@index([sourceResultId])
@@ -208,6 +210,7 @@ model Model3dGeneration {
   completedAt    DateTime?
   durationMs     Int?
   createdAt      DateTime  @default(now())
+  QuoteRequests  QuoteRequest[]
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
@@ -217,14 +220,19 @@ model QuoteRequest {
   id               String           @id @default(cuid())
   accountId        String           @default("demo-account")
   account          Account          @relation(fields: [accountId], references: [id])
-  requestId        String?
+  requestId        String?          @unique
   request          Request?         @relation(fields: [requestId], references: [id])
   resultId         String?
   result           Result?          @relation(fields: [resultId], references: [id])
   videoId          String?
   video            VideoGeneration? @relation(fields: [videoId], references: [id])
+  model3dId        String?
+  model3d          Model3dGeneration? @relation(fields: [model3dId], references: [id])
+  resultRevisionId String?
+  resultRevision   ResultRevision?   @relation(fields: [resultRevisionId], references: [id])
   designedImageUrl String?
   videoUrl         String?
+  previewMediaType String           @default("image") // image | model3d | video
   generatedAt      DateTime?
   productType      String?
   pendantFinish    String?
@@ -457,6 +465,7 @@ model VvsStudioShoot {
   engravingText   String?
   priceLabel      String?
   stoneSetting    String?
+  caption         String?
 
   // draft | ready | generating_image | image_succeeded | image_finalized | generating_video | video_succeeded | failed | archived
   status          String   @default("draft")
@@ -508,7 +517,11 @@ model VvsStudioImageGeneration {
   shoot         VvsStudioShoot @relation(fields: [shootId], references: [id])
 
   variant       Int            @default(1)
-  stage         String?        @default("style_composite") // source_refine | style_composite | last_shot
+  stage         String?        @default("style_composite") // video stages plus image_source_cleanup | image_hero_shot | image_macro_shot
+  jobId         String?
+  outputRole    String?        // hidden_intermediate | shot_1 | shot_2
+  inputManifestJson String?
+  retentionExpiresAt DateTime?
   sourceImageGenerationId String?
   styleKey      String?
   // pending | succeeded | failed
@@ -531,6 +544,8 @@ model VvsStudioImageGeneration {
   @@index([accountId, createdAt])
   @@index([accountId, status])
   @@index([shootId, createdAt])
+  @@index([jobId, stage])
+  @@index([retentionExpiresAt])
 }
 
 model VvsStudioVideoGeneration {

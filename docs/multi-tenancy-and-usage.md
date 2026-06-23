@@ -92,7 +92,7 @@ pending | priced | sent | fulfilled | closed
 
 Metered milestones:
 
-- Quote request created: `quote_requested`
+- Automatic private quote drafts are not metered. `quote_requested` remains a reserved historical usage key; owner publication is metered as `quote_responded`.
 - First transition to `sent`: `quote_responded`
 - First transition to `fulfilled`: `quote_fulfilled`
 

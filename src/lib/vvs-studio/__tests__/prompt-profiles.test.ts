@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  IMAGE_HERO_SHOT_PROFILE,
+  IMAGE_MACRO_SHOT_PROFILE,
+  IMAGE_SOURCE_CLEANUP_PROFILE,
   STYLE_COMPOSITE_PROFILE,
   renderPrompt,
   videoProfileForDuration,
@@ -32,5 +35,28 @@ describe("VVS Studio prompt profiles", () => {
     });
 
     expect(prompt).toBe("place this pendant on the platform");
+  });
+
+  it("keeps image-post stages isolated with the configured sequential models", () => {
+    expect(IMAGE_SOURCE_CLEANUP_PROFILE.stage).toBe("image_source_cleanup");
+    expect(IMAGE_SOURCE_CLEANUP_PROFILE.modelId).toBe("openai/gpt-image-2/edit");
+    expect(IMAGE_HERO_SHOT_PROFILE.stage).toBe("image_hero_shot");
+    expect(IMAGE_HERO_SHOT_PROFILE.modelId).toBe("nano-banana-2/edit-fast");
+    expect(IMAGE_MACRO_SHOT_PROFILE.stage).toBe("image_macro_shot");
+    expect(IMAGE_MACRO_SHOT_PROFILE.modelId).toBe("openai/gpt-image-2/edit");
+  });
+
+  it("loads image-post prompts from editable templates and renders style direction", () => {
+    expect(IMAGE_SOURCE_CLEANUP_PROFILE.promptTemplate).toContain("direct source of truth");
+    expect(IMAGE_MACRO_SHOT_PROFILE.promptTemplate).toContain("orbit the camera 50 degrees towards the right");
+    expect(renderPrompt(IMAGE_HERO_SHOT_PROFILE, {
+      key: "noir",
+      label: "Noir",
+      active: true,
+      sortOrder: 1,
+      previewAsset: "/preview.mp4",
+      backgroundAsset: "/background.png",
+      placementPrompt: "float above the platform",
+    })).toContain("float above the platform");
   });
 });

@@ -16,7 +16,6 @@ import type {
   VvsMetalType,
   VvsGoldColor,
   VvsStoneSetting,
-  VvsMood,
   VvsAspectRatio,
   VvsVideoDurationSeconds,
   VvsUploadedFile,
@@ -105,13 +104,6 @@ const STONE_SETTINGS: { value: VvsStoneSetting; label: string }[] = [
   { value: "flooded", label: "Flooded" },
   { value: "baguette", label: "Baguette" },
   { value: "invisible", label: "Invisible" },
-];
-
-const MOODS: { value: VvsMood; label: string }[] = [
-  { value: "luxury", label: "Luxury" },
-  { value: "street", label: "Street" },
-  { value: "editorial", label: "Editorial" },
-  { value: "minimal", label: "Minimal" },
 ];
 
 const RATIOS: { value: VvsAspectRatio; label: string; sub: string; pw: number; ph: number }[] = [
@@ -976,7 +968,7 @@ export default function VvsStudioWizard() {
         <div style={{ height: 1, background: BD }} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TX }}>Capture Pendant</span>
+          <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 20, fontWeight: 700, color: TX }}>Upload Your Product</span>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: DIM, lineHeight: 1.5 }}>
             Top view is required for v1. Extra angles are saved for reference.
           </span>
@@ -984,6 +976,25 @@ export default function VvsStudioWizard() {
             <AngleUploadCard angle="top" label="Top View" sub="Straight down" guideSrc="/vvs-studio/guide-top.jpg" upload={state.uploads.top} onFile={handleFile} onRemove={handleRemove} />
             <AngleUploadCard angle="left" label="Left Angle" sub="45° left" guideSrc="/vvs-studio/guide-left.jpg" upload={state.uploads.left} onFile={handleFile} onRemove={handleRemove} />
             <AngleUploadCard angle="right" label="Right Angle" sub="45° right" guideSrc="/vvs-studio/guide-right.jpg" upload={state.uploads.right} onFile={handleFile} onRemove={handleRemove} />
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: BD }} />
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>ASPECT RATIO</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            {RATIOS.map(r => (
+              <RatioCard
+                key={r.value}
+                label={r.label}
+                sub={r.sub}
+                pw={r.pw}
+                ph={r.ph}
+                active={state.aspectRatio === r.value}
+                onClick={() => dispatch({ type: "SET_FIELD", field: "aspectRatio", value: r.value })}
+              />
+            ))}
           </div>
         </div>
 
@@ -1087,37 +1098,6 @@ export default function VvsStudioWizard() {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
         <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 22, fontWeight: 700, color: TX }}>Choose Aesthetic</span>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>MOOD</span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {MOODS.map(m => (
-              <Chip
-                key={m.value}
-                label={m.label}
-                active={state.mood === m.value}
-                onClick={() => dispatch({ type: "SET_FIELD", field: "mood", value: m.value })}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>ASPECT RATIO</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            {RATIOS.map(r => (
-              <RatioCard
-                key={r.value}
-                label={r.label}
-                sub={r.sub}
-                pw={r.pw}
-                ph={r.ph}
-                active
-                onClick={() => undefined}
-              />
-            ))}
-          </div>
-        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontSize: 11, color: DIM, fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.05em" }}>VIDEO DURATION</span>

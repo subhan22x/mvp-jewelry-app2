@@ -80,6 +80,28 @@ async function monthlyLimit(accountId: string, kind: UsageKind) {
   return parseLimits(plan?.limitsJson)[kind] ?? DEFAULT_MONTHLY_LIMITS[kind];
 }
 
+export async function getMonthlyUsageSummary(accountId: string, kind: UsageKind) {
+  const { periodStart, periodEnd } = monthWindow();
+  const included = await monthlyLimit(accountId, kind);
+  if (!("accountUsageBucket" in prisma)) {
+    return { accountId, kind, used: 0, included, periodStart, periodEnd };
+  }
+
+  const bucket = await prisma.accountUsageBucket.findUnique({
+    where: { accountId_periodStart_kind: { accountId, periodStart, kind } },
+    select: { used: true }
+  });
+
+  return {
+    accountId,
+    kind,
+    used: bucket?.used ?? 0,
+    included,
+    periodStart,
+    periodEnd
+  };
+}
+
 export async function ensureUsageAvailable(accountId: string, kind: UsageKind, quantity = 1) {
   if (!("accountUsageBucket" in prisma)) {
     return { accountId, kind, included: DEFAULT_MONTHLY_LIMITS[kind], used: 0 };

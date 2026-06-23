@@ -8,7 +8,7 @@ These documents should match the running application:
 
 - [`../README.md`](../README.md): local setup, environment variables, routes, scripts, and deployment summary.
 - [`agent-context.md`](agent-context.md): future-agent handoff with MVP visibility rules, workflow preferences, architecture notes, prompting guardrails, and known pitfalls.
-- [`data-model.md`](data-model.md): current Prisma model and the remaining SaaS data-model work.
+- [`data-model.md`](data-model.md): current Prisma model, consolidated quote/media lifecycle, and remaining SaaS data-model work.
 - [`supabase-r2-setup.md`](supabase-r2-setup.md): Supabase runtime, archived SQLite migration tooling, and R2 transition steps.
 - [`production-roadmap.md`](production-roadmap.md): checkpoint status and the remaining path to a paid deployment.
 - [`vercel-deployment.md`](vercel-deployment.md): Vercel environment variables, R2 CORS, auth URLs, preview QA, and remaining serverless hardening.

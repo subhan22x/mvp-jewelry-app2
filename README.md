@@ -67,6 +67,8 @@ npm run supabase:push
 npm run db:seed   # creates the demo user
 ```
 
+For an existing Postgres database created before the consolidated quote flow, run `npm run supabase:migrate-quote-flow` before `npm run supabase:push`. The migration is idempotent and performs the historical quote/media backfill without deleting duplicate quote rows.
+
 Create a real development owner login when needed:
 
 ```bash
@@ -88,19 +90,20 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Owner dashboard
 
-The polished store-owner dashboard lives at `/owner`. It is separate from the customer pendant builder and the raw internal generation review page.
+The polished store-owner dashboard lives at `/owner`. It is request- and quote-centric, separate from the customer pendant builder and the raw internal generation review page.
 
 - Configure Supabase Auth variables in `.env.local` or Render.
 - Visit `/login` and sign in with the email and password created during onboarding.
-- Quote requests show first with large design thumbnails and a `Send Quote` action.
-- The `Generate Video` section shows name pendant drafts as compact cards.
-- Each draft image has its own `Generate Video` button. The admin can generate more than one video from the same pendant/image, and the button shows when it has been pressed before.
-- Because Wavespeed video generation uses paid provider processing, the button opens an `Are you sure?` confirmation before starting a job.
-- Owner video jobs are created with owner dashboard access; the older customer-facing video flow still uses `VIDEO_ACCESS_CODE`.
-- `/owner/videos` lists all pendant video jobs, including pending, completed, and failed attempts.
-- `/owner/videos/[videoJobId]` shows the selected source image, loading/progress state, final video player, download action, and share/copy action.
-- Completed Wavespeed videos are downloaded into `GENERATED_IMAGE_DIR`, served from `/generated/:file`, and stored in `VideoGeneration.videoUrl`. The original Wavespeed URL is retained in `VideoGeneration.remoteVideoUrl`.
-- Succeeded name-pendant drafts also expose an experimental owner-only `View in 3D` action. It creates a `Model3dGeneration` job through Wavespeed Rodin, stores one GLB in generated-media storage, and opens `/owner/models/:modelJobId` with a rotatable `<model-viewer>` scene plus browser AR support.
+- Every account-scoped `Request` with at least one successful image and captured customer contact automatically receives one draft `QuoteRequest`. The customer does not need to press a separate request-quote button.
+- This applies to every generation family backed by `Request`; all successful original results and revisions remain available for owner selection. Owner-only VVS Studio output is not automatically quote-eligible until it is associated with customer contact.
+- The dashboard exposes one action for an eligible request: `Prepare Quote`.
+- Quote preparation lets the owner select the exact original `Result` or `ResultRevision`, enter the price and quote details, and create the private quote link.
+- After creating the link, the owner chooses preview media. `Image only` is the default; supported products may use `Image + 3D` or `Image + Video`.
+- The public quote stays unavailable until quote preparation is finalized and any selected 3D or video generation succeeds. A failed or pending paid-media job must not expose a partial public quote.
+- Owner and customer views use the same quote preview card. Its selector shows the quoted image plus the explicitly attached 3D model or video.
+- The `3D Models` dashboard view filters quote preview cards that contain 3D media; it is not a separate model-job UI.
+- Legacy standalone video and 3D job pages redirect into the related quote preparation or preview flow when the job can be bound to a quote.
+- Completed Wavespeed media is stored on `VideoGeneration` or `Model3dGeneration` and associated explicitly with the quote. The original provider URL is retained alongside the durable media URL.
 - Visible owner navigation is intentionally limited to Quotes (`/owner`), Design (`/owner/design`), Studio (`/owner/vvs-studio`), and Settings (`/owner/settings`) for the MVP.
 - `/owner/profile`, `/owner/collections`, and `/owner/reviews` remain available by direct URL for internal/admin use, but are hidden from normal owner navigation.
 - `/owner/profile` edits the stored storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links. It also exposes copy/share controls for `/s/:slug` and the QR design URL `/s/:slug/design`.
@@ -169,7 +172,7 @@ Generated files are served through `/generated/:file` during local development. 
 | `VIDEO_PROMPT`         | built-in fallback                    | Optional exact prompt sent to Seedance.       |
 | `APP_BASE_URL`         | (required for videos and 3D models)  | Public base URL used so Wavespeed can fetch generated images. |
 | `NEXT_PUBLIC_APP_URL`  | (recommended in production)         | Browser-visible deployed application URL. |
-| `MODEL3D_PROMPT`       | built-in jewelry prompt              | Optional Rodin prompt override for owner `View in 3D` jobs. |
+| `MODEL3D_PROMPT`       | built-in jewelry prompt              | Optional Rodin prompt override for quote-bound 3D preview jobs. |
 | `MODEL3D_TIER`         | `Gen-2.5-High`                       | Rodin generation tier. |
 | `MODEL3D_POLL_TIMEOUT_MS` | `180000`                          | Maximum wait for Rodin image-to-3D polling. |
 | `DEFAULT_ACCOUNT_ID`   | (required in production)            | Account receiving root design-wizard requests until storefront-aware links replace this fallback. |
@@ -198,6 +201,7 @@ Generated files are served through `/generated/:file` during local development. 
 | `npm run prisma:migrate`  | Push the current Postgres schema to Supabase           |
 | `npm run db:seed`         | Seed the `demo` user                                  |
 | `npm run supabase:push`   | Push the Postgres schema to Supabase using `.env.local` |
+| `npm run supabase:migrate-quote-flow` | Apply the idempotent consolidated-quote schema migration and historical backfill |
 | `npm run supabase:migrate-metadata` | Copy archived SQLite rows to Supabase/Postgres; the historical script name is retained |
 | `npm run supabase:audit`  | Compare canonical SQLite and Supabase/Postgres table counts |
 | `npm run supabase:audit-rls` | Confirm public Prisma tables remain protected by RLS with no direct browser policies |
@@ -205,21 +209,27 @@ Generated files are served through `/generated/:file` during local development. 
 | `npm run r2:migrate-generated` | Upload local generated media to R2 and rewrite matching SQLite/Supabase URLs |
 | `npm run styles`          | Manage `data/pendant-styles.json` via script          |
 
-## User flow (Name pendant)
+## Generation and quote flow
 
 ```
 Home or /s/:slug/design
- └─ Name / Initials
-     ├─ Step 0: enter pendant text + choose style
-     ├─ Step 1: choose emblem + gold finish
-     ├─ Step 2: confirm design + diamond quality (VS / VVS)
-     ├─ Step 3: two draft tiles appear progressively as each image is generated
-     │          (select favourite, preview full-size, download)
-     ├─ Step 4: generate a Seedance video from the higher-quality draft
-     └─ Step 5: customer taps Get a quote, creating a tenant-scoped QuoteRequest snapshot
+ └─ Customer completes a supported design flow and supplies contact information
+     └─ Generated images appear progressively
+         └─ First successful image + contact creates one private draft QuoteRequest
+             └─ Owner selects Prepare Quote
+                 ├─ Select exact original result or revision
+                 ├─ Enter price, delivery, material, stone, and notes
+                 ├─ Create private quote link
+                 └─ Choose preview media
+                     ├─ Image only (default)
+                     ├─ Image + 3D (supported products only)
+                     └─ Image + Video (supported products only)
+                         └─ Finalize and make the completed quote public
 ```
 
 Generation is **asynchronous** — the results screen appears immediately after submitting and tiles fill in one by one as Gemini completes each variant (~10–50 s total). The first image typically appears within 15–20 s.
+
+Automatic draft creation is idempotent: a request owns at most one `QuoteRequest`, even when multiple images or revisions finish. Historical request-backed quotes and media jobs are backfilled into this relationship where their account, request, and selected source can be identified safely.
 
 ## Testing
 
@@ -246,14 +256,14 @@ app/
   design/DesignEntry.tsx     # reusable design entry UI for /design and /s/:slug/design
   name/page.tsx              # the 4-step name pendant flow (steps 0–2 + results)
   name/__tests__/            # Vitest unit tests for the name builder
-  owner/page.tsx             # owner dashboard: quote requests + Generate Video section
+  owner/page.tsx             # request-centric quote dashboard; Prepare Quote is the primary action
   owner/account/page.tsx     # owner account settings, including Prompt System
   owner/profile/page.tsx     # hidden-MVP profile editor, direct URL still works
   owner/collections/page.tsx # hidden-MVP collection/piece manager, direct URL still works
   owner/reviews/page.tsx     # hidden-MVP review dashboard, direct URL still works
-  owner/videos/page.tsx      # all pendant video jobs
-  owner/videos/[videoJobId]/page.tsx # video job status/player/download/share page
-  owner/models/[modelJobId]/page.tsx # experimental 3D model status/viewer/AR page
+  owner/videos/page.tsx      # legacy video-job list retained for unbound historical jobs
+  owner/videos/[videoJobId]/page.tsx # legacy bound-job redirect into quote flow
+  owner/models/[modelJobId]/page.tsx # legacy bound-job redirect into quote preview
   profile/page.tsx           # authenticated shortcut to /owner/profile
   profile/[accountSlug]/page.tsx # compatibility redirect to /s/:slug
   s/[accountSlug]/page.tsx   # validates store, then redirects public traffic to /s/:slug/design
@@ -261,10 +271,10 @@ app/
   s/[accountSlug]/review/    # public customer review form
   api/requests/route.ts      # POST /api/requests — creates a Request and starts async generation tasks
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
-  api/quote-requests/route.ts # POST — persists the customer quote/admin handoff snapshot
-  api/owner/video-jobs/route.ts # POST — owner starts a Wavespeed video job for one Result image
+  api/quote-requests/route.ts # creates/updates the request's single private quote draft
+  api/owner/video-jobs/route.ts # starts quote-bound video generation from the selected image
   api/owner/video-jobs/[id]/route.ts # GET — owner polls video job status
-  api/owner/model-jobs/route.ts # POST — owner starts a Wavespeed Rodin 3D model job
+  api/owner/model-jobs/route.ts # starts quote-bound Wavespeed Rodin 3D generation
   api/owner/model-jobs/[id]/route.ts # GET — owner polls 3D model job status
 
 data/

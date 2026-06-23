@@ -17,6 +17,7 @@ const PatchBody = z.object({
   engravingText: z.string().optional(),
   priceLabel: z.string().optional(),
   stoneSetting: z.string().optional(),
+  caption: z.string().max(300).optional(),
   status: z.string().optional(),
 });
 

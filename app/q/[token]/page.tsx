@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/server/db/client";
 import { proxiedPublicQuoteModelUrl } from "@/src/lib/model3d/proxy";
-import QuoteMediaViewer from "./QuoteMediaViewer";
+import QuoteMediaViewer, { type QuotePreviewMediaType } from "./QuoteMediaViewer";
 
 export const dynamic = "force-dynamic";
 
@@ -96,26 +96,19 @@ async function getPublicQuote(token: string) {
           name: true,
           StoreProfile: { select: { displayName: true, profileImageUrl: true, isPublished: true } }
         }
+      },
+      model3d: {
+        select: { id: true, modelUrl: true, status: true }
+      },
+      video: {
+        select: { id: true, videoUrl: true, status: true }
       }
     }
   });
 
   if (!quote || !PUBLIC_STATUSES.has(quote.status)) return null;
 
-  const model = quote.resultId
-    ? await prisma.model3dGeneration.findFirst({
-        where: {
-          accountId: quote.accountId,
-          sourceResultId: quote.resultId,
-          status: "succeeded",
-          modelUrl: { not: null }
-        },
-        orderBy: { createdAt: "desc" },
-        select: { modelUrl: true }
-      })
-    : null;
-
-  return { quote, modelUrl: model?.modelUrl ?? null };
+  return quote;
 }
 
 export async function generateMetadata({ params }: QuotePageProps): Promise<Metadata> {
@@ -123,12 +116,12 @@ export async function generateMetadata({ params }: QuotePageProps): Promise<Meta
   const data = await getPublicQuote(token);
   if (!data) return { title: "Quote unavailable" };
 
-  const storeName = data.quote.account.StoreProfile?.displayName || data.quote.account.name;
-  const title = `${storeName} quote for ${designTitle(data.quote)}`;
-  const description = data.quote.quotedPriceCents
-    ? `Quote total: ${money(data.quote.quotedPriceCents)}`
+  const storeName = data.account.StoreProfile?.displayName || data.account.name;
+  const title = `${storeName} quote for ${designTitle(data)}`;
+  const description = data.quotedPriceCents
+    ? `Quote total: ${money(data.quotedPriceCents)}`
     : "Your custom jewelry quote is ready.";
-  const imageUrl = absoluteUrl(data.quote.designedImageUrl);
+  const imageUrl = absoluteUrl(data.designedImageUrl);
 
   return {
     title,
@@ -136,7 +129,7 @@ export async function generateMetadata({ params }: QuotePageProps): Promise<Meta
     openGraph: {
       title,
       description,
-      images: imageUrl ? [{ url: imageUrl, alt: `${designTitle(data.quote)} preview` }] : undefined
+      images: imageUrl ? [{ url: imageUrl, alt: `${designTitle(data)} preview` }] : undefined
     },
     twitter: {
       card: imageUrl ? "summary_large_image" : "summary",
@@ -152,11 +145,20 @@ export default async function PublicQuotePage({ params }: QuotePageProps) {
   const data = await getPublicQuote(token);
   if (!data) notFound();
 
-  const { quote } = data;
+  const quote = data;
   const storeName = quote.account.StoreProfile?.displayName || quote.account.name;
   const title = designTitle(quote);
   const imageUrl = absoluteUrl(quote.designedImageUrl);
-  const modelUrl = proxiedPublicQuoteModelUrl(token, Boolean(data.modelUrl));
+  const previewMediaType: QuotePreviewMediaType = quote.previewMediaType === "model3d" || quote.previewMediaType === "video"
+    ? quote.previewMediaType
+    : "image";
+  const hasAttachedModel = previewMediaType === "model3d"
+    && quote.model3d?.status === "succeeded"
+    && Boolean(quote.model3d.modelUrl);
+  const modelUrl = proxiedPublicQuoteModelUrl(token, hasAttachedModel);
+  const videoUrl = previewMediaType === "video" && quote.video?.status === "succeeded"
+    ? absoluteUrl(quote.video.videoUrl)
+    : null;
   const rows = detailRows(quote);
 
   return (
@@ -178,7 +180,13 @@ export default async function PublicQuotePage({ params }: QuotePageProps) {
             </div>
           </div>
 
-          <QuoteMediaViewer imageUrl={imageUrl} modelUrl={modelUrl} alt={`${title} quoted design`} />
+          <QuoteMediaViewer
+            imageUrl={imageUrl}
+            previewMediaType={previewMediaType}
+            modelUrl={modelUrl}
+            videoUrl={videoUrl}
+            alt={`${title} quoted design`}
+          />
         </section>
 
         <section className="min-w-0 rounded-[1.75rem] border border-[#332d26] bg-[#1c1915] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.3)] md:p-7">
