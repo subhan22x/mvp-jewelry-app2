@@ -266,10 +266,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
           </form>
           <div className="-mx-4 flex max-w-[100vw] gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <FilterChip href={chipHref("all")} active={filter === "all"}>All</FilterChip>
-            <FilterChip href={chipHref("pending")} active={filter === "pending"}>Pending</FilterChip>
-            <FilterChip href={chipHref("priced")} active={filter === "priced"}>In progress</FilterChip>
             <FilterChip href={chipHref("sent")} active={filter === "sent"}>Sent</FilterChip>
-            <FilterChip href={chipHref("fulfilled")} active={filter === "fulfilled"}>Fulfilled</FilterChip>
             <FilterChip href={chipHref("today")} active={filter === "today"}>Today</FilterChip>
             <FilterChip href={chipHref("3d")} active={filter === "3d"}>3D Models</FilterChip>
           </div>
