@@ -20,7 +20,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
               Results: { orderBy: { variant: "asc" } }
             }
           },
-          Reviews: { include: { result: true } }
+          Reviews: { include: { result: true } },
+          PromptOverrides: {
+            where: { status: { in: ["draft", "applied"] } },
+            orderBy: { updatedAt: "desc" },
+            take: 10
+          }
         }
       }
     }
@@ -49,8 +54,22 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       sourceStylePath: labCase.sourceStylePath,
       sourceTemplatePath: labCase.sourceTemplatePath,
       renderedConfigJson: labCase.renderedConfigJson,
+      selectedPromptOverrideId: labCase.selectedPromptOverrideId,
       startedAt: labCase.startedAt,
       completedAt: labCase.completedAt,
+      promptOverrides: labCase.PromptOverrides.map(override => ({
+        id: override.id,
+        name: override.name,
+        status: override.status,
+        styleId: override.styleId,
+        promptMode: override.promptMode,
+        sourcePath: override.sourcePath,
+        originalText: override.originalText,
+        draftText: override.draftText,
+        appliedAt: override.appliedAt,
+        updatedAt: override.updatedAt
+      })),
+      promptOverride: labCase.PromptOverrides.find(override => override.id === labCase.selectedPromptOverrideId) ?? labCase.PromptOverrides[0] ?? null,
       results: labCase.request?.Results ?? [],
       reviews: labCase.Reviews
     }))

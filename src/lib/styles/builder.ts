@@ -224,7 +224,7 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
 
   if (data.pendantFinish === 'plain') {
     const templatePath = getTemplatePath(style.id, style.templateKey);
-    const raw = fs.readFileSync(templatePath, 'utf8');
+    const raw = options.styleOverride?.templateRaw ?? fs.readFileSync(templatePath, 'utf8');
     const plainColor = data.plainColor!;
     const plainMetal = data.plainMetal!;
     const plainChain = data.plainChain!;

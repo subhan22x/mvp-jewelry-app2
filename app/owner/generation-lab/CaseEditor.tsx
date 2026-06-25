@@ -10,6 +10,7 @@ export type LabMeta = {
   families: Array<{ id: string; label: string; wired: boolean; generationsPerCase: number }>;
   maxGenerationsPerRun: number;
   failureTags: string[];
+  imageModels: Array<{ id: string; label: string }>;
   presets: Array<{ id: string; label: string; description: string; caseCount: number }>;
   nameStyles: MetaNameStyle[];
   plainStyles: MetaPlainStyle[];
@@ -221,6 +222,7 @@ function NameCaseFields({ config, meta, patch }: { config: AnyCaseConfig; meta: 
           )}
         </div>
       )}
+      <ModelSelectionFields config={config} meta={meta} patch={patch} variants={2} />
     </div>
   );
 }
@@ -281,6 +283,36 @@ function BraceletCaseFields({ config, meta, patch }: { config: AnyCaseConfig; me
             </select>
           </Field>
         </>
+      )}
+      <ModelSelectionFields config={config} meta={meta} patch={patch} variants={1} />
+    </div>
+  );
+}
+
+function ModelSelectionFields({ config, meta, patch, variants }: { config: AnyCaseConfig; meta: LabMeta; patch: (p: Record<string, unknown>) => void; variants: 1 | 2 }) {
+  const selection = (config.modelSelection && typeof config.modelSelection === "object" ? config.modelSelection : {}) as Record<string, unknown>;
+  function patchModel(key: "variant1" | "variant2", value: string) {
+    const next = { ...selection };
+    if (value) next[key] = value;
+    else delete next[key];
+    patch({ modelSelection: Object.keys(next).length ? next : undefined });
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <Field label={variants === 1 ? "Model" : "Variant 1 model"}>
+        <select className={inputClass} value={String(selection.variant1 ?? "")} onChange={e => patchModel("variant1", e.target.value)}>
+          <option value="">Default ({variants === 1 ? "Gemini 3 Pro" : "Gemini 3 Pro"})</option>
+          {meta.imageModels.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+        </select>
+      </Field>
+      {variants === 2 && (
+        <Field label="Variant 2 model">
+          <select className={inputClass} value={String(selection.variant2 ?? "")} onChange={e => patchModel("variant2", e.target.value)}>
+            <option value="">Default (Gemini 2.5 Flash)</option>
+            {meta.imageModels.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
+          </select>
+        </Field>
       )}
     </div>
   );
