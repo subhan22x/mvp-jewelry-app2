@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Emblem, Metal, PendantFinish, PlainChain, PlainColor, PlainKarat, PlainMetal } from "../styles/_types";
+import { GEMINI_IMAGE_MODELS } from "./models";
 
 export const LAB_FAMILIES = ["name", "bracelet", "picture", "logo"] as const;
 export type LabFamily = (typeof LAB_FAMILIES)[number];
@@ -28,6 +29,16 @@ export const RUN_STATUSES = ["draft", "running", "completed", "failed"] as const
 export type RunStatus = (typeof RUN_STATUSES)[number];
 
 export const MAX_GENERATION_CALLS_PER_RUN = 10;
+export const LAB_IMAGE_MODELS = GEMINI_IMAGE_MODELS;
+const ImageModelId = z.enum([
+  "gemini-2.5-flash-image",
+  "gemini-3.1-flash-image",
+  "gemini-3-pro-image-preview"
+]);
+const ModelSelection = z.object({
+  variant1: ImageModelId.optional(),
+  variant2: ImageModelId.optional()
+}).optional();
 
 // ── Name pendant case config ──────────────────────────────────────
 const NameConfig = z.object({
@@ -44,7 +55,8 @@ const NameConfig = z.object({
   plainKarat: z.enum(["10k", "14k", "18k"]).nullish(),
   plainChain: z.enum(["rope", "box", "snake", "cable", "station", "bar_link_tube_station", "figaro_oval_link"]).optional(),
   diamondQuality: z.enum(["vs", "vvs"]).optional(),
-  promptMode: z.enum(["json", "natural_language"]).optional()
+  promptMode: z.enum(["json", "natural_language"]).optional(),
+  modelSelection: ModelSelection
 });
 
 // ── Bracelet case config ──────────────────────────────────────────
@@ -56,7 +68,8 @@ const BraceletConfig = z.object({
   colorCombo: z.enum(["rose_gold", "yellow_gold", "white"]),
   stoneType: z.enum(["natural_diamonds", "lab_diamonds", "moissanite", "cz"]).optional(),
   diamondQuality: z.enum(["vs", "vvs"]).optional(),
-  metalType: z.enum(["gold", "silver"]).default("gold")
+  metalType: z.enum(["gold", "silver"]).default("gold"),
+  modelSelection: ModelSelection
 });
 
 // ── Picture / Logo placeholders (not wired for v1) ────────────────

@@ -1,7 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime';
-import { resolveGenerationConfig } from '../providers';
+import { resolveGenerationConfig, resolveGenerationConfigForModel } from '../providers';
+import type { GeminiImageModelId } from '../generation-lab/models';
 import { assertDurableMediaStorageConfigured, isR2Configured, uploadToR2 } from '../storage/r2';
 import { isTextReferenceDescriptorPath, renderTextReferenceDescriptor } from './text-reference';
 
@@ -11,6 +12,7 @@ export type GenerateArgs = {
   requestId: string;
   variant: number;
   modelVariant?: number;
+  modelIdOverride?: GeminiImageModelId;
   onPreparedAttachments?: (attachments: string[]) => void | Promise<void>;
 };
 
@@ -69,9 +71,12 @@ export async function generateImage({
   requestId,
   variant,
   modelVariant,
+  modelIdOverride,
   onPreparedAttachments
 }: GenerateArgs): Promise<{ imageUrl: string; modelId: string }> {
-  const { provider, modelId, imageSize, aspectRatio } = resolveGenerationConfig(modelVariant ?? variant);
+  const { provider, modelId, imageSize, aspectRatio } = modelIdOverride
+    ? resolveGenerationConfigForModel(modelIdOverride)
+    : resolveGenerationConfig(modelVariant ?? variant);
   const providerAttachments = await prepareProviderAttachments(attachments);
   await onPreparedAttachments?.(providerAttachments);
 

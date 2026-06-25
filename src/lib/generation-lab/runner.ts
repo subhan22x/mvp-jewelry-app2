@@ -14,6 +14,12 @@ import {
   familyIsWired,
   parseCaseConfig
 } from "./types";
+import { buildCaseStyleOverride } from "./prompt-overrides";
+
+function selectedModelForVariant(config: { modelSelection?: { variant1?: string; variant2?: string } }, variant: number) {
+  const modelId = variant === 1 ? config.modelSelection?.variant1 : config.modelSelection?.variant2;
+  return modelId as "gemini-2.5-flash-image" | "gemini-3.1-flash-image" | "gemini-3-pro-image-preview" | undefined;
+}
 
 // Mirror of the bracelet prompt builders in app/api/bracelet-requests/route.ts.
 // Kept here so the lab exercises the real customer prompt path without
@@ -89,6 +95,13 @@ async function runNameCase(args: {
   const styleOverride = config.pendantFinish === "plain"
     ? null
     : await loadStyleOverride(accountId, config.styleId);
+  const { styleOverride: effectiveStyleOverride, promptOverrideId } = await buildCaseStyleOverride({
+    accountId,
+    styleId: config.styleId,
+    promptMode,
+    caseId,
+    baseOverride: styleOverride
+  });
 
   const inspection = inspectStyle(
     {
@@ -105,7 +118,7 @@ async function runNameCase(args: {
       plainKarat: config.plainKarat,
       plainChain: config.plainChain
     },
-    { promptMode, styleOverride: styleOverride ?? undefined }
+    { promptMode, styleOverride: effectiveStyleOverride }
   );
 
   const variants = buildVariants(
@@ -123,7 +136,7 @@ async function runNameCase(args: {
       plainKarat: config.plainKarat,
       plainChain: config.plainChain
     },
-    { promptMode, styleOverride: styleOverride ?? undefined }
+    { promptMode, styleOverride: effectiveStyleOverride }
   );
 
   const isPlain = config.pendantFinish === "plain";
@@ -150,6 +163,9 @@ async function runNameCase(args: {
     templateKey: inspection.templateKey,
     defaults: inspection.defaults,
     variantMatrix: inspection.variantMatrix,
+    promptOverrideId,
+    promptSource: promptOverrideId ? "temporary_override" : "system",
+    modelSelection: config.modelSelection ?? null,
     variants: inspection.variants.map(v => ({
       variant: v.variant,
       prompt: v.prompt,
@@ -205,6 +221,7 @@ async function runNameCase(args: {
         attachments: variant.attachments,
         requestId: request.id,
         variant: variant.variant,
+        modelIdOverride: selectedModelForVariant(config, variant.variant),
         onPreparedAttachments: async (attachments) => {
           await prisma.result.update({
             where: { id: attempt.id },
@@ -283,6 +300,8 @@ async function runBraceletCase(args: {
     styleId: config.styleId,
     attachmentPath,
     prompt
+    ,
+    modelSelection: config.modelSelection ?? null
   };
 
   const attempt = await prisma.result.create({
@@ -323,6 +342,7 @@ async function runBraceletCase(args: {
       attachments: [attachmentPath],
       requestId: request.id,
       variant: 1,
+      modelIdOverride: selectedModelForVariant(config, 1),
       onPreparedAttachments: async (attachments) => {
         await prisma.result.update({
           where: { id: attempt.id },
@@ -461,4 +481,84 @@ export async function runLabRun(args: { runId: string; accountId: string; userId
 
 export function expectedRunGenerations(cases: LabCaseConfig[]): number {
   return cases.reduce((sum, cfg) => sum + expectedGenerationsForFamily(cfg.family), 0);
+}
+
+async function nextRunLabel(accountId: string, baseLabel: string) {
+  const escaped = baseLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const siblings = await prisma.generationLabRun.findMany({
+    where: { accountId, label: { startsWith: baseLabel } },
+    select: { label: true }
+  });
+  const used = new Set(siblings.map(run => run.label));
+  for (let index = 1; index < 1000; index += 1) {
+    const candidate = `${baseLabel}-${index}`;
+    if (!used.has(candidate) && new RegExp(`^${escaped}-${index}$`).test(candidate)) return candidate;
+  }
+  return `${baseLabel}-${Date.now()}`;
+}
+
+export async function duplicateRunForRerun(args: { runId: string; accountId: string; userId: string }) {
+  const source = await prisma.generationLabRun.findUnique({
+    where: { id: args.runId },
+    include: {
+      Cases: {
+        orderBy: { sortOrder: "asc" },
+        include: { PromptOverrides: { where: { status: "draft" }, orderBy: { updatedAt: "desc" } } }
+      }
+    }
+  });
+  if (!source || source.accountId !== args.accountId) throw new Error("Run not found.");
+
+  const label = await nextRunLabel(args.accountId, source.label.replace(/-\d+$/, ""));
+  return prisma.$transaction(async (tx) => {
+    const clonedRun = await tx.generationLabRun.create({
+      data: {
+        accountId: args.accountId,
+        userId: args.userId,
+        label,
+        notes: source.notes,
+        status: "draft"
+      }
+    });
+
+    for (const sourceCase of source.Cases) {
+      const clonedCase = await tx.generationLabCase.create({
+        data: {
+          runId: clonedRun.id,
+          accountId: args.accountId,
+          sortOrder: sourceCase.sortOrder,
+          family: sourceCase.family,
+          configJson: sourceCase.configJson
+        }
+      });
+      let selectedPromptOverrideId: string | null = null;
+      for (const draft of sourceCase.PromptOverrides) {
+        const clonedDraft = await tx.generationLabPromptOverride.create({
+          data: {
+            runId: clonedRun.id,
+            caseId: clonedCase.id,
+            accountId: args.accountId,
+            styleId: draft.styleId,
+            promptMode: draft.promptMode,
+            sourcePath: draft.sourcePath,
+            name: draft.name,
+            originalText: draft.originalText,
+            draftText: draft.draftText,
+            status: "draft"
+          }
+        });
+        if (draft.id === sourceCase.selectedPromptOverrideId) {
+          selectedPromptOverrideId = clonedDraft.id;
+        }
+      }
+      if (selectedPromptOverrideId) {
+        await tx.generationLabCase.update({
+          where: { id: clonedCase.id },
+          data: { selectedPromptOverrideId }
+        });
+      }
+    }
+
+    return clonedRun;
+  });
 }

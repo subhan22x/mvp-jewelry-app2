@@ -4,6 +4,7 @@ import { getAllStyles } from "@/src/lib/styles/registry";
 import { LAB_PRESETS } from "@/src/lib/generation-lab/presets";
 import {
   FAILURE_TAGS,
+  LAB_IMAGE_MODELS,
   LAB_FAMILIES,
   MAX_GENERATION_CALLS_PER_RUN,
   expectedGenerationsForFamily,
@@ -53,6 +54,7 @@ export async function GET() {
     })),
     maxGenerationsPerRun: MAX_GENERATION_CALLS_PER_RUN,
     failureTags: FAILURE_TAGS,
+    imageModels: LAB_IMAGE_MODELS,
     presets: LAB_PRESETS.map(preset => ({
       id: preset.id,
       label: preset.label,

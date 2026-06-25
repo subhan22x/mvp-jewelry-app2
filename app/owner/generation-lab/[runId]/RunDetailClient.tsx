@@ -39,8 +39,24 @@ type CaseRow = {
   renderedConfigJson: string | null;
   startedAt: string | null;
   completedAt: string | null;
+  selectedPromptOverrideId: string | null;
+  promptOverrides: PromptOverrideRow[];
+  promptOverride: PromptOverrideRow | null;
   results: ResultRow[];
   reviews: ReviewRow[];
+};
+
+type PromptOverrideRow = {
+  id: string;
+  name: string;
+  status: string;
+  styleId: string;
+  promptMode: string;
+  sourcePath: string;
+  originalText: string;
+  draftText: string;
+  appliedAt: string | null;
+  updatedAt: string | null;
 };
 
 type RunDetail = {
@@ -142,6 +158,10 @@ export default function RunDetailClient({ runId }: { runId: string }) {
       const res = await fetch(`/api/owner/generation-lab/runs/${runId}/start`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? "Failed to start run.");
+      if (data?.duplicatedFromRunId && data?.id) {
+        window.location.href = `/owner/generation-lab/${data.id}`;
+        return;
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start run.");
@@ -216,7 +236,7 @@ export default function RunDetailClient({ runId }: { runId: string }) {
               disabled={busy || run.status === "running"}
               className="rounded-md bg-[#3B82F6] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {run.status === "running" ? "Running…" : run.status === "completed" || run.status === "failed" ? "Re-run" : "Start run"}
+              {run.status === "running" ? "Running…" : run.status === "completed" || run.status === "failed" ? "Duplicate & run" : "Start run"}
             </button>
             <button
               type="button"
@@ -237,6 +257,7 @@ export default function RunDetailClient({ runId }: { runId: string }) {
             key={labCase.id}
             index={index}
             labCase={labCase}
+            onRefresh={load}
             onPatchReview={handlePatchReview}
           />
         ))}
@@ -248,9 +269,10 @@ export default function RunDetailClient({ runId }: { runId: string }) {
   );
 }
 
-function CaseDetail({ index, labCase, onPatchReview }: {
+function CaseDetail({ index, labCase, onRefresh, onPatchReview }: {
   index: number;
   labCase: CaseRow;
+  onRefresh: () => Promise<void>;
   onPatchReview: (resultId: string, patch: { status?: string; failureTags?: string[]; notes?: string | null }) => Promise<void>;
 }) {
   const config = useMemo(() => parseConfig(labCase.configJson), [labCase.configJson]);
@@ -289,6 +311,8 @@ function CaseDetail({ index, labCase, onPatchReview }: {
         </button>
       </div>
 
+      <PromptOverrideEditor labCase={labCase} config={config} onRefresh={onRefresh} />
+
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {labCase.results.length === 0 ? (
           <div className="col-span-full rounded-md border border-white/5 bg-black/20 p-4 text-center text-xs text-[#8c909f]">
@@ -312,6 +336,264 @@ function CaseDetail({ index, labCase, onPatchReview }: {
           })
         )}
       </div>
+    </div>
+  );
+}
+
+function PromptOverrideEditor({ labCase, config, onRefresh }: {
+  labCase: CaseRow;
+  config: Record<string, unknown> | null;
+  onRefresh: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sourcePath, setSourcePath] = useState(labCase.promptOverride?.sourcePath ?? labCase.sourceTemplatePath ?? "");
+  const [originalText, setOriginalText] = useState(labCase.promptOverride?.originalText ?? "");
+  const [draftText, setDraftText] = useState(labCase.promptOverride?.draftText ?? "");
+  const [draftName, setDraftName] = useState(labCase.promptOverride?.name ?? "Untitled draft");
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(labCase.selectedPromptOverrideId ?? labCase.promptOverride?.id ?? null);
+  const [drafts, setDrafts] = useState<PromptOverrideRow[]>(labCase.promptOverrides ?? []);
+  const [showDiff, setShowDiff] = useState(false);
+  const family = typeof config?.family === "string" ? config.family : labCase.family;
+  const selectedDraft = drafts.find(draft => draft.id === editingDraftId) ?? labCase.promptOverride;
+  const hasDraft = Boolean(selectedDraft?.status === "draft");
+  const applied = labCase.promptOverride?.status === "applied";
+
+  useEffect(() => {
+    setSourcePath(labCase.promptOverride?.sourcePath ?? labCase.sourceTemplatePath ?? "");
+    setOriginalText(labCase.promptOverride?.originalText ?? "");
+    setDraftText(labCase.promptOverride?.draftText ?? "");
+    setDraftName(labCase.promptOverride?.name ?? "Untitled draft");
+    setEditingDraftId(labCase.selectedPromptOverrideId ?? labCase.promptOverride?.id ?? null);
+    setDrafts(labCase.promptOverrides ?? []);
+  }, [labCase.promptOverride, labCase.promptOverrides, labCase.selectedPromptOverrideId, labCase.sourceTemplatePath]);
+
+  async function loadPrompt() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/owner/generation-lab/cases/${labCase.id}/prompt-override`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to load prompt.");
+      setSourcePath(data.sourcePath ?? "");
+      setOriginalText(data.originalText ?? "");
+      setDraftText(data.draftText ?? data.originalText ?? "");
+      setDraftName(data.drafts?.find((draft: PromptOverrideRow) => draft.id === data.selectedPromptOverrideId)?.name ?? data.drafts?.[0]?.name ?? "Untitled draft");
+      setDrafts(Array.isArray(data.drafts) ? data.drafts : []);
+      setEditingDraftId(data.selectedPromptOverrideId ?? data.drafts?.[0]?.id ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load prompt.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleOpen() {
+    const next = !open;
+    setOpen(next);
+    if (next && !draftText) await loadPrompt();
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/owner/generation-lab/cases/${labCase.id}/prompt-override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingDraftId, name: draftName, draftText, select: true })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to save prompt draft.");
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save prompt draft.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDiscard() {
+    if (!editingDraftId) return;
+    if (!confirm("Discard this temporary prompt draft?")) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/owner/generation-lab/cases/${labCase.id}/prompt-override?id=${encodeURIComponent(editingDraftId)}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to discard prompt draft.");
+      await onRefresh();
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to discard prompt draft.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleApply() {
+    if (!editingDraftId) return;
+    if (!confirm("Apply this draft to the system prompt file? This writes the .jsonp file in the repo.")) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/owner/generation-lab/cases/${labCase.id}/prompt-override/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingDraftId })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to apply prompt draft.");
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply prompt draft.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSelectDraft(id: string | null) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/owner/generation-lab/cases/${labCase.id}/prompt-override`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedPromptOverrideId: id })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? "Failed to select prompt draft.");
+      const draft = drafts.find(item => item.id === id);
+      if (draft) {
+        setEditingDraftId(draft.id);
+        setDraftName(draft.name);
+        setDraftText(draft.draftText);
+        setOriginalText(draft.originalText);
+        setSourcePath(draft.sourcePath);
+      } else {
+        setEditingDraftId(null);
+        setDraftName("System prompt");
+        setDraftText(originalText);
+      }
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to select prompt draft.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleNewDraft() {
+    if (drafts.filter(draft => draft.status === "draft").length >= 10) {
+      setError("This case already has 10 active prompt drafts. Discard one before creating another.");
+      return;
+    }
+    setEditingDraftId(null);
+    setDraftName(`Draft ${drafts.length + 1}`);
+    setDraftText(originalText || draftText);
+  }
+
+  if (family !== "name") {
+    return (
+      <div className="mt-3 rounded-md border border-white/5 bg-black/20 px-3 py-2 text-[11px] text-[#8c909f]">
+        Temporary prompt edits are currently available for name pendant cases. Bracelet prompts still live inline in the bracelet route.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8c909f]">Temporary prompt</span>
+            {hasDraft && <span className="rounded border border-amber-300/30 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-200">draft active</span>}
+            {applied && <span className="rounded border border-emerald-300/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-200">applied</span>}
+          </div>
+          <p className="mt-1 truncate text-[10px] text-[#8c909f]">{sourcePath ? relativePath(sourcePath) : "Load the source template to create a run-scoped draft."}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={handleOpen} className="rounded-md border border-white/15 bg-black/30 px-2.5 py-1 text-[10px] font-semibold text-[#c2c6d6] transition hover:border-white/30">
+            {open ? "Close" : hasDraft ? "Edit drafts" : "Edit temporary prompt"}
+          </button>
+          {hasDraft && (
+            <button type="button" onClick={handleApply} disabled={saving} className="rounded-md border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:opacity-50">
+              Apply to system
+            </button>
+          )}
+        </div>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {error && <div className="rounded-md border border-red-400/40 bg-red-400/10 px-3 py-2 text-xs text-red-200">{error}</div>}
+          {loading ? (
+            <div className="rounded-md border border-white/5 bg-black/30 p-3 text-xs text-[#8c909f]">Loading prompt…</div>
+          ) : (
+            <>
+              <textarea
+                aria-label="Prompt draft name"
+                value={draftName}
+                onChange={e => setDraftName(e.target.value)}
+                rows={1}
+                className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs text-[#e1e2ec] outline-none focus:border-white/30"
+                placeholder="Draft name"
+              />
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div className="rounded-md border border-white/5 bg-black/30 p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8c909f]">Drafts</span>
+                    <button type="button" onClick={handleNewDraft} className="rounded border border-white/15 bg-black/30 px-2 py-0.5 text-[10px] text-[#c2c6d6] hover:border-white/30">New</button>
+                  </div>
+                  <div className="space-y-1">
+                    <button type="button" onClick={() => void handleSelectDraft(null)} className={`w-full rounded px-2 py-1 text-left text-[11px] ${!editingDraftId ? "bg-white/10 text-[#e1e2ec]" : "text-[#8c909f] hover:bg-white/5"}`}>System prompt</button>
+                    {drafts.map(draft => (
+                      <button key={draft.id} type="button" onClick={() => void handleSelectDraft(draft.id)} className={`w-full rounded px-2 py-1 text-left text-[11px] ${editingDraftId === draft.id ? "bg-amber-400/10 text-amber-100" : "text-[#c2c6d6] hover:bg-white/5"}`}>
+                        <span className="block truncate">{draft.name}</span>
+                        <span className="text-[9px] text-[#8c909f]">{draft.status}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                value={draftText}
+                onChange={e => setDraftText(e.target.value)}
+                rows={12}
+                className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 font-mono text-[11px] leading-relaxed text-[#e1e2ec] outline-none focus:border-white/30"
+                placeholder="Prompt template text"
+              />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={handleSave} disabled={saving || !draftText.trim()} className="rounded-md bg-[#3B82F6] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50">
+                  Save draft
+                </button>
+                <button type="button" onClick={() => setShowDiff(v => !v)} className="rounded-md border border-white/15 bg-black/30 px-3 py-1.5 text-xs font-semibold text-[#c2c6d6] transition hover:border-white/30">
+                  {showDiff ? "Hide diff" : "Show diff"}
+                </button>
+                {hasDraft && (
+                  <button type="button" onClick={handleDiscard} disabled={saving} className="rounded-md border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-400/20 disabled:opacity-50">
+                    Discard draft
+                  </button>
+                )}
+                <span className="text-[10px] text-[#8c909f]">Save and select a draft, then use Duplicate & run/Start run to test it.</span>
+              </div>
+              {showDiff && (
+                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                  <div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#8c909f]">System prompt</div>
+                    <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/50 p-2 text-[10px] leading-relaxed text-[#c2c6d6]">{originalText || "(not loaded)"}</pre>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#8c909f]">Draft prompt</div>
+                    <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/50 p-2 text-[10px] leading-relaxed text-[#c2c6d6]">{draftText || "(empty)"}</pre>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
-import { runLabRun } from "@/src/lib/generation-lab/runner";
+import { duplicateRunForRerun, runLabRun } from "@/src/lib/generation-lab/runner";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -24,6 +24,12 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   }
   if (run.Cases.length === 0) {
     return NextResponse.json({ error: "Add at least one case before starting." }, { status: 400 });
+  }
+
+  if (run.status === "completed" || run.status === "failed") {
+    const clonedRun = await duplicateRunForRerun({ runId: run.id, accountId: owner.accountId, userId: owner.userId });
+    scheduleBackgroundTask(runLabRun({ runId: clonedRun.id, accountId: owner.accountId, userId: owner.userId }), `generation-lab:${clonedRun.id}`);
+    return NextResponse.json({ id: clonedRun.id, status: "running", duplicatedFromRunId: run.id });
   }
 
   // Reset any previously-run cases back to pending so re-runs are explicit.

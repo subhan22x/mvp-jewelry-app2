@@ -58,6 +58,7 @@ model Account {
   GenerationLabRuns         GenerationLabRun[]
   GenerationLabCases        GenerationLabCase[]
   GenerationLabReviews      GenerationLabResultReview[]
+  GenerationLabPromptOverrides GenerationLabPromptOverride[]
 }
 
 model AccountMembership {
@@ -637,6 +638,7 @@ model GenerationLabRun {
   updatedAt   DateTime @updatedAt
 
   Cases GenerationLabCase[]
+  PromptOverrides GenerationLabPromptOverride[]
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
@@ -663,6 +665,7 @@ model GenerationLabCase {
   sourceTemplatePath String?
   sourceStylePath    String?
   renderedConfigJson String?
+  selectedPromptOverrideId String?
 
   // pending | running | succeeded | partial | failed | skipped
   status     String   @default("pending")
@@ -673,6 +676,7 @@ model GenerationLabCase {
   updatedAt  DateTime @updatedAt
 
   Reviews GenerationLabResultReview[]
+  PromptOverrides GenerationLabPromptOverride[]
 
   @@index([runId, sortOrder])
   @@index([accountId, createdAt])
@@ -701,4 +705,29 @@ model GenerationLabResultReview {
   @@unique([resultId])
   @@index([caseId])
   @@index([accountId, status])
+}
+
+model GenerationLabPromptOverride {
+  id        String   @id @default(cuid())
+  runId     String
+  run       GenerationLabRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  caseId    String?
+  case      GenerationLabCase? @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+
+  styleId    String
+  promptMode String // json | natural_language | bracelet
+  sourcePath String
+  name       String   @default("Untitled draft")
+  originalText String
+  draftText    String
+  status       String   @default("draft") // draft | applied | discarded
+  appliedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([runId, status])
+  @@index([caseId, status])
+  @@index([accountId, styleId, status])
 }
