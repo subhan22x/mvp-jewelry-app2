@@ -110,6 +110,33 @@ describe("buildVariants", () => {
     expect(variants.map(variant => variant.prompt.text_bubble_outline.enabled)).toEqual([false, false]);
   });
 
+  it("capitalizes only variant 2 when the submitted name is all lowercase", () => {
+    const variants = buildVariants({ ...baseInput, styleId: "deja", text: "melissa" }).map(variant => ({
+      variant: variant.variant,
+      prompt: JSON.parse(variant.prompt)
+    }));
+
+    expect(variants[0].prompt.pendant.text["Primary TEXT"]).toEqual(["melissa"]);
+    expect(variants[1].prompt.pendant.text["Primary TEXT"]).toEqual(["Melissa"]);
+  });
+
+  it("keeps non-lowercase submitted names unchanged across both variants", () => {
+    const capitalized = buildVariants({ ...baseInput, styleId: "deja", text: "Melissa" }).map(variant => JSON.parse(variant.prompt));
+    const allCaps = buildVariants({ ...baseInput, styleId: "deja", text: "MELISSA" }).map(variant => JSON.parse(variant.prompt));
+    const mixed = buildVariants({ ...baseInput, styleId: "deja", text: "MeLiSsA" }).map(variant => JSON.parse(variant.prompt));
+
+    expect(capitalized.map(prompt => prompt.pendant.text["Primary TEXT"])).toEqual([["Melissa"], ["Melissa"]]);
+    expect(allCaps.map(prompt => prompt.pendant.text["Primary TEXT"])).toEqual([["MELISSA"], ["MELISSA"]]);
+    expect(mixed.map(prompt => prompt.pendant.text["Primary TEXT"])).toEqual([["MeLiSsA"], ["MeLiSsA"]]);
+  });
+
+  it("applies lowercase variant capitalization before style-owned all-caps rules", () => {
+    const variants = buildVariants({ ...baseInput, styleId: "king", text: "melissa" });
+
+    expect(variants[0].prompt).toContain('change the text on this pendant to "MELISSA"');
+    expect(variants[1].prompt).toContain('change the text on this pendant to "MELISSA"');
+  });
+
   it("builds GATTI with the natural-language template and injected snippets", () => {
     const variants = buildVariants({ ...baseInput, styleId: "gatti" }, { promptMode: "natural_language" });
 
@@ -122,6 +149,28 @@ describe("buildVariants", () => {
       expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/hasan-gatti.png`);
       expect(() => JSON.parse(variant.prompt)).toThrow();
     }
+  });
+
+  it("capitalizes variant 2 lowercase text in natural-language prompts and text references", () => {
+    const variants = buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      text: "melissa",
+      emblem: "none"
+    }, { promptMode: "natural_language" });
+
+    expect(variants[0].prompt).toContain('changing the main text to "melissa"');
+    expect(variants[1].prompt).toContain('changing the main text to "Melissa"');
+
+    const firstDescriptorPath = variants[0].attachments.find(attachment => attachment.endsWith(".style-text-reference.json"));
+    const secondDescriptorPath = variants[1].attachments.find(attachment => attachment.endsWith(".style-text-reference.json"));
+    expect(firstDescriptorPath).toBeTruthy();
+    expect(secondDescriptorPath).toBeTruthy();
+
+    const firstDescriptor = JSON.parse(fs.readFileSync(firstDescriptorPath!, "utf8"));
+    const secondDescriptor = JSON.parse(fs.readFileSync(secondDescriptorPath!, "utf8"));
+    expect(firstDescriptor.text).toBe("melissa");
+    expect(secondDescriptor.text).toBe("Melissa");
   });
 
   it("builds JAIDA with the natural-language template and injected snippets", () => {
