@@ -395,7 +395,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     Take Orders on{" "}
                     <em className="nl-accent" style={{ display: "inline" }}>Autopilot</em>
                   </h2>
-                  <p style={{ margin: "0 0 clamp(24px,3vw,36px)", color: "#ede4d4", fontSize: "clamp(22px,3.5vw,38px)", lineHeight: 1.2, maxWidth: 640, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "var(--font-jakarta, sans-serif)" }}>
+                  <p style={{ margin: "0 0 clamp(24px,3vw,36px)", color: "#ede4d4", fontSize: "clamp(22px,3.5vw,38px)", lineHeight: 1.2, maxWidth: 640, fontWeight: 500, letterSpacing: "-0.01em", fontFamily: "var(--font-jakarta, sans-serif)" }}>
                     Remove the friction between{" "}
                     <span style={{ color: "#d4924a" }}>customer interest</span>{" "}
                     and deposit.
