@@ -357,28 +357,6 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     ))}
                   </div>
 
-                  {/* "Take Orders on Autopilot" closing value prop */}
-                  <div style={{
-                    padding: "clamp(40px,6vw,72px) 0 clamp(48px,7vw,88px)",
-                    borderTop: "1px solid rgba(237,228,212,0.09)",
-                    marginTop: "clamp(32px,4vw,56px)",
-                  }}>
-                    <p style={{ margin: "0 0 10px", color: "#d4924a", fontFamily: "var(--font-jbmono, monospace)", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase" }}>
-                      how it works
-                    </p>
-                    <h2 style={{ margin: "0 0 12px", color: "#fff", fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.02em" }}>
-                      Take Orders on{" "}
-                      <em className="nl-accent" style={{ display: "inline" }}>Autopilot</em>
-                    </h2>
-                    <p style={{ margin: "0 0 clamp(20px,3vw,32px)", color: "#91877b", fontSize: "clamp(14px,2vw,17px)", lineHeight: 1.6, maxWidth: 480 }}>
-                      Remove the friction between customer interest and deposit.
-                    </p>
-                    <p style={{ margin: 0, color: "#ede4d4", fontSize: "clamp(14px,1.8vw,16px)", lineHeight: 1.75, maxWidth: 480, borderLeft: "2px solid rgba(212,146,74,0.4)", paddingLeft: "clamp(16px,2vw,24px)" }}>
-                      Customer designs in your store, on your website. You capture their contact info and their quote request.{" "}
-                      <strong style={{ color: "#fff" }}>You get the sale.</strong>
-                    </p>
-                  </div>
-
                   {/* Timeline dots */}
                   <div className="nl-timeline" style={{
                     minHeight: "228vh",
@@ -400,6 +378,30 @@ export default function NewLandingPage({ className }: { className?: string }) {
                       }} />
                     ))}
                   </div>
+                </div>
+
+                {/* "Take Orders on Autopilot" — full-width, outside the sticky
+                    phone grid so it scrolls normally without overlay. */}
+                <div style={{
+                  maxWidth: 1160,
+                  margin: "0 auto",
+                  padding: "clamp(56px,8vw,96px) clamp(20px,5vw,56px) clamp(48px,6vw,72px)",
+                  borderTop: "1px solid rgba(237,228,212,0.09)",
+                }}>
+                  <p style={{ margin: "0 0 14px", color: "#d4924a", fontFamily: "var(--font-jbmono, monospace)", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                    how it works
+                  </p>
+                  <h2 style={{ margin: "0 0 16px", color: "#fff", fontSize: "clamp(32px,5vw,56px)", fontWeight: 800, lineHeight: 1.06, letterSpacing: "-0.02em", maxWidth: 720 }}>
+                    Take Orders on{" "}
+                    <em className="nl-accent" style={{ display: "inline" }}>Autopilot</em>
+                  </h2>
+                  <p style={{ margin: "0 0 clamp(24px,3vw,36px)", color: "#91877b", fontSize: "clamp(16px,2.2vw,20px)", lineHeight: 1.55, maxWidth: 560, fontWeight: 500 }}>
+                    Remove the friction between customer interest and deposit.
+                  </p>
+                  <p style={{ margin: 0, color: "#ede4d4", fontSize: "clamp(15px,1.8vw,18px)", lineHeight: 1.8, maxWidth: 560, borderLeft: "2px solid rgba(212,146,74,0.4)", paddingLeft: "clamp(18px,2vw,28px)" }}>
+                    Customer designs in your store, on your website. You capture their contact info and their quote request.{" "}
+                    <strong style={{ color: "#fff" }}>You get the sale.</strong>
+                  </p>
                 </div>
 
                 {/* Three "where it goes" cards, laid out horizontally below the
