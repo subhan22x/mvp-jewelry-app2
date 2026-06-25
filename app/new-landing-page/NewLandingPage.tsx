@@ -395,8 +395,10 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     Take Orders on{" "}
                     <em className="nl-accent" style={{ display: "inline" }}>Autopilot</em>
                   </h2>
-                  <p style={{ margin: "0 0 clamp(24px,3vw,36px)", color: "#91877b", fontSize: "clamp(16px,2.2vw,20px)", lineHeight: 1.55, maxWidth: 560, fontWeight: 500 }}>
-                    Remove the friction between customer interest and deposit.
+                  <p style={{ margin: "0 0 clamp(24px,3vw,36px)", color: "#ede4d4", fontSize: "clamp(22px,3.5vw,38px)", lineHeight: 1.2, maxWidth: 640, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "var(--font-jakarta, sans-serif)" }}>
+                    Remove the friction between{" "}
+                    <span style={{ color: "#d4924a" }}>customer interest</span>{" "}
+                    and deposit.
                   </p>
                   <p style={{ margin: 0, color: "#ede4d4", fontSize: "clamp(15px,1.8vw,18px)", lineHeight: 1.8, maxWidth: 560, borderLeft: "2px solid rgba(212,146,74,0.4)", paddingLeft: "clamp(18px,2vw,28px)" }}>
                     Customer designs in your store, on your website. You capture their contact info and their quote request.{" "}
