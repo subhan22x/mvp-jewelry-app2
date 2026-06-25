@@ -357,6 +357,28 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     ))}
                   </div>
 
+                  {/* "Take Orders on Autopilot" closing value prop */}
+                  <div style={{
+                    padding: "clamp(40px,6vw,72px) 0 clamp(48px,7vw,88px)",
+                    borderTop: "1px solid rgba(237,228,212,0.09)",
+                    marginTop: "clamp(32px,4vw,56px)",
+                  }}>
+                    <p style={{ margin: "0 0 10px", color: "#d4924a", fontFamily: "var(--font-jbmono, monospace)", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                      how it works
+                    </p>
+                    <h2 style={{ margin: "0 0 12px", color: "#fff", fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.02em" }}>
+                      Take Orders on{" "}
+                      <em className="nl-accent" style={{ display: "inline" }}>Autopilot</em>
+                    </h2>
+                    <p style={{ margin: "0 0 clamp(20px,3vw,32px)", color: "#91877b", fontSize: "clamp(14px,2vw,17px)", lineHeight: 1.6, maxWidth: 480 }}>
+                      Remove the friction between customer interest and deposit.
+                    </p>
+                    <p style={{ margin: 0, color: "#ede4d4", fontSize: "clamp(14px,1.8vw,16px)", lineHeight: 1.75, maxWidth: 480, borderLeft: "2px solid rgba(212,146,74,0.4)", paddingLeft: "clamp(16px,2vw,24px)" }}>
+                      Customer designs in your store, on your website. You capture their contact info and their quote request.{" "}
+                      <strong style={{ color: "#fff" }}>You get the sale.</strong>
+                    </p>
+                  </div>
+
                   {/* Timeline dots */}
                   <div className="nl-timeline" style={{
                     minHeight: "228vh",
