@@ -43,6 +43,27 @@ function splitLines(raw: string): string[] {
   return lines.length ? lines : [raw.trim()];
 }
 
+function isAllLowercaseText(lines: string[]) {
+  const letters = lines.join(' ').match(/\p{L}/gu) ?? [];
+  return letters.length > 0 && letters.every(letter => letter === letter.toLocaleLowerCase());
+}
+
+function capitalizeFirstLetter(lines: string[]) {
+  let changed = false;
+  return lines.map(line => {
+    if (changed) return line;
+    return line.replace(/\p{L}/u, char => {
+      changed = true;
+      return char.toLocaleUpperCase();
+    });
+  });
+}
+
+function linesForVariant(lines: string[], variant: number) {
+  if (variant !== 2 || !isAllLowercaseText(lines)) return lines;
+  return capitalizeFirstLetter(lines);
+}
+
 const VERTICAL_9_16_INSTRUCTION = 'Render the final product photo in a vertical 9:16 composition. Keep the full pendant and bail visible with clean margins.';
 
 type NaturalLanguageSnippets = {
@@ -233,9 +254,10 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
 
     return [1, 2].map((variant) => {
       const v = style.variantMatrix[variant - 1];
+      const variantLines = linesForVariant(lines, variant);
       const finalLines = v.forceAllCaps ?? style.defaults.forceAllCaps
-        ? lines.map(line => line.toUpperCase())
-        : lines;
+        ? variantLines.map(line => line.toUpperCase())
+        : variantLines;
       const prompt = renderTemplate(raw, {
         TEXT: finalLines.join(' '),
         LINES_ARRAY: JSON.stringify(finalLines),
@@ -296,7 +318,8 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
       view: style.defaults.view
     };
 
-    const finalLines = merged.caps ? lines.map(line => line.toUpperCase()) : lines;
+    const variantLines = linesForVariant(lines, variant);
+    const finalLines = merged.caps ? variantLines.map(line => line.toUpperCase()) : variantLines;
     const schemeType = twoTone ? 'two_tone' : 'single_tone';
     const secondary = twoTone ? (data.secondaryMetal ?? primaryMetal) : primaryMetal;
     const capsPolicy = merged.caps ? 'forced_all_caps' : 'as_typed';
