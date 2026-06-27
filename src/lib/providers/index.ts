@@ -1,9 +1,10 @@
 import { GoogleProvider } from './google';
 import { OpenAIProvider } from './openai';
 import type { ImageProvider } from './types';
+import { GEMINI_IMAGE_MODELS, type GeminiImageModelId } from '../generation-lab/models';
 
 const GREAT_MODEL_ID = 'gemini-3-pro-image-preview';
-const FAST_MODEL_ID = 'gemini-2.5-flash-image';
+const FAST_MODEL_ID = 'gemini-3.1-flash-image';
 
 const providerCache = new Map<string, ImageProvider>();
 
@@ -36,6 +37,17 @@ export function resolveGenerationConfig(variant: number): { provider: ImageProvi
     provider: getProvider('google'),
     modelId: variant === 1 ? GREAT_MODEL_ID : FAST_MODEL_ID,
     imageSize: variant === 1 ? '2K' : '1K',
-    aspectRatio: variant === 1 ? '9:16' : undefined
+    aspectRatio: '9:16'
+  };
+}
+
+export function resolveGenerationConfigForModel(modelId: GeminiImageModelId): { provider: ImageProvider; modelId: string; imageSize: '1K' | '2K'; aspectRatio?: '9:16' } {
+  const model = GEMINI_IMAGE_MODELS.find(candidate => candidate.id === modelId);
+  if (!model) return resolveGenerationConfig(2);
+  return {
+    provider: getProvider('google'),
+    modelId: model.id,
+    imageSize: model.imageSize,
+    aspectRatio: model.aspectRatio
   };
 }

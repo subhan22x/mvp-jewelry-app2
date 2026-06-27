@@ -55,6 +55,10 @@ model Account {
   UsagePlans                UsagePlan[]
   UsageBuckets              AccountUsageBucket[]
   UsageEvents               UsageEvent[]
+  GenerationLabRuns         GenerationLabRun[]
+  GenerationLabCases        GenerationLabCase[]
+  GenerationLabReviews      GenerationLabResultReview[]
+  GenerationLabPromptOverrides GenerationLabPromptOverride[]
 }
 
 model AccountMembership {
@@ -101,6 +105,7 @@ model Request {
   Videos         VideoGeneration[]
   Models3d       Model3dGeneration[]
   QuoteRequests  QuoteRequest[]
+  GenerationLabCases GenerationLabCase[]
 
   @@index([accountId, createdAt])
 }
@@ -124,6 +129,7 @@ model Result {
   createdAt     DateTime  @default(now())
   QuoteRequests QuoteRequest[]
   Revisions     ResultRevision[]
+  GenerationLabReviews GenerationLabResultReview[]
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
@@ -613,4 +619,115 @@ model VvsStudioJob {
   @@index([accountId, status])
   @@index([status, runAfter])
   @@index([shootId, createdAt])
+}
+
+// ── Generation Lab (owner-only QA) ────────────────────────────────
+
+model GenerationLabRun {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
+  userId      String
+  label       String
+  notes       String?
+  // draft | running | completed | failed
+  status      String   @default("draft")
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  Cases GenerationLabCase[]
+  PromptOverrides GenerationLabPromptOverride[]
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
+model GenerationLabCase {
+  id        String   @id @default(cuid())
+  runId     String
+  run       GenerationLabRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  sortOrder Int      @default(0)
+
+  // name | bracelet | picture | logo
+  family    String
+  // Snapshot of the customer-facing input config (styleId, text, metals, emblem, etc.)
+  configJson String
+
+  // Filled in at run time, links this case to the normal Request/Result rows.
+  requestId  String?
+  request    Request? @relation(fields: [requestId], references: [id])
+
+  // Reproduction metadata captured at run time.
+  sourceTemplatePath String?
+  sourceStylePath    String?
+  renderedConfigJson String?
+  selectedPromptOverrideId String?
+
+  // pending | running | succeeded | partial | failed | skipped
+  status     String   @default("pending")
+  error      String?
+  startedAt  DateTime?
+  completedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  Reviews GenerationLabResultReview[]
+  PromptOverrides GenerationLabPromptOverride[]
+
+  @@index([runId, sortOrder])
+  @@index([accountId, createdAt])
+  @@index([requestId])
+}
+
+model GenerationLabResultReview {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      GenerationLabCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  resultId  String
+  result    Result   @relation(fields: [resultId], references: [id])
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  variant   Int
+
+  // unreviewed | pass | fail
+  status    String   @default("unreviewed")
+  // JSON array of failure tag strings (bad_text, bad_shape, ...)
+  failureTagsJson String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([resultId])
+  @@index([caseId])
+  @@index([accountId, status])
+}
+
+model GenerationLabPromptOverride {
+  id        String   @id @default(cuid())
+  runId     String
+  run       GenerationLabRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  caseId    String?
+  case      GenerationLabCase? @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+
+  styleId    String
+  promptMode String // json | natural_language | bracelet
+  sourcePath String
+  name       String   @default("Untitled draft")
+  originalText String
+  draftText    String
+  status       String   @default("draft") // draft | applied | discarded
+  appliedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([runId, status])
+  @@index([caseId, status])
+  @@index([accountId, styleId, status])
 }

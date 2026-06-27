@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 import StudioContent from "../studio/StudioContent";
 import ReelsCarousel from "../studio/ReelsCarousel";
 import studioStyles from "../studio/StudioPage.module.css";
@@ -9,23 +10,14 @@ import studioStyles from "../studio/StudioPage.module.css";
 export default function NewLandingPage({ className }: { className?: string }) {
   const [open, setOpen] = useState<number | null>(null);
   const [step, setStep] = useState(0);
-  const featureRefs = useRef<Array<HTMLElement | null>>([]);
 
-  // Scroll-driven feature phone screen (IntersectionObserver, mirrors old landing)
+  // Time-based phone screen switcher — advances every 1.6 s
   useEffect(() => {
-    if (open !== 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setStep(Number((visible.target as HTMLElement).dataset.feature));
-      },
-      { rootMargin: "-34% 0px -34% 0px", threshold: [0, 0.2, 0.6] }
-    );
-    featureRefs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, [open]);
+    const timer = setInterval(() => {
+      setStep((s) => (s + 1) % 3);
+    }, 1600);
+    return () => clearInterval(timer);
+  }, []);
 
   const toggle = (i: number) => {
     setOpen((o) => (o === i ? null : i));
@@ -71,6 +63,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        @font-face { font-family: "ZT Nature"; src: url("/landing/zt-nature-bold-italic.otf") format("opentype"); font-style: italic; font-weight: 700; font-display: swap; }
         html, body { margin: 0; padding: 0; }
         body { background: #0a0907; }
         *, *::before, *::after { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -79,6 +72,24 @@ export default function NewLandingPage({ className }: { className?: string }) {
         .nl-feature { display: flex; min-height: 76vh; max-width: 520px; flex-direction: column; justify-content: center; transition: opacity .4s ease; }
         .nl-timeline { display: flex; }
         .nl-pillar-inner { width: 100%; max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: clamp(16px, 4vw, 48px); padding: clamp(24px, 4vw, 48px) clamp(20px, 5vw, 56px); text-align: left; }
+        /* Accent line on the pillar headings — matches the homepage h1 <em>
+           (gold TheShuffle script, own line, slightly larger, upright). */
+        .nl-accent { display: block; margin-top: 0.12em; color: #d4924a; font-family: var(--font-shuffle), cursive; font-size: 1.08em; font-weight: 400; font-style: normal; letter-spacing: 0; line-height: 1; }
+        /* Yellow highlighter bar under key heading words. A pseudo-element
+           paints the marker stroke low and behind the text (z-index -1) so the
+           white glyphs stay fully legible — the bar underlines rather than
+           strikes through, even when the phrase wraps across lines. */
+        .nl-mark { position: relative; }
+        .nl-mark::before {
+          content: "";
+          position: absolute;
+          z-index: -1;
+          left: -0.04em; right: -0.04em;
+          bottom: 0.02em;
+          height: 0.12em;
+          background: rgba(235,180,103,0.7);
+          border-radius: 2px;
+        }
         /* Desktop: show the whole product shot inside the centred band. Mobile:
            the box is tall and narrow, so cover (instead of contain) fills it,
            and negative margins (cancelling the band padding) let the image
@@ -98,6 +109,15 @@ export default function NewLandingPage({ className }: { className?: string }) {
           .nl-feature { min-height: 32vh; justify-content: flex-start; padding: 12px 0; opacity: 1 !important; }
           .nl-timeline { display: none !important; }
         }
+        /* "Where it goes" channel cards — always 3 across, compact enough for mobile. */
+        .nl-channels { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px,2vw,18px); max-width: 1160px; margin: 0 auto; padding: 0 clamp(12px,4vw,56px) clamp(40px,6vw,80px); }
+        .nl-channel { display: flex; flex-direction: column; overflow: hidden; padding: clamp(12px,2vw,22px); border: 1px solid rgba(237,228,212,0.09); border-radius: clamp(10px,2vw,18px); background: linear-gradient(165deg, #15120d, rgba(21,18,13,0.35)); transition: transform .2s ease, border-color .2s ease; }
+        .nl-channel:hover { transform: translateY(-3px); border-color: rgba(237,228,212,0.2); }
+        .nl-channel-icon { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/7; margin: calc(-1 * clamp(12px,2vw,22px)) calc(-1 * clamp(12px,2vw,22px)) clamp(10px,1.5vw,16px); background: rgba(255,255,255,0.025); }
+        .nl-channel-icon svg { width: clamp(28px,5vw,48px); height: clamp(28px,5vw,48px); fill: none; stroke: rgba(212,146,74,0.55); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .nl-channel-n { display: block; color: #d4924a; font-family: var(--font-jbmono), monospace; font-size: clamp(9px,1.5vw,11px); letter-spacing: 0.12em; text-transform: uppercase; }
+        .nl-channel-title { margin: 6px 0 0; color: #fff; font-size: clamp(11px,2.2vw,18px); font-weight: 700; line-height: 1.2; }
+        .nl-channel-body { margin: 6px 0 0; color: #91877b; font-size: clamp(10px,1.6vw,13px); line-height: 1.5; }
       `}</style>
 
       <div
@@ -115,22 +135,93 @@ export default function NewLandingPage({ className }: { className?: string }) {
         <nav
           style={{
             display: "flex",
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "space-between",
             gap: 16,
-            minHeight: "clamp(120px, 18vh, 240px)",
-            padding: "clamp(36px, 7vw, 80px) clamp(20px, 5cqw, 44px)",
+            padding: "clamp(16px, 3vw, 28px) clamp(20px, 5vw, 56px)",
             background: "#0a0907",
           }}
         >
-          <Image
-            src="/new-landing/logo.png"
-            alt="VVS Design"
-            width={160}
-            height={44}
-            style={{ height: 26, width: "auto", display: "block" }}
-          />
+          {/* Logo + subtitle */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <Image
+              src="/new-landing/growjewelry-logo.png"
+              alt="Grow Jewelry"
+              width={160}
+              height={44}
+              style={{ height: 48, width: "auto", display: "block", mixBlendMode: "screen" }}
+            />
+            <p style={{ margin: 0, paddingLeft: 28, color: "#91877b", fontSize: 10.5, fontWeight: 400, letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+              Grow your business with AI
+            </p>
+          </div>
+
+          {/* Nav actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 18, flexShrink: 0 }}>
+            <Link href="/login" style={{ color: "#91877b", fontSize: 14, textDecoration: "none" }}>
+              Log in
+            </Link>
+            <Link href="/onboarding" style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "10px 20px", borderRadius: 999, fontSize: 14, fontWeight: 700,
+              background: "linear-gradient(165deg, #ebb467, #d4924a)",
+              color: "#1b1006", textDecoration: "none",
+              boxShadow: "0 0 0 1px rgba(235,180,103,0.32), 0 10px 24px -12px rgba(212,146,74,0.8)",
+            }}>
+              Start free <span>→</span>
+            </Link>
+          </div>
         </nav>
+
+        {/* Order banner callout */}
+        <aside style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "auto",
+          padding: "clamp(12px, 1.8vw, 18px) clamp(20px, 5vw, 56px)",
+          background: "linear-gradient(165deg, #ebb467, #d4924a)",
+          borderTop: "1px solid rgba(235,180,103,0.34)",
+          borderBottom: "1px solid rgba(235,180,103,0.34)",
+        }}>
+          <p style={{
+            margin: 0,
+            color: "#090706",
+            fontFamily: "'ZT Nature', Helvetica, Arial, sans-serif",
+            fontSize: "clamp(14px, 2.4vw, 22px)",
+            fontStyle: "italic",
+            fontWeight: 700,
+            letterSpacing: 0,
+            lineHeight: 1,
+            textTransform: "uppercase",
+            textAlign: "center",
+            whiteSpace: "nowrap",
+          }}>
+            Book <em style={{ fontStyle: "inherit" }}>3x</em> more custom orders using AI
+          </p>
+        </aside>
+
+        {/* "Here's how" label below banner */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          padding: "clamp(14px, 2vw, 20px) 0",
+          color: "#d4924a",
+          fontSize: "clamp(11px, 1.6vw, 13px)",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          textAlign: "center",
+          background: "#0a0907",
+        }}>
+          <span>here&apos;s how</span>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+            <path d="M12 5v14M19 12l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
 
         {/* PILLARS */}
         <section style={{ width: "100%", display: "flex", flexDirection: "column" }}>
@@ -144,7 +235,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 display: "flex",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: "clamp(240px, 23vw, 312px)",
+                minHeight: "clamp(288px, 27.6vw, 374px)",
                 cursor: "pointer",
                 border: "none",
                 color: "inherit",
@@ -162,13 +253,14 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     flex: "1 1 0",
                     minWidth: 0,
                     fontWeight: 800,
-                    fontSize: "clamp(19px, 3.1vw, 38px)",
+                    fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
                     letterSpacing: "-0.02em",
                     color: "#fff",
                   }}
                 >
-                  Design Custom Jewelry and take orders &ndash; in minutes
+                  <span className="nl-mark">Design Custom Jewelry</span> and take orders
+                  <em className="nl-accent">in minutes</em>
                 </span>
                 <span
                   className="nl-hero-imgbox"
@@ -264,8 +356,6 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     ] as const).map((feature, i) => (
                       <article
                         key={i}
-                        ref={(el) => { featureRefs.current[i] = el; }}
-                        data-feature={i}
                         className="nl-feature"
                         style={{
                           opacity: step === i ? 1 : 0.4,
@@ -328,6 +418,81 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     ))}
                   </div>
                 </div>
+
+                {/* "Take Orders on Autopilot" — full-width, outside the sticky
+                    phone grid so it scrolls normally without overlay. */}
+                <div style={{
+                  maxWidth: 1160,
+                  margin: "0 auto",
+                  padding: "clamp(56px,8vw,96px) clamp(20px,5vw,56px) clamp(48px,6vw,72px)",
+                  borderTop: "1px solid rgba(237,228,212,0.09)",
+                }}>
+                  <p style={{ margin: "0 0 14px", color: "#d4924a", fontFamily: "var(--font-jbmono, monospace)", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                    how it works
+                  </p>
+                  <h2 style={{ margin: "0 0 16px", color: "#fff", fontSize: "clamp(32px,5vw,56px)", fontWeight: 800, lineHeight: 1.06, letterSpacing: "-0.02em", maxWidth: 720 }}>
+                    Take Orders on{" "}
+                    <em className="nl-accent" style={{ display: "inline" }}>Autopilot</em>
+                  </h2>
+                  <p style={{ margin: "0 0 clamp(24px,3vw,36px)", color: "#ede4d4", fontSize: "clamp(22px,3.5vw,38px)", lineHeight: 1.2, maxWidth: 640, fontWeight: 500, letterSpacing: "-0.01em", fontFamily: "var(--font-jakarta, sans-serif)" }}>
+                    Remove the friction between{" "}
+                    <span style={{ color: "#d4924a" }}>customer interest</span>{" "}
+                    and deposit.
+                  </p>
+                  <p style={{ margin: 0, color: "#ede4d4", fontSize: "clamp(15px,1.8vw,18px)", lineHeight: 1.8, maxWidth: 560, borderLeft: "2px solid rgba(212,146,74,0.4)", paddingLeft: "clamp(18px,2vw,28px)" }}>
+                    Customer designs in your store, on your website. You capture their contact info and their quote request.{" "}
+                    <strong style={{ color: "#fff" }}>You get the sale.</strong>
+                  </p>
+                </div>
+
+                {/* Three "where it goes" cards, laid out horizontally below the
+                    feature scroll (mirrors the live homepage's channel cards). */}
+                <div className="nl-channels">
+                  {([
+                    {
+                      n: "01",
+                      title: "Put it in your Store",
+                      body: "Customers scan one QR code, design their piece on the spot, and get a fully specced prototype before they walk out.",
+                      icon: (
+                        <svg viewBox="0 0 48 48" aria-hidden>
+                          <rect x="10" y="10" width="12" height="12" rx="2" />
+                          <rect x="26" y="10" width="12" height="12" rx="2" />
+                          <rect x="10" y="26" width="12" height="12" rx="2" />
+                          <rect x="26" y="26" width="12" height="12" rx="2" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      n: "02",
+                      title: "Add it to your IG bio",
+                      body: "Visitors who would otherwise bounce can design their own piece while you capture a complete lead.",
+                      icon: (
+                        <svg viewBox="0 0 48 48" aria-hidden>
+                          <rect x="8" y="12" width="32" height="22" rx="2" />
+                          <path d="M4 40h40" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      n: "03",
+                      title: "Run it alongside your Meta Ads",
+                      body: "Send ad traffic to an interactive design tool and receive warm leads who have already chosen what they want.",
+                      icon: (
+                        <svg viewBox="0 0 48 48" aria-hidden>
+                          <rect x="16" y="8" width="16" height="32" rx="3" />
+                          <path d="M22 34h4" />
+                        </svg>
+                      ),
+                    },
+                  ] as const).map((c) => (
+                    <div key={c.n} className="nl-channel">
+                      <div className="nl-channel-icon">{c.icon}</div>
+                      <span className="nl-channel-n">{c.n}</span>
+                      <h3 className="nl-channel-title">{c.title}</h3>
+                      <p className="nl-channel-body">{c.body}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </article>
@@ -341,7 +506,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 display: "flex",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: "clamp(240px, 23vw, 312px)",
+                minHeight: "clamp(288px, 27.6vw, 374px)",
                 cursor: "pointer",
                 border: "none",
                 color: "inherit",
@@ -359,25 +524,29 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     flex: "1 1 0",
                     minWidth: 0,
                     fontWeight: 800,
-                    fontSize: "clamp(19px, 3.1vw, 38px)",
+                    fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
                     letterSpacing: "-0.02em",
                     color: "#fff",
                   }}
                 >
-                  Create Stunning social media visuals for your Brand &ndash; in minutes
+                  <span className="nl-mark">Create Stunning</span> social media{" "}
+                  <span className="nl-mark">visuals</span> for your Brand
+                  <em className="nl-accent">in minutes</em>
                 </span>
-                {/* Live marching reel carousel, shared with the /studio hero. */}
+                {/* Live marching reel carousel, shared with the /studio hero.
+                    Here it runs the 3-slot ring with wider cards so the reels
+                    read larger and clearer in the banner. */}
                 <span
                   style={{
                     position: "relative",
                     zIndex: 1,
                     flex: "0 0 auto",
                     alignSelf: "center",
-                    width: "clamp(140px, 42%, 430px)",
+                    width: "clamp(170px, 48%, 500px)",
                   }}
                 >
-                  <ReelsCarousel />
+                  <ReelsCarousel slots={3} reelWidth="30%" />
                 </span>
               </div>
             </button>
@@ -413,7 +582,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 display: "flex",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: "clamp(240px, 23vw, 312px)",
+                minHeight: "clamp(288px, 27.6vw, 374px)",
                 cursor: "pointer",
                 border: "none",
                 color: "inherit",
@@ -430,7 +599,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     zIndex: 2,
                     maxWidth: "80%",
                     fontWeight: 800,
-                    fontSize: "clamp(19px, 3.1vw, 38px)",
+                    fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
                     letterSpacing: "-0.02em",
                     color: "#fff",
@@ -617,11 +786,11 @@ export default function NewLandingPage({ className }: { className?: string }) {
           }}
         >
           <Image
-            src="/new-landing/logo.png"
-            alt="VVS Design"
+            src="/new-landing/growjewelry-logo.png"
+            alt="Grow Jewelry"
             width={120}
             height={33}
-            style={{ height: 22, width: "auto", opacity: 0.9 }}
+            style={{ height: 40, width: "auto", opacity: 0.9, mixBlendMode: "screen" }}
           />
           <div
             style={{

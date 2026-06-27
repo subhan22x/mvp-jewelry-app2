@@ -60,7 +60,7 @@ export default function LoginForm() {
     <main className="flex min-h-dvh items-center justify-center bg-[#050504] px-4 py-10 text-[#ede4d4]">
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <Image src="/landing/flawless-lettering-logo.png" alt="Flawless" width={199} height={79} className="h-auto w-32 object-contain" priority />
+          <Image src="/new-landing/growjewelry-logo.png" alt="Grow Jewelry" width={220} height={60} className="h-auto w-40 object-contain" style={{ mixBlendMode: "screen" }} priority />
           <h1 className="mt-3 text-4xl font-bold text-white">Owner login</h1>
           <p className="mt-2 text-sm leading-6 text-[#91877b]">Review quotes, update your storefront, and generate studio assets.</p>
         </div>
