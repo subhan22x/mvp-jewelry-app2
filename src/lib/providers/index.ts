@@ -4,7 +4,7 @@ import type { ImageProvider } from './types';
 import { GEMINI_IMAGE_MODELS, type GeminiImageModelId } from '../generation-lab/models';
 
 const GREAT_MODEL_ID = 'gemini-3-pro-image-preview';
-const FAST_MODEL_ID = 'gemini-2.5-flash-image';
+const FAST_MODEL_ID = 'gemini-3.1-flash-image';
 
 const providerCache = new Map<string, ImageProvider>();
 

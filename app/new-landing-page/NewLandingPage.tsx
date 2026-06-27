@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import StudioContent from "../studio/StudioContent";
 import ReelsCarousel from "../studio/ReelsCarousel";
 import studioStyles from "../studio/StudioPage.module.css";
@@ -10,23 +10,14 @@ import studioStyles from "../studio/StudioPage.module.css";
 export default function NewLandingPage({ className }: { className?: string }) {
   const [open, setOpen] = useState<number | null>(null);
   const [step, setStep] = useState(0);
-  const featureRefs = useRef<Array<HTMLElement | null>>([]);
 
-  // Scroll-driven feature phone screen (IntersectionObserver, mirrors old landing)
+  // Time-based phone screen switcher — advances every 1.6 s
   useEffect(() => {
-    if (open !== 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setStep(Number((visible.target as HTMLElement).dataset.feature));
-      },
-      { rootMargin: "-34% 0px -34% 0px", threshold: [0, 0.2, 0.6] }
-    );
-    featureRefs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, [open]);
+    const timer = setInterval(() => {
+      setStep((s) => (s + 1) % 3);
+    }, 1600);
+    return () => clearInterval(timer);
+  }, []);
 
   const toggle = (i: number) => {
     setOpen((o) => (o === i ? null : i));
@@ -72,6 +63,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        @font-face { font-family: "ZT Nature"; src: url("/landing/zt-nature-bold-italic.otf") format("opentype"); font-style: italic; font-weight: 700; font-display: swap; }
         html, body { margin: 0; padding: 0; }
         body { background: #0a0907; }
         *, *::before, *::after { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -182,6 +174,55 @@ export default function NewLandingPage({ className }: { className?: string }) {
           </div>
         </nav>
 
+        {/* Order banner callout */}
+        <aside style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "auto",
+          padding: "clamp(12px, 1.8vw, 18px) clamp(20px, 5vw, 56px)",
+          background: "linear-gradient(165deg, #ebb467, #d4924a)",
+          borderTop: "1px solid rgba(235,180,103,0.34)",
+          borderBottom: "1px solid rgba(235,180,103,0.34)",
+        }}>
+          <p style={{
+            margin: 0,
+            color: "#090706",
+            fontFamily: "'ZT Nature', Helvetica, Arial, sans-serif",
+            fontSize: "clamp(14px, 2.4vw, 22px)",
+            fontStyle: "italic",
+            fontWeight: 700,
+            letterSpacing: 0,
+            lineHeight: 1,
+            textTransform: "uppercase",
+            textAlign: "center",
+            whiteSpace: "nowrap",
+          }}>
+            Book <em style={{ fontStyle: "inherit" }}>3x</em> more custom orders using AI
+          </p>
+        </aside>
+
+        {/* "Here's how" label below banner */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          padding: "clamp(14px, 2vw, 20px) 0",
+          color: "#d4924a",
+          fontSize: "clamp(11px, 1.6vw, 13px)",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          textAlign: "center",
+          background: "#0a0907",
+        }}>
+          <span>here&apos;s how</span>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+            <path d="M12 5v14M19 12l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+
         {/* PILLARS */}
         <section style={{ width: "100%", display: "flex", flexDirection: "column" }}>
 
@@ -194,7 +235,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 display: "flex",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: "clamp(240px, 23vw, 312px)",
+                minHeight: "clamp(288px, 27.6vw, 374px)",
                 cursor: "pointer",
                 border: "none",
                 color: "inherit",
@@ -212,7 +253,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     flex: "1 1 0",
                     minWidth: 0,
                     fontWeight: 800,
-                    fontSize: "clamp(19px, 3.1vw, 38px)",
+                    fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
                     letterSpacing: "-0.02em",
                     color: "#fff",
@@ -315,8 +356,6 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     ] as const).map((feature, i) => (
                       <article
                         key={i}
-                        ref={(el) => { featureRefs.current[i] = el; }}
-                        data-feature={i}
                         className="nl-feature"
                         style={{
                           opacity: step === i ? 1 : 0.4,
@@ -467,7 +506,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 display: "flex",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: "clamp(240px, 23vw, 312px)",
+                minHeight: "clamp(288px, 27.6vw, 374px)",
                 cursor: "pointer",
                 border: "none",
                 color: "inherit",
@@ -485,7 +524,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     flex: "1 1 0",
                     minWidth: 0,
                     fontWeight: 800,
-                    fontSize: "clamp(19px, 3.1vw, 38px)",
+                    fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
                     letterSpacing: "-0.02em",
                     color: "#fff",
@@ -543,7 +582,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 display: "flex",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: "clamp(240px, 23vw, 312px)",
+                minHeight: "clamp(288px, 27.6vw, 374px)",
                 cursor: "pointer",
                 border: "none",
                 color: "inherit",
@@ -560,7 +599,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     zIndex: 2,
                     maxWidth: "80%",
                     fontWeight: 800,
-                    fontSize: "clamp(19px, 3.1vw, 38px)",
+                    fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
                     letterSpacing: "-0.02em",
                     color: "#fff",
