@@ -951,7 +951,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
 
                     <div className="pt-5 sm:pt-6">
                       <h2 className="text-left text-lg font-semibold">Select Color Combo</h2>
-                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
                         {GOLD_COMBOS.map(option => {
                           const isActive = goldCombo === option.id;
                           return (
@@ -959,12 +959,12 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                               key={option.id}
                               selected={isActive}
                               onClick={() => setGoldCombo(option.id)}
-                              className="min-h-14"
+                              className="min-h-14 px-2 text-xs sm:px-4 sm:text-sm"
                             >
-                              <span className="flex items-center justify-center gap-3">
+                              <span className="flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-3">
                                 <span
                                   className={cx(
-                                    "relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/45 bg-gradient-to-br shadow-[inset_0_1px_2px_rgba(255,255,255,0.75),0_2px_8px_rgba(0,0,0,0.22)]",
+                                    "relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/45 bg-gradient-to-br shadow-[inset_0_1px_2px_rgba(255,255,255,0.75),0_2px_8px_rgba(0,0,0,0.22)] sm:h-7 sm:w-7",
                                     GOLD_COMBO_SWATCH_CLASS[option.id]
                                   )}
                                   aria-hidden="true"
@@ -984,7 +984,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
 
                     <div className="pt-2">
                       <h2 className="text-left text-lg font-semibold">Size</h2>
-                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">
                         {PENDANT_SIZES.map(option => {
                           const isActive = pendantSize === option.id;
                           return (
@@ -992,6 +992,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                               key={option.id}
                               selected={isActive}
                               onClick={() => setPendantSize(option.id)}
+                              className="px-2 text-xs sm:px-4 sm:text-sm"
                             >
                               {option.label}
                             </ThemedOptionButton>
@@ -1021,7 +1022,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                               selected={isActive}
                               onClick={() => setMetalType(option.id)}
                               size="sm"
-                              minWidthClass="min-w-[92px]"
+                              minWidthClass="min-w-[76px]"
                             >
                               {option.label}
                             </ThemedOptionButton>
@@ -1041,6 +1042,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                               selected={isActive}
                               onClick={() => setStoneType(option.id)}
                               size="sm"
+                              minWidthClass="min-w-[76px]"
                             >
                               {option.label}
                             </ThemedOptionButton>
@@ -1059,7 +1061,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                               key={option}
                               selected={isActive}
                               onClick={() => setDiamondQuality(option)}
-                              size="lg"
+                              size="sm"
                               minWidthClass="min-w-[72px]"
                               uppercase
                             >
@@ -1183,7 +1185,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                       disabled={isGenerating}
                       className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${isGenerating ? 'cursor-wait border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] text-[var(--theme-text-muted)]' : 'bg-[var(--theme-accent)] text-[var(--theme-accent-contrast)] hover:bg-[var(--theme-border-hover)]'}`}
                     >
-                      {isGenerating ? 'submitting...' : 'accept'}
+                      {isGenerating ? 'submitting...' : 'Generate'}
                     </button>
                   </div>
                 </div>

@@ -14,7 +14,7 @@ const categories: CategoryCard[] = [
   { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png" },
   { id: "ring", label: "Ring", href: "/coming-soon", iconSrc: "/category-icons/ring.png" },
   { id: "bracelet", label: "Bracelet", href: "/bracelets", iconSrc: "/category-icons/bracelet.png" },
-  { id: "watches", label: "Watches", href: "/coming-soon", iconSrc: "/category-icons/watch.png" }
+  { id: "necklace", label: "Necklace", href: "/necklaces", iconSrc: "/category-icons/necklace.png" }
 ];
 
 const cardClass = cx(
@@ -29,7 +29,9 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
   const withBase = (path: string) => basePath ? `${basePath}${path}` : path;
   const visibleCategories = categories.map(category => ({
     ...category,
-    href: category.href === "/pendants" || category.href === "/bracelets" ? withBase(category.href) : category.href
+    href: category.href === "/pendants" || category.href === "/bracelets" || category.href === "/necklaces"
+      ? withBase(category.href)
+      : category.href
   }));
   return (
     <main data-tour-id="design-entry" className="min-h-dvh px-4 py-8 text-[var(--theme-text)] md:px-8">

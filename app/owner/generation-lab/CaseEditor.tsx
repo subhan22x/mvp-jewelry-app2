@@ -309,7 +309,7 @@ function ModelSelectionFields({ config, meta, patch, variants }: { config: AnyCa
       {variants === 2 && (
         <Field label="Variant 2 model">
           <select className={inputClass} value={String(selection.variant2 ?? "")} onChange={e => patchModel("variant2", e.target.value)}>
-            <option value="">Default (Gemini 2.5 Flash)</option>
+            <option value="">Default (Gemini 3.1 Flash)</option>
             {meta.imageModels.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}
           </select>
         </Field>

@@ -64,9 +64,11 @@ export default function StudioContent({ embedded = false }: { embedded?: boolean
       <section className={styles.hero}>
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
-            <div className={styles.eyebrow}>
-              <span /> flawless · video engine
-            </div>
+            {!embedded && (
+              <div className={styles.eyebrow}>
+                <span /> flawless · video engine
+              </div>
+            )}
             {!embedded && (
               <h1>
                 Turn your
@@ -77,8 +79,7 @@ export default function StudioContent({ embedded = false }: { embedded?: boolean
               </h1>
             )}
             <p className={styles.heroSub}>
-              Studio-grade short-form video, done for you. We turn a single product photo into a month of
-              scroll-stopping reels — and book them straight into your content calendar.
+              Studio-grade short-form videos, done for you. We turn amateur phone photos into scroll-stopping reels.
             </p>
             {!embedded && (
               <div className={styles.heroActions}>
@@ -90,11 +91,13 @@ export default function StudioContent({ embedded = false }: { embedded?: boolean
                 </a>
               </div>
             )}
-            <div className={styles.heroMeta}>
-              <strong>{POSTS_PER_MONTH} posts / month</strong>
-              <span>·</span>
-              <span>0 hours editing</span>
-            </div>
+            {!embedded && (
+              <div className={styles.heroMeta}>
+                <strong>{POSTS_PER_MONTH} posts / month</strong>
+                <span>·</span>
+                <span>0 hours editing</span>
+              </div>
+            )}
           </div>
 
           {/* Reels: infinite left-marching carousel */}
@@ -117,8 +120,7 @@ export default function StudioContent({ embedded = false }: { embedded?: boolean
             Post studio-grade media&nbsp;<span className={styles.script}>consistently</span>
           </h2>
           <p>
-            Drop in a single product shot. Our jewelry-trained engine spins it into a week of motion — multiple
-            hooks, angles, and edits, all on-brand.
+            Produce a month&apos;s content on autopilot and convert more through professional looking visuals.
           </p>
         </div>
 
