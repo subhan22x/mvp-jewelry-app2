@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
   if (!reqRow) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   const productType = reqRow.productType ?? 'name';
-  const expectedGenerationCount = productType === 'picture' || productType === 'bracelet' ? 1 : EXPECTED_GENERATION_COUNT;
+  const expectedGenerationCount = productType === 'picture' || productType === 'bracelet' || productType === 'grillz' ? 1 : EXPECTED_GENERATION_COUNT;
   const attempts = reqRow.Results.map(r => ({
     id: r.id,
     variant: r.variant,
@@ -43,6 +43,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     size: reqRow.size,
     metalType: reqRow.metalType,
     stoneType: reqRow.stoneType,
+    diamondQuality: reqRow.diamondQuality,
+    grillz: productType === 'grillz' ? {
+      styleType: reqRow.grillzStyleType,
+      styleLabel: reqRow.grillzStyleLabel,
+      teeth: reqRow.grillzTeethJson ? JSON.parse(reqRow.grillzTeethJson) : null,
+      inspiration: reqRow.grillzInspiration
+    } : null,
     results,
     attempts,
     generation: {

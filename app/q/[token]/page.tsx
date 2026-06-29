@@ -44,8 +44,17 @@ function materialLabel(material: string | null, karat: string | null) {
 function designTitle(quote: { text: string | null; productType: string | null; styleId: string | null }) {
   if (quote.text) return quote.text;
   if (quote.productType === "picture") return "Picture pendant";
+  if (quote.productType === "grillz") return "Grillz";
   if (quote.productType === "general_quote") return "Custom jewelry quote";
   return cleanLabel(quote.styleId) ?? "Custom pendant";
+}
+
+function productLabel(productType: string | null, pendantFinish: string | null) {
+  if (productType === "picture") return "Picture pendant";
+  if (productType === "bracelet") return "Bracelet";
+  if (productType === "grillz") return pendantFinish === "custom_grillz" ? "Custom Grillz" : "Grillz";
+  if (productType === "general_quote") return "Custom jewelry";
+  return "Name pendant";
 }
 
 function detailRows(quote: {
@@ -72,7 +81,7 @@ function detailRows(quote: {
     { label: "Estimated delivery", value: quote.estimatedDelivery },
     { label: "Quoted material", value: materialLabel(quote.quoteMaterial, quote.quoteMaterialKarat) },
     { label: "Quoted stone", value: cleanLabel(quote.quoteStoneType) },
-    { label: "Product", value: quote.productType === "picture" ? "Picture pendant" : quote.productType === "general_quote" ? "Custom jewelry" : "Name pendant" },
+    { label: "Product", value: productLabel(quote.productType, quote.pendantFinish) },
     { label: "Text", value: quote.text },
     { label: "Finish", value: cleanLabel(quote.pendantFinish) },
     { label: "Style", value: cleanLabel(quote.styleId) },
