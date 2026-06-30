@@ -130,7 +130,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
            crop is anchored right so the tablet stays whole. */
         .nl-hero-imgbox { align-self: stretch; width: clamp(140px, 44%, 460px); }
         .nl-hero-img { object-fit: contain; object-position: right center; }
-        @media (max-width: 700px) {
+        @media (max-width: 1024px) {
           .nl-hero-img { object-fit: cover; object-position: right center; }
           .nl-hero-imgbox {
             width: 56%;
