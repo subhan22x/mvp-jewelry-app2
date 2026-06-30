@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import DesignProgressBar from "@/app/components/DesignProgressBar";
-import ThemedImageOption from "@/app/components/ThemedImageOption";
 import ThemedOptionButton from "@/app/components/ThemedOptionButton";
 import LeadCaptureModal from "@/app/name/components/LeadCaptureModal";
 import {
@@ -19,7 +19,12 @@ import {
   type GrillzStoneType,
   type GrillzStyleId
 } from "@/src/lib/grillz/config";
-import { cx, panelClass, styleOptionFrameClass, themeBorder, themeRadius, themeSurface } from "@/src/lib/theme/ui-classes";
+import { cx, panelClass, themeBorder, themeRadius, themeSurface } from "@/src/lib/theme/ui-classes";
+
+// Shared landing-grid card styling, kept in sync with PendantsIndex so every
+// design-wizard entry screen renders an identical grid.
+const landingCardClass =
+  "group relative flex min-h-[208px] flex-col items-center justify-between rounded-[28px] border border-white/15 bg-black/90 p-5 text-center transition hover:border-white/35";
 
 type Screen = "style" | "customize" | "review";
 type GenerationStatus = "idle" | "pending" | "succeeded" | "failed";
@@ -212,72 +217,91 @@ function DesignFlowShell({
 function StyleScreen({
   styleId,
   setStyleId,
-  onNext
+  onNext,
+  backHref
 }: {
   styleId: GrillzStyleId;
   setStyleId: (styleId: GrillzStyleId) => void;
   onNext: () => void;
+  backHref: string;
 }) {
   return (
-    <>
-      <header className="pt-8">
-        <h1 className="text-[2rem] font-bold leading-none tracking-tight text-[var(--theme-heading)]">Dream it first</h1>
-        <p
-          className="mt-1 text-[1.7rem] italic leading-none text-[var(--theme-script)]"
-          style={{ fontFamily: "var(--font-nostalgic)" }}
-        >
-          we&apos;ll build it.
-        </p>
-      </header>
-
-      <section className="mt-16">
-        <h2 className="text-xl font-bold text-[var(--theme-text)]">Choose Style</h2>
-        <div className="mt-4 -mx-4 overflow-x-auto px-4 pb-5 pt-1">
-          <div className="flex snap-x snap-mandatory gap-4">
-            {GRILLZ_STYLES.reduce<Array<typeof GRILLZ_STYLES>>((columns, style, index) => {
-              if (index % 2 === 0) columns.push([style]);
-              else columns[columns.length - 1].push(style);
-              return columns;
-            }, []).map((column, columnIndex) => (
-              <div key={columnIndex} className="grid min-w-[192px] grid-rows-2 gap-3 snap-start">
-                {column.map(style => (
-                  <ThemedImageOption
-                    key={style.id}
-                    onClick={() => setStyleId(style.id)}
-                    selected={styleId === style.id}
-                    src={style.src}
-                    label={`${style.label} Grillz style`}
-                    className={styleOptionFrameClass}
-                    imageClassName="scale-[1.4] object-contain object-center p-4 transition duration-500 group-hover:scale-[1.47]"
-                    fallback={
-                      <div className="flex h-full w-full flex-col items-center justify-center bg-[var(--theme-surface-muted)] p-4 text-center">
-                        <span className="text-5xl font-black text-[#ffc25d]">{style.label.slice(0, 1)}</span>
-                        <span className="mt-4 text-sm font-semibold text-[var(--theme-text)]">{style.label}</span>
-                        <span className="mt-1 text-xs text-[var(--theme-text-soft)]">{style.description}</span>
-                      </div>
-                    }
-                    badge={style.id === CUSTOM_GRILLZ_STYLE_ID ? (
-                      <span className="absolute bottom-3 left-3 right-3 rounded-full bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white/70">
-                        Upload inspo
-                      </span>
-                    ) : undefined}
-                  />
-                ))}
-                {column.length === 1 && <div className={cx("h-[184px] w-[184px] border border-transparent", themeRadius.imageOption)} aria-hidden />}
-              </div>
-            ))}
-          </div>
+    <main className="min-h-dvh px-4 py-5 text-white md:px-8 md:py-10">
+      <div className="mx-auto w-full max-w-4xl px-4 pb-14 pt-3 sm:px-6 md:px-12 md:pt-10">
+        <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
+          <Link
+            href={backHref}
+            aria-label="Back"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-xl leading-none text-white transition hover:border-white/45"
+          >
+            ←
+          </Link>
+          <DesignProgressBar current={0} className="justify-self-center" />
+          <span aria-hidden="true" />
         </div>
+
+        <header className="max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.35em] text-white/70">001</p>
+          <h1 className="mt-2 text-[1.95rem] font-bold leading-none tracking-tight md:text-[2.75rem]">Dream it first</h1>
+          <p
+            className="mt-1 text-[1.45rem] italic leading-none text-white/90 md:mt-2 md:text-3xl"
+            style={{ fontFamily: "var(--font-nostalgic)" }}
+          >
+            we&apos;ll build it.
+          </p>
+          <p className="mt-3 max-w-lg text-[0.68rem] leading-relaxed text-white/75 md:mt-4 md:text-sm">
+            Choose your grillz style and we'll help you design and customize it to your liking
+          </p>
+        </header>
+
+        <section className="mt-7 grid grid-cols-2 gap-4 sm:gap-6 md:mt-12 md:grid-cols-3">
+          {GRILLZ_STYLES.map(style => {
+            const isActive = styleId === style.id;
+            const className = `${landingCardClass} ${isActive ? "border-[3px] border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.35)]" : ""}`;
+            return (
+              <button
+                key={style.id}
+                type="button"
+                onClick={() => setStyleId(style.id)}
+                aria-pressed={isActive}
+                className={className}
+              >
+                <div className="relative aspect-square w-full overflow-hidden rounded-[22px] bg-black">
+                  {style.src ? (
+                    <Image
+                      src={style.src}
+                      alt={style.label}
+                      fill
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+                      className="object-contain object-center"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center px-4 text-center">
+                      <span className="text-5xl font-black text-[#ffc25d]">{style.label.slice(0, 1)}</span>
+                      <span className="mt-3 text-[10px] uppercase tracking-wide text-white/55">Upload inspo</span>
+                    </div>
+                  )}
+                </div>
+                <span
+                  className="mt-4 text-sm font-semibold italic leading-tight tracking-wide text-white"
+                  style={{ fontFamily: "var(--font-figtree)" }}
+                >
+                  {style.label}
+                </span>
+              </button>
+            );
+          })}
+        </section>
 
         <button
           type="button"
           onClick={onNext}
-          className="mt-8 h-12 w-full rounded-xl bg-[#ffc66c] text-sm font-bold text-black disabled:opacity-45"
+          className="mt-8 h-12 w-full rounded-xl bg-[#ffc66c] text-sm font-bold text-black"
         >
           Continue
         </button>
-      </section>
-    </>
+      </div>
+    </main>
   );
 }
 
@@ -657,16 +681,20 @@ export default function GrillzBuilder({
     }
   }
 
+  if (screen === "style") {
+    return (
+      <StyleScreen
+        styleId={styleId}
+        setStyleId={setStyleId}
+        onNext={() => setScreen("customize")}
+        backHref={backHref}
+      />
+    );
+  }
+
   return (
     <>
       <DesignFlowShell screen={screen} backHref={backHref} onBack={goBack}>
-        {screen === "style" ? (
-          <StyleScreen
-            styleId={styleId}
-            setStyleId={setStyleId}
-            onNext={() => setScreen("customize")}
-          />
-        ) : null}
         {screen === "customize" ? (
           <CustomizeScreen
             isCustomStyle={styleId === CUSTOM_GRILLZ_STYLE_ID}
