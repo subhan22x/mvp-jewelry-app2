@@ -59,6 +59,39 @@ export default function NewLandingPage({ className }: { className?: string }) {
     </button>
   );
 
+  // Bottom-centre "Click to expand" affordance for each collapsible pillar.
+  // Uses the headline font (inherited Plus Jakarta Sans) at a lighter weight,
+  // and only shows while the pillar is collapsed. pointerEvents:none so the tap
+  // falls through to the underlying pillar button.
+  const expandHint = (i: number) =>
+    open === i ? null : (
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          bottom: "clamp(14px, 2.4vw, 22px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 3,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          fontFamily: "inherit",
+          fontWeight: 500,
+          fontSize: "clamp(11px, 1.5vw, 14px)",
+          letterSpacing: "0.01em",
+          color: "rgba(255,255,255,0.72)",
+          pointerEvents: "none",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Click to expand
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+          <path d="M12 5v14M19 12l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    );
+
   return (
     <>
       <style>{`
@@ -280,6 +313,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                   />
                 </span>
               </div>
+              {expandHint(0)}
             </button>
 
             <div
@@ -553,6 +587,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                   <ReelsCarousel slots={3} reelWidth="30%" />
                 </span>
               </div>
+              {expandHint(1)}
             </button>
 
             <div
@@ -612,6 +647,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                   Get 3&times; more Organic leads, Reviews and Social Media followers
                 </span>
               </div>
+              {expandHint(2)}
             </button>
 
             <div
