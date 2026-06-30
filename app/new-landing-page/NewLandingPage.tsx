@@ -381,15 +381,19 @@ export default function NewLandingPage({ className }: { className?: string }) {
                         </p>
                         {feature.cta && (
                           <div style={{ display: "flex", alignItems: "center", gap: 18, marginTop: 26, flexWrap: "wrap" }}>
-                            {ctaBtn(
-                              "linear-gradient(165deg, #ebb467, #d4924a)",
-                              "0 0 0 1px rgba(235,180,103,0.32), 0 10px 24px -12px rgba(212,146,74,0.8)",
-                              "#1b1006",
-                              "Start free →"
-                            )}
-                            <a href="mailto:hello@flawless.design" style={{ color: "#91877b", fontSize: 14, textDecoration: "underline", textUnderlineOffset: 4 }}>
-                              Book a demo
-                            </a>
+                            <Link href="/design" style={{
+                              display: "inline-flex", alignItems: "center", gap: 8,
+                              fontFamily: "inherit", fontWeight: 600, fontSize: 15,
+                              border: "none", cursor: "pointer", borderRadius: 999,
+                              padding: "13px 26px", color: "#1b1006", textDecoration: "none",
+                              background: "linear-gradient(165deg, #ebb467, #d4924a)",
+                              boxShadow: "0 0 0 1px rgba(235,180,103,0.32), 0 10px 24px -12px rgba(212,146,74,0.8)",
+                            }}>
+                              Try it out <span>→</span>
+                            </Link>
+                            <Link href="/onboarding" style={{ color: "#91877b", fontSize: 14, textDecoration: "underline", textUnderlineOffset: 4 }}>
+                              Sign up
+                            </Link>
                           </div>
                         )}
                       </article>
