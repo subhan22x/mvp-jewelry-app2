@@ -38,7 +38,7 @@ export const NECKLACE_STYLES: NecklaceStyleConfig[] = [
     label: "Slim Cuban",
     references: {
       yellow_gold: "/necklaces/references/slim-cuban-yellow-gold.jpeg",
-      white_gold: "/necklaces/references/slim-cuban-white-gold.png",
+      white_gold: "/necklaces/references/slim-cuban-white-gold.jpeg",
       rose_gold: "/necklaces/references/slim-cuban-rose-gold.jpeg"
     }
   },
@@ -46,7 +46,7 @@ export const NECKLACE_STYLES: NecklaceStyleConfig[] = [
     id: "cuban",
     label: "Cuban",
     references: {
-      yellow_gold: "/necklaces/references/cuban-yellow-gold.png",
+      yellow_gold: "/necklaces/references/cuban-yellow-gold.jpeg",
       white_gold: "/necklaces/references/cuban-white-gold.jpeg",
       rose_gold: "/necklaces/references/cuban-rose-gold.jpeg"
     }
@@ -55,7 +55,7 @@ export const NECKLACE_STYLES: NecklaceStyleConfig[] = [
     id: "fat_cuban",
     label: "Fat Cuban",
     references: {
-      yellow_gold: "/necklaces/references/fat-cuban-yellow-gold.png",
+      yellow_gold: "/necklaces/references/fat-cuban-yellow-gold.jpeg",
       white_gold: "/necklaces/references/fat-cuban-white-gold.jpeg",
       rose_gold: "/necklaces/references/fat-cuban-rose-gold.jpeg"
     }
@@ -66,7 +66,7 @@ export const NECKLACE_STYLES: NecklaceStyleConfig[] = [
     references: {
       yellow_gold: "/necklaces/references/spiked-cuban-yellow-gold.jpeg",
       white_gold: "/necklaces/references/spiked-cuban-white-gold.jpeg",
-      rose_gold: "/necklaces/references/spiked-cuban-rose-gold.png"
+      rose_gold: "/necklaces/references/spiked-cuban-rose-gold.jpeg"
     }
   },
   {
@@ -74,15 +74,15 @@ export const NECKLACE_STYLES: NecklaceStyleConfig[] = [
     label: "Figaro",
     references: {
       yellow_gold: "/necklaces/references/figaro-yellow-gold.jpeg",
-      white_gold: "/necklaces/references/figaro-white-gold.png",
-      rose_gold: "/necklaces/references/figaro-rose-gold.png"
+      white_gold: "/necklaces/references/figaro-white-gold.jpeg",
+      rose_gold: "/necklaces/references/figaro-rose-gold.jpeg"
     }
   },
   {
     id: "baguette_tennis",
     label: "Baguette Tennis",
     references: {
-      yellow_gold: "/necklaces/references/baguette-tennis-yellow-gold.png",
+      yellow_gold: "/necklaces/references/baguette-tennis-yellow-gold.jpeg",
       white_gold: "/necklaces/references/baguette-tennis-white-gold.jpeg",
       rose_gold: "/necklaces/references/baguette-tennis-rose-gold.jpeg"
     }
@@ -91,8 +91,8 @@ export const NECKLACE_STYLES: NecklaceStyleConfig[] = [
     id: "multi_style",
     label: "Multi-style",
     references: {
-      yellow_gold: "/necklaces/references/multi-style-yellow-gold.png",
-      white_gold: "/necklaces/references/multi-style-white-gold.png",
+      yellow_gold: "/necklaces/references/multi-style-yellow-gold.jpeg",
+      white_gold: "/necklaces/references/multi-style-white-gold.jpeg",
       rose_gold: "/necklaces/references/multi-style-rose-gold.jpeg"
     }
   }
