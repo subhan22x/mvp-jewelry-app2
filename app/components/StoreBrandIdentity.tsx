@@ -9,8 +9,8 @@ type StoreBrand = {
 };
 
 const FALLBACK_BRAND: StoreBrand = {
-  displayName: "VVS Design",
-  logoUrl: "/onboarding/vvs-design-logo.png",
+  displayName: "Flawless",
+  logoUrl: "/landing/flawless-lettering-logo.png",
   logoStyle: "wordmark"
 };
 
