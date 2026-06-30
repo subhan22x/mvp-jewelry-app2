@@ -2,7 +2,8 @@ export type GrillzStyleId =
   | "honeycomb_icedout"
   | "invisible_set"
   | "openface"
-  | "solid_gold";
+  | "solid_gold"
+  | "custom_inspiration";
 
 export type GrillzGoldColor = "yellow_gold" | "white_gold" | "rose_gold";
 export type GrillzStoneType = "natural_diamonds" | "lab_diamonds" | "moissanite";
@@ -39,6 +40,12 @@ export const GRILLZ_STYLES: GrillzStyle[] = [
     label: "Solid Gold",
     description: "Polished solid gold grillz",
     src: "/grillz/styles/solid-gold.png"
+  },
+  {
+    id: "custom_inspiration",
+    label: "Custom",
+    description: "Upload your own grillz inspiration",
+    src: ""
   }
 ];
 
