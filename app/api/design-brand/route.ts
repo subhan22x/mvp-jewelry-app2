@@ -5,8 +5,8 @@ import { getOwnerContext } from "@/src/lib/auth/owner-context";
 export const dynamic = "force-dynamic";
 
 const fallbackBrand = {
-  displayName: "VVS Design",
-  logoUrl: "/onboarding/vvs-design-logo.png",
+  displayName: "Flawless",
+  logoUrl: "/landing/flawless-lettering-logo.png",
   logoStyle: "wordmark"
 };
 
