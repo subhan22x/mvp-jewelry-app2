@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Grillz">
+  <defs>
+    <linearGradient id="gold" x1="22" y1="24" x2="106" y2="106" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0a8"/>
+      <stop offset="0.46" stop-color="#e7ad32"/>
+      <stop offset="1" stop-color="#a76612"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="33" y1="38" x2="91" y2="93" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c9d5e4"/>
+    </linearGradient>
+  </defs>
+  <path fill="#080808" d="M22 47c6-18 22-28 42-28s36 10 42 28c4 12 0 28-10 42-9 13-20 20-32 20S41 102 32 89C22 75 18 59 22 47Z"/>
+  <path fill="url(#gold)" d="M28 50c5-14 18-22 36-22s31 8 36 22c3 9 0 22-8 34-8 10-17 16-28 16S44 94 36 84c-8-12-11-25-8-34Z"/>
+  <path fill="#090909" d="M34 53c5-11 16-17 30-17s25 6 30 17c2 6 1 13-2 21H36c-3-8-4-15-2-21Z"/>
+  <g fill="url(#shine)" stroke="#d6a840" stroke-width="2">
+    <path d="M39 58h10v20H39z"/>
+    <path d="M51 55h11v23H51z"/>
+    <path d="M64 55h11v23H64z"/>
+    <path d="M77 58h12v20H77z"/>
+    <path d="M43 81h12v14H43z"/>
+    <path d="M57 81h14v16H57z"/>
+    <path d="M73 81h12v14H73z"/>
+  </g>
+  <path fill="#fff8d4" d="m40 42 5 3-5 3-3 6-3-6-5-3 5-3 3-6 3 6Zm54 4 4 2-4 3-2 4-3-4-4-3 4-2 3-5 2 5Z"/>
+</svg>

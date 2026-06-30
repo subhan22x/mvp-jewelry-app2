@@ -12,9 +12,11 @@ type CategoryCard = {
 
 const categories: CategoryCard[] = [
   { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png" },
+  { id: "grillz", label: "Grillz", href: "/grillz", iconSrc: "/category-icons/grillz.svg" },
   { id: "ring", label: "Ring", href: "/coming-soon", iconSrc: "/category-icons/ring.png" },
   { id: "bracelet", label: "Bracelet", href: "/bracelets", iconSrc: "/category-icons/bracelet.png" },
-  { id: "necklace", label: "Necklace", href: "/necklaces", iconSrc: "/category-icons/necklace.png" }
+  { id: "necklace", label: "Necklace", href: "/necklaces", iconSrc: "/category-icons/necklace.png" },
+  { id: "watches", label: "Watches", href: "/coming-soon", iconSrc: "/category-icons/watch.png" }
 ];
 
 const cardClass = cx(
@@ -29,7 +31,7 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
   const withBase = (path: string) => basePath ? `${basePath}${path}` : path;
   const visibleCategories = categories.map(category => ({
     ...category,
-    href: category.href === "/pendants" || category.href === "/bracelets" || category.href === "/necklaces"
+    href: category.href === "/pendants" || category.href === "/bracelets" || category.href === "/grillz" || category.href === "/necklaces"
       ? withBase(category.href)
       : category.href
   }));

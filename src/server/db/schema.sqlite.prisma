@@ -90,6 +90,10 @@ model Request {
   plainMetal     String?
   plainKarat     String?
   plainChain     String?
+  grillzStyleType String?
+  grillzStyleLabel String?
+  grillzTeethJson String?
+  grillzInspiration String?
   uploadFileName String?
   Results        Result[]
   ResultRevisions ResultRevision[]

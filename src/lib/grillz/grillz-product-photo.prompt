@@ -1,0 +1,14 @@
+Create an ultra-realistic product photo of custom grillz jewelry.
+
+Product: {{STYLE_LABEL}}
+Selected teeth: {{TEETH_SUMMARY}}
+Gold color: {{GOLD_COLOR}}
+Stone type: {{STONE_TYPE}}
+Diamond quality: {{DIAMOND_QUALITY}}
+Customer inspiration: {{INSPIRATION}}
+
+Render the grillz as a standalone luxury product photo, not worn in a mouth. Show a clean upper/lower dental arch layout matching the selected teeth only. Unselected teeth should not have jewelry coverage.
+
+The grillz should look manufacturable: polished gold structure, accurate tooth segmentation, precise edges, secure stone setting, realistic reflections, and bright studio lighting. Diamonds or stones should cover the visible decorative surfaces while the gold forms rims, backs, prongs, and structural borders.
+
+Use a dark suede or matte black product photography background. Keep the full grillz centered, sharp, and readable.
