@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import DesignProgressBar from "@/app/components/DesignProgressBar";
@@ -26,6 +26,7 @@ type GenerationStatus = "idle" | "pending" | "succeeded" | "failed";
 type LeadContact = { leadId: string; name: string; phone: string; email: string };
 
 const MAX_POLL_ATTEMPTS = 50;
+const CUSTOM_GRILLZ_STYLE_ID: GrillzStyleId = "custom_inspiration";
 
 const GOLD_SWATCHES: Record<GrillzGoldColor, string> = {
   yellow_gold: "from-[#ffd06a] via-[#e8a934] to-[#9d5d16]",
@@ -255,6 +256,11 @@ function StyleScreen({
                         <span className="mt-1 text-xs text-[var(--theme-text-soft)]">{style.description}</span>
                       </div>
                     }
+                    badge={style.id === CUSTOM_GRILLZ_STYLE_ID ? (
+                      <span className="absolute bottom-3 left-3 right-3 rounded-full bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide text-white/70">
+                        Upload inspo
+                      </span>
+                    ) : undefined}
                   />
                 ))}
                 {column.length === 1 && <div className={cx("h-[184px] w-[184px] border border-transparent", themeRadius.imageOption)} aria-hidden />}
@@ -262,6 +268,7 @@ function StyleScreen({
             ))}
           </div>
         </div>
+
         <button
           type="button"
           onClick={onNext}
@@ -275,6 +282,10 @@ function StyleScreen({
 }
 
 function CustomizeScreen({
+  isCustomStyle,
+  customInspirationName,
+  customInspirationPreviewUrl,
+  onCustomInspirationFile,
   selectedTeeth,
   presetId,
   presetsExpanded,
@@ -287,6 +298,10 @@ function CustomizeScreen({
   setStoneType,
   onNext
 }: {
+  isCustomStyle: boolean;
+  customInspirationName: string | null;
+  customInspirationPreviewUrl: string | null;
+  onCustomInspirationFile: (file: File | null) => void;
   selectedTeeth: string[];
   presetId: string | null;
   presetsExpanded: boolean;
@@ -299,10 +314,39 @@ function CustomizeScreen({
   setStoneType: (stoneType: GrillzStoneType) => void;
   onNext: () => void;
 }) {
+  const customInputRef = useRef<HTMLInputElement | null>(null);
   const visiblePresets = presetsExpanded ? GRILLZ_PRESETS : GRILLZ_PRESETS.slice(0, 4);
+  const canReview = selectedTeeth.length > 0 && (!isCustomStyle || Boolean(customInspirationPreviewUrl));
 
   return (
     <>
+      {isCustomStyle ? (
+        <section className={panelClass("mb-7 p-4")}>
+          <h2 className="text-xl font-bold text-[var(--theme-text)]">Upload Inspiration</h2>
+          <p className="mt-1 text-xs text-[var(--theme-text-soft)]">Add the grillz photo or sketch you want us to follow.</p>
+          <button
+            type="button"
+            onClick={() => customInputRef.current?.click()}
+            className={cx("mt-4 flex min-h-[180px] w-full items-center justify-center overflow-hidden border border-dashed p-4 text-center transition hover:border-[color:var(--theme-border-hover)]", themeRadius.imageOption, themeSurface.base)}
+          >
+            {customInspirationPreviewUrl ? (
+              <img src={customInspirationPreviewUrl} alt="Uploaded custom grillz inspiration" className="max-h-[220px] max-w-full rounded-2xl object-contain" />
+            ) : (
+              <span className="text-sm font-semibold text-[var(--theme-text-soft)]">Tap to upload inspiration</span>
+            )}
+          </button>
+          <input
+            ref={customInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            aria-label="Upload custom grillz inspiration"
+            onChange={event => onCustomInspirationFile(event.target.files?.[0] ?? null)}
+          />
+          {customInspirationName ? <p className="mt-2 text-xs text-[var(--theme-text-muted)]">{customInspirationName}</p> : null}
+        </section>
+      ) : null}
+
       <section>
         <h1 className="text-2xl font-bold leading-none">Position</h1>
         <p className="mt-2 text-xs italic text-[#d7ad6f]">Select which teeth the grillz should cover</p>
@@ -369,7 +413,7 @@ function CustomizeScreen({
       <button
         type="button"
         onClick={onNext}
-        disabled={!selectedTeeth.length}
+        disabled={!canReview}
         className="mt-7 h-12 w-full rounded-xl bg-[#ffc66c] text-sm font-bold text-black disabled:opacity-45"
       >
         Review
@@ -380,6 +424,8 @@ function CustomizeScreen({
 
 function ReviewScreen({
   selectedTeeth,
+  styleLabel,
+  stylePreviewUrl,
   diamondQuality,
   generationStatus,
   generationError,
@@ -389,6 +435,8 @@ function ReviewScreen({
   onGenerate
 }: {
   selectedTeeth: string[];
+  styleLabel: string;
+  stylePreviewUrl: string | null;
   diamondQuality: GrillzDiamondQuality;
   generationStatus: GenerationStatus;
   generationError: string | null;
@@ -413,6 +461,17 @@ function ReviewScreen({
               {option.label}
             </ThemedOptionButton>
           ))}
+        </div>
+      </section>
+
+      <section className={panelClass("mt-8 p-5")}>
+        <p className="text-sm font-bold">Selected style</p>
+        <div className={cx("mt-4 flex aspect-square items-center justify-center overflow-hidden", themeRadius.imageOption, themeSurface.strong)}>
+          {stylePreviewUrl ? (
+            <img src={stylePreviewUrl} alt={`${styleLabel} style reference`} className="h-full w-full rounded-[1.1rem] object-contain" />
+          ) : (
+            <span className="px-6 text-center text-sm text-white/35">{styleLabel}</span>
+          )}
         </div>
       </section>
 
@@ -479,7 +538,17 @@ export default function GrillzBuilder({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [leadContact, setLeadContact] = useState<LeadContact | null>(null);
+  const [customInspirationFile, setCustomInspirationFile] = useState<File | null>(null);
+  const [customInspirationPreviewUrl, setCustomInspirationPreviewUrl] = useState<string | null>(null);
   const pollAbortRef = useRef<AbortController | null>(null);
+  const selectedStyle = GRILLZ_STYLES.find(style => style.id === styleId) ?? GRILLZ_STYLES[0];
+  const stylePreviewUrl = styleId === CUSTOM_GRILLZ_STYLE_ID ? customInspirationPreviewUrl : selectedStyle.src;
+
+  useEffect(() => {
+    return () => {
+      if (customInspirationPreviewUrl) URL.revokeObjectURL(customInspirationPreviewUrl);
+    };
+  }, [customInspirationPreviewUrl]);
 
   function goBack() {
     if (screen === "review") setScreen("customize");
@@ -501,6 +570,12 @@ export default function GrillzBuilder({
       return next.sort((a, b) => a.localeCompare(b));
     });
     setPresetId(null);
+  }
+
+  function handleCustomInspirationFile(file: File | null) {
+    if (customInspirationPreviewUrl) URL.revokeObjectURL(customInspirationPreviewUrl);
+    setCustomInspirationFile(file);
+    setCustomInspirationPreviewUrl(file ? URL.createObjectURL(file) : null);
   }
 
   async function pollGeneration(nextRequestId: string, signal: AbortSignal) {
@@ -535,19 +610,40 @@ export default function GrillzBuilder({
     setLeadContact(null);
 
     try {
+      const isCustomStyle = styleId === CUSTOM_GRILLZ_STYLE_ID;
+      if (isCustomStyle && !customInspirationFile) {
+        throw new Error("Upload an inspiration image before generating custom Grillz.");
+      }
+      const customForm = new FormData();
+      if (isCustomStyle) {
+        customForm.append("userId", "demo");
+        if (accountSlug) customForm.append("accountSlug", accountSlug);
+        customForm.append("styleId", styleId);
+        customForm.append("selectedTeeth", JSON.stringify(selectedTeeth));
+        if (presetId) customForm.append("presetId", presetId);
+        customForm.append("goldColor", goldColor);
+        customForm.append("stoneType", stoneType);
+        customForm.append("diamondQuality", diamondQuality);
+        customForm.append("inspiration", `Customer uploaded inspiration image: ${customInspirationFile!.name}`);
+        customForm.append("inspirationImage", customInspirationFile!);
+      }
       const response = await fetch("/api/grillz-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: "demo",
-          accountSlug,
-          styleId,
-          selectedTeeth,
-          presetId,
-          goldColor,
-          stoneType,
-          diamondQuality
-        })
+        ...(isCustomStyle
+          ? { body: customForm }
+          : {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: "demo",
+                accountSlug,
+                styleId,
+                selectedTeeth,
+                presetId,
+                goldColor,
+                stoneType,
+                diamondQuality
+              })
+            })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Unable to start Grillz generation.");
@@ -565,10 +661,18 @@ export default function GrillzBuilder({
     <>
       <DesignFlowShell screen={screen} backHref={backHref} onBack={goBack}>
         {screen === "style" ? (
-          <StyleScreen styleId={styleId} setStyleId={setStyleId} onNext={() => setScreen("customize")} />
+          <StyleScreen
+            styleId={styleId}
+            setStyleId={setStyleId}
+            onNext={() => setScreen("customize")}
+          />
         ) : null}
         {screen === "customize" ? (
           <CustomizeScreen
+            isCustomStyle={styleId === CUSTOM_GRILLZ_STYLE_ID}
+            customInspirationName={customInspirationFile?.name ?? null}
+            customInspirationPreviewUrl={customInspirationPreviewUrl}
+            onCustomInspirationFile={handleCustomInspirationFile}
             selectedTeeth={selectedTeeth}
             presetId={presetId}
             presetsExpanded={presetsExpanded}
@@ -585,6 +689,8 @@ export default function GrillzBuilder({
         {screen === "review" ? (
           <ReviewScreen
             selectedTeeth={selectedTeeth}
+            styleLabel={selectedStyle.label}
+            stylePreviewUrl={stylePreviewUrl}
             diamondQuality={diamondQuality}
             generationStatus={generationStatus}
             generationError={generationError}
