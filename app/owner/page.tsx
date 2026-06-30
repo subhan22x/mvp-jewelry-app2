@@ -202,22 +202,22 @@ function QuoteCard({ quote, openPreview = false }: { quote: QuoteRow; openPrevie
             <span className="flex-shrink-0 text-[11px] leading-5 text-[#8c909f]">{formatDate(quote.createdAt)}</span>
           </div>
 
-          <dl className="mt-4 grid grid-cols-1 gap-4 border-t border-white/5 pt-4 sm:grid-cols-2">
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/5 pt-4">
             <div className="min-w-0">
               <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Customer</dt>
-              <dd className="mt-1 break-words text-[15px] font-medium text-[#e1e2ec]">{quote.customerName}</dd>
+              <dd className="mt-1 break-words text-[14px] font-medium leading-snug text-[#e1e2ec]">{quote.customerName}</dd>
             </div>
             <div className="min-w-0">
               <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Contact</dt>
-              <dd className="mt-1 break-words text-[15px] font-medium text-[#e1e2ec]">{quote.customerPhone || quote.customerEmail}</dd>
+              <dd className="mt-1 break-all text-[14px] font-medium leading-snug text-[#e1e2ec]">{quote.customerPhone || quote.customerEmail}</dd>
             </div>
             <div className="min-w-0">
               <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Design choices</dt>
-              <dd className="mt-1 text-[15px] font-medium text-[#e1e2ec]">{generationCount > 0 ? `${generationCount} available` : "Uploaded reference"}</dd>
+              <dd className="mt-1 text-[14px] font-medium leading-snug text-[#e1e2ec]">{generationCount > 0 ? `${generationCount} available` : "Uploaded reference"}</dd>
             </div>
             <div className="min-w-0">
               <dt className="text-[10px] uppercase tracking-wider text-[#8c909f]">Preview</dt>
-              <dd className="mt-1 text-[15px] font-medium text-[#e1e2ec]">{quote.previewMediaType === "model3d" ? "Image + 3D" : quote.previewMediaType === "video" ? "Image + Video" : "Image only"}</dd>
+              <dd className="mt-1 text-[14px] font-medium leading-snug text-[#e1e2ec]">{quote.previewMediaType === "model3d" ? "Image + 3D" : quote.previewMediaType === "video" ? "Image + Video" : "Image only"}</dd>
             </div>
           </dl>
         </div>
