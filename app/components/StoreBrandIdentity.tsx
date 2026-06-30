@@ -20,7 +20,7 @@ function accountSlugFromPath(pathname: string) {
 }
 
 export default function StoreBrandIdentity() {
-  const [brand, setBrand] = useState<StoreBrand>(FALLBACK_BRAND);
+  const [brand, setBrand] = useState<StoreBrand | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -31,10 +31,7 @@ export default function StoreBrandIdentity() {
     const query = accountSlug ? `?accountSlug=${encodeURIComponent(accountSlug)}` : "";
     setImageFailed(false);
 
-    const request = fetch(`/api/design-brand${query}`, { cache: "no-store", signal: controller.signal });
-    if (!request || typeof request.then !== "function") return () => controller.abort();
-
-    void request
+    void fetch(`/api/design-brand${query}`, { cache: "no-store", signal: controller.signal })
       .then(async response => {
         if (!response.ok) return FALLBACK_BRAND;
         const json = await response.json().catch(() => FALLBACK_BRAND);
@@ -56,6 +53,8 @@ export default function StoreBrandIdentity() {
 
     return () => controller.abort();
   }, []);
+
+  if (!brand) return <div className="mt-3 min-h-20" data-store-brand />;
 
   const showLogo = Boolean(brand.logoUrl && !imageFailed);
 
