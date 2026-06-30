@@ -8,15 +8,16 @@ type CategoryCard = {
   label: string;
   href: string;
   iconSrc: string;
+  available: boolean;
 };
 
 const categories: CategoryCard[] = [
-  { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png" },
-  { id: "grillz", label: "Grillz", href: "/grillz", iconSrc: "/category-icons/grillz.svg" },
-  { id: "ring", label: "Ring", href: "/coming-soon", iconSrc: "/category-icons/ring.png" },
-  { id: "bracelet", label: "Bracelet", href: "/bracelets", iconSrc: "/category-icons/bracelet.png" },
-  { id: "necklace", label: "Necklace", href: "/necklaces", iconSrc: "/category-icons/necklace.png" },
-  { id: "watches", label: "Watches", href: "/coming-soon", iconSrc: "/category-icons/watch.png" }
+  { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png", available: true },
+  { id: "grillz", label: "Grillz", href: "/grillz", iconSrc: "/category-icons/grillz.svg", available: true },
+  { id: "bracelet", label: "Bracelet", href: "/bracelets", iconSrc: "/category-icons/bracelet.png", available: true },
+  { id: "necklace", label: "Necklace", href: "/necklaces", iconSrc: "/category-icons/necklace.png", available: true },
+  { id: "ring", label: "Ring", href: "/coming-soon", iconSrc: "/category-icons/ring.png", available: false },
+  { id: "watches", label: "Watches", href: "/coming-soon", iconSrc: "/category-icons/watch.png", available: false }
 ];
 
 const cardClass = cx(
@@ -27,11 +28,16 @@ const cardClass = cx(
   themeSurface.strong
 );
 
+const disabledCardClass = cx(
+  cardClass,
+  "cursor-not-allowed border-white/10 bg-[#0d0d0d]/70 opacity-45 grayscale hover:shadow-[0_18px_38px_rgba(0,0,0,0.28)]"
+);
+
 export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
   const withBase = (path: string) => basePath ? `${basePath}${path}` : path;
   const visibleCategories = categories.map(category => ({
     ...category,
-    href: category.href === "/pendants" || category.href === "/bracelets" || category.href === "/grillz" || category.href === "/necklaces"
+    href: category.available
       ? withBase(category.href)
       : category.href
   }));
@@ -76,10 +82,19 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
               </>
             );
 
-            const className = cardClass;
+            if (!category.available) {
+              return (
+                <div key={category.id} className={disabledCardClass} aria-disabled="true" aria-label={`${category.label} jewelry coming soon`}>
+                  {body}
+                  <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/75">
+                    Coming soon
+                  </span>
+                </div>
+              );
+            }
 
             return (
-              <Link key={category.id} href={category.href} className={className} aria-label={`${category.label} jewelry`}>
+              <Link key={category.id} href={category.href} className={cardClass} aria-label={`${category.label} jewelry`}>
                 {body}
               </Link>
             );
