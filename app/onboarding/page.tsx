@@ -3,6 +3,7 @@
 import type { ChangeEvent, CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAuthApiError } from "@supabase/auth-js";
 import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import { createClient } from "@/src/lib/supabase/client";
 
@@ -22,6 +23,20 @@ type Draft = {
   password: string;
   logo?: { dataUrl: string; name: string; type: string };
 };
+
+function onboardingErrorMessage(error: unknown) {
+  if (isAuthApiError(error)) {
+    const message = error.message.toLowerCase();
+    if (error.status === 429 || message.includes("rate limit")) {
+      return "Email signups are temporarily rate limited. Please wait a few minutes and try again.";
+    }
+    if (message.includes("not authorized")) {
+      return "This email could not receive a confirmation link yet. The site email sender needs custom SMTP enabled.";
+    }
+  }
+
+  return error instanceof Error ? error.message : "Something went wrong.";
+}
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -193,6 +208,7 @@ export default function OnboardingPage() {
   const [authedEmail, setAuthedEmail] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const logoPreview = useMemo(() => (logoFile ? URL.createObjectURL(logoFile) : null), [logoFile]);
@@ -285,11 +301,21 @@ export default function OnboardingPage() {
       setConfirmPassword(draft.password ?? "");
       if (draft.logo) setLogoFile(dataUrlToFile(draft.logo.dataUrl, draft.logo.name, draft.logo.type));
       setScreen(5);
-      sessionStorage.removeItem("vvs_onb_draft");
+      if (authedEmail) {
+        setPendingAutoSubmit(true);
+        setSubmitError("Email confirmed. Finishing your studio setup...");
+        sessionStorage.removeItem("vvs_onb_draft");
+      }
     } catch {
       sessionStorage.removeItem("vvs_onb_draft");
     }
-  }, [authChecked]);
+  }, [authChecked, authedEmail]);
+
+  useEffect(() => {
+    if (!pendingAutoSubmit || !authChecked || !authedEmail || isSubmitting) return;
+    setPendingAutoSubmit(false);
+    void handleSubmit();
+  }, [pendingAutoSubmit, authChecked, authedEmail, isSubmitting]);
 
   const go = useCallback((next: number) => {
     setScreen(Math.max(0, Math.min(SCREEN_COUNT - 1, next)));
@@ -399,9 +425,10 @@ export default function OnboardingPage() {
       if (!response.ok) throw new Error(json.error ?? "Failed to create account.");
       localStorage.removeItem("vvs_onb");
       sessionStorage.removeItem("vvs_onb_draft");
-      router.push(json.ownerUrl ?? "/design?tour=1");
+      router.push(json.ownerUrl ?? "/owner");
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Something went wrong.");
+      setPendingAutoSubmit(false);
+      setSubmitError(onboardingErrorMessage(error));
       setIsSubmitting(false);
     }
   }
@@ -482,7 +509,7 @@ export default function OnboardingPage() {
               onClick={() => (screen === SCREEN_COUNT - 1 ? void handleSubmit() : go(screen + 1))}
               disabled={isSubmitting || !authChecked}
             >
-              {screen === SCREEN_COUNT - 1 ? (isSubmitting ? "Creating your studio…" : "Design a Pendant") : "Continue"}
+              {screen === SCREEN_COUNT - 1 ? (isSubmitting ? "Creating your studio…" : "Create Your Studio") : "Continue"}
               <ArrowRight />
             </button>
           </div>
