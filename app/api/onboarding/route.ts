@@ -145,6 +145,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     accountId: account.id,
     slug: account.slug,
-    ownerUrl: "/design?tour=1"
+    ownerUrl: "/owner"
   });
 }

@@ -67,6 +67,17 @@ npm run supabase:push
 npm run db:seed   # creates the demo user
 ```
 
+In the Supabase Auth dashboard, add the deployed and local auth callbacks to **Redirect URLs** before testing email signup:
+
+```text
+https://your-public-app-url.example/auth/confirm
+https://your-public-app-url.example/auth/callback
+http://localhost:3000/auth/confirm
+http://localhost:3000/auth/callback
+```
+
+Add both `/auth/confirm` and `/auth/callback` for any alternate local dev port you use, such as `http://localhost:3001`. If these URLs are missing, Supabase can fall back to the bare Site URL after email verification, leaving the user with a confirmed login but no linked owner profile yet. The app also defensively handles bare-root `?code=...` callbacks, but the explicit Redirect URLs are still the clean path.
+
 For an existing Postgres database created before the consolidated quote flow, run `npm run supabase:migrate-quote-flow` before `npm run supabase:push`. The migration is idempotent and performs the historical quote/media backfill without deleting duplicate quote rows.
 
 Create a real development owner login when needed:
