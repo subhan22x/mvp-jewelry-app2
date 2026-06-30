@@ -22,7 +22,7 @@ const TEXT = "#eaeaf0";
 const SOFT = "#c0c0c8";
 const DIM = "#606068";
 
-type ImageStep = "capture" | "details" | "theme" | "generating" | "result";
+type ImageStep = "capture" | "details" | "generating" | "result";
 type ImageAspectRatio = "four_three" | "story";
 type Uploads = Partial<Record<"top" | "left" | "right", VvsUploadedFile>>;
 type GeneratedImage = { id: string; url: string };
@@ -72,12 +72,11 @@ const RATIOS: { value: ImageAspectRatio; label: string; sub: string; width: numb
 const STEP_INDEX: Record<ImageStep, number> = {
   capture: 0,
   details: 1,
-  theme: 2,
-  generating: 3,
-  result: 3,
+  generating: 2,
+  result: 2,
 };
 
-const IMAGE_FLOW_STEPS = ["Capture", "Details", "Theme", "Image"] as const;
+const IMAGE_FLOW_STEPS = ["Capture", "Details", "Image"] as const;
 
 function Chip({
   label,
@@ -537,7 +536,6 @@ function ResultState({
   onCaptionChange,
   onCaptionBlur,
   onGenerateCaption,
-  generatingSecond,
 }: {
   images: GeneratedImage[];
   selectedIndex: number;
@@ -546,7 +544,6 @@ function ResultState({
   onCaptionChange: (value: string) => void;
   onCaptionBlur: () => void;
   onGenerateCaption: () => void;
-  generatingSecond: boolean;
 }) {
   function saveImages() {
     images.forEach((image, index) => {
@@ -597,31 +594,6 @@ function ResultState({
             </button>
           );
         })}
-        {images.length === 1 && generatingSecond ? (
-          <div
-            style={{
-              flex: "0 0 calc(88% - 8px)",
-              aspectRatio: "4 / 5",
-              scrollSnapAlign: "start",
-              borderRadius: 15,
-              border: `1.5px dashed #50505a`,
-              background: PANEL,
-              color: GOLD,
-              cursor: "wait",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 12,
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 15,
-              fontWeight: 700,
-            }}
-          >
-            <span style={{ width: 52, height: 52, borderRadius: "50%", border: `1.5px solid ${GOLD}`, display: "grid", placeItems: "center", fontSize: 20, animation: "vvs-image-spin 1s linear infinite" }}>✦</span>
-            Creating detail shot
-          </div>
-        ) : null}
       </div>
 
       <section style={{ borderRadius: 14, border: `1px solid ${BORDER}`, background: PANEL, padding: 14 }}>
@@ -836,12 +808,11 @@ export default function ShowcasePostFlow() {
       if (signal.aborted) return;
       setPipelineRunning(false);
       setError(err instanceof Error ? err.message : "Image generation failed.");
-      setStep(generatedImages.length ? "result" : "theme");
+      setStep(generatedImages.length ? "result" : "details");
     }
   }
 
   const canProceedCapture = Boolean(visualStyle && uploads.top);
-  const canProceedDetails = Boolean(pieceType);
   const canGenerate = Boolean(mood && aspectRatio && uploads.top && visualStyle);
 
   async function saveCaption(value: string) {
@@ -925,7 +896,7 @@ export default function ShowcasePostFlow() {
 
         <div style={{ flex: 1 }} />
         <PrimaryButton label="NEXT ->" onClick={() => setStep("details")} disabled={!canProceedCapture} />
-        <span style={{ fontSize: 11, color: DIM, textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>Step 1 of 4</span>
+        <span style={{ fontSize: 11, color: DIM, textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>Step 1 of 3</span>
       </div>
     );
   }
@@ -968,64 +939,30 @@ export default function ShowcasePostFlow() {
           <SecondaryButton label="<- Back" onClick={() => setStep("capture")} />
           <button
             type="button"
-            onClick={() => setStep("theme")}
-            disabled={!canProceedDetails}
+            onClick={() => void runGeneration()}
+            disabled={!canGenerate}
             style={{
               flex: 2,
               height: 44,
-              border: `1.5px solid ${canProceedDetails ? GOLD : BORDER}`,
+              border: `1.5px solid ${canGenerate ? GOLD : BORDER}`,
               borderRadius: 8,
-              background: canProceedDetails ? `${GOLD}1a` : PANEL,
-              cursor: canProceedDetails ? "pointer" : "not-allowed",
+              background: canGenerate ? GOLD : PANEL,
+              cursor: canGenerate ? "pointer" : "not-allowed",
               fontFamily: "'DM Sans', sans-serif",
               fontSize: 14,
-              fontWeight: 600,
-              color: canProceedDetails ? GOLD : DIM,
+              fontWeight: 700,
+              color: canGenerate ? "#000" : DIM,
             }}
           >
-            NEXT {"->"}
+            GENERATE STUDIO ASSET
           </button>
         </div>
-        <span style={{ fontSize: 11, color: DIM, textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>Step 2 of 4</span>
-      </div>
-    );
-  }
-
-  function renderTheme() {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
-        <span style={{ fontFamily: "'Figtree', sans-serif", fontSize: 22, fontWeight: 700, color: TEXT }}>Choose Aesthetic</span>
-
         {error && (
           <div style={{ borderRadius: 10, border: "1px solid #7f2f2f", background: "#301819", color: "#ffd2d2", padding: 12, fontFamily: "'DM Sans', sans-serif", fontSize: 13 }}>
             {error}
           </div>
         )}
-
-        <div style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={() => void runGeneration()}
-          disabled={!canGenerate}
-          style={{
-            height: 52,
-            width: "100%",
-            background: canGenerate ? GOLD : BORDER,
-            border: "none",
-            borderRadius: 8,
-            cursor: canGenerate ? "pointer" : "not-allowed",
-            fontFamily: "'Figtree', sans-serif",
-            fontSize: 16,
-            fontWeight: 700,
-            color: canGenerate ? "#000" : DIM,
-          }}
-        >
-          GENERATE STUDIO ASSET
-        </button>
-        <div style={{ display: "flex", gap: 10 }}>
-          <SecondaryButton label="<- Back" onClick={() => setStep("details")} />
-          <span style={{ fontSize: 11, color: DIM, display: "flex", alignItems: "center", fontFamily: "'DM Sans', sans-serif" }}>Step 4 of 4</span>
-        </div>
+        <span style={{ fontSize: 11, color: DIM, textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>Step 2 of 3</span>
       </div>
     );
   }
@@ -1033,7 +970,6 @@ export default function ShowcasePostFlow() {
   function renderCurrentStep() {
     if (step === "capture") return renderCapture();
     if (step === "details") return renderDetails();
-    if (step === "theme") return renderTheme();
     if (step === "generating") return <LoadingState stage={pipelineStage} />;
     return (
       <ResultState
@@ -1044,7 +980,6 @@ export default function ShowcasePostFlow() {
         onCaptionChange={setCaption}
         onCaptionBlur={() => void saveCaption(caption)}
         onGenerateCaption={generateCaption}
-        generatingSecond={pipelineRunning && generatedImages.length === 1}
       />
     );
   }
