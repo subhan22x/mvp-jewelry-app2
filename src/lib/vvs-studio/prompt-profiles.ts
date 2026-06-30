@@ -15,7 +15,7 @@ export type VvsGenerationProfile = {
   id: string;
   version: string;
   stage: VvsPipelineStage;
-  provider: "wavespeed";
+  provider: "wavespeed" | "gemini" | "fal";
   modelId: string;
   params: Record<string, unknown>;
   promptTemplate: string;
@@ -94,12 +94,20 @@ const IMAGE_POST_PARAMS = {
   enable_base64_output: false,
 };
 
+const FAL_GPT_IMAGE_2_EDIT_PARAMS = {
+  quality: "medium",
+  image_size: { width: 1024, height: 1536 },
+  num_images: 1,
+  output_format: "jpeg",
+  sync_mode: false,
+};
+
 export const IMAGE_SOURCE_CLEANUP_PROFILE: VvsGenerationProfile = {
   id: "vvs-image-post-source-cleanup",
-  version: "2026-06-21.1",
+  version: "2026-06-30.1",
   stage: "image_source_cleanup",
-  provider: "wavespeed",
-  modelId: "openai/gpt-image-2/edit",
+  provider: "gemini",
+  modelId: "gemini-3.1-flash-image",
   active: true,
   trafficWeight: 100,
   params: IMAGE_POST_PARAMS,
@@ -108,22 +116,22 @@ export const IMAGE_SOURCE_CLEANUP_PROFILE: VvsGenerationProfile = {
 
 export const IMAGE_HERO_SHOT_PROFILE: VvsGenerationProfile = {
   id: "vvs-image-post-hero-shot",
-  version: "2026-06-21.1",
+  version: "2026-06-30.2",
   stage: "image_hero_shot",
-  provider: "wavespeed",
-  modelId: "nano-banana-2/edit-fast",
+  provider: "fal",
+  modelId: "openai/gpt-image-2/edit",
   active: true,
   trafficWeight: 100,
-  params: IMAGE_POST_PARAMS,
+  params: FAL_GPT_IMAGE_2_EDIT_PARAMS,
   promptTemplate: readImagePostPrompt("hero-shot.jsonp"),
 };
 
 export const IMAGE_MACRO_SHOT_PROFILE: VvsGenerationProfile = {
   id: "vvs-image-post-macro-right",
-  version: "2026-06-21.1",
+  version: "2026-06-30.1",
   stage: "image_macro_shot",
-  provider: "wavespeed",
-  modelId: "openai/gpt-image-2/edit",
+  provider: "gemini",
+  modelId: "gemini-3.1-flash-image",
   active: true,
   trafficWeight: 100,
   params: IMAGE_POST_PARAMS,

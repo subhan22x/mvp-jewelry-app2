@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
+import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+import { processVvsStudioJobsUntilIdle } from "@/src/lib/vvs-studio/pipeline";
 
 type Ctx = { params: Promise<{ shootId: string }> };
 
@@ -40,6 +42,10 @@ export async function GET(_req: Request, { params }: Ctx) {
     prisma.vvsStudioVideoGeneration.findMany({ where: { shootId: shoot.id }, orderBy: { createdAt: "desc" } }),
     prisma.vvsStudioJob.findMany({ where: { shootId: shoot.id }, orderBy: { createdAt: "desc" } }),
   ]);
+
+  if (jobs.some(job => job.status === "queued" || job.status === "running")) {
+    scheduleBackgroundTask(processVvsStudioJobsUntilIdle(60_000), `vvs-shoot-poll:${shoot.id}`);
+  }
 
   return NextResponse.json({ shoot, uploads, imageGenerations, videoGenerations, jobs });
 }

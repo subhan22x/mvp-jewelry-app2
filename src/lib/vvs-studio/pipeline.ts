@@ -1,9 +1,13 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { prisma } from "@/server/db/client";
 import { uploadToR2, isR2Configured } from "../storage/r2";
 import { getPublicBaseUrl, assertPublicImageUrl } from "../video/public-url";
 import { readVvsSourceAttachment } from "./source-storage";
 import { getVvsPipelineSettings } from "./pipeline-settings";
 import { renderPrompt, type VvsGenerationProfile, type VvsPipelineStage } from "./prompt-profiles";
+import { generateVvsImage } from "./image-generator";
+import { pollFalImageEdit, submitFalImageEdit } from "./fal-adapter";
 import {
   pollWavespeedJob,
   deleteStoredVvsImage,
@@ -133,10 +137,21 @@ export async function startVvsImagePostPipeline({ accountId, shootId }: { accoun
 
   const aspectRatio = shoot.aspectRatio === "four_three" ? "4:3" : "9:16";
   const baseProfiles = imagePostProfiles(settings);
-  const withAspectRatio = (profile: VvsGenerationProfile): VvsGenerationProfile => ({
-    ...profile,
-    params: { ...profile.params, aspect_ratio: aspectRatio },
-  });
+  const withAspectRatio = (profile: VvsGenerationProfile): VvsGenerationProfile => {
+    if (profile.provider === "fal") {
+      return {
+        ...profile,
+        params: {
+          ...profile.params,
+          image_size: aspectRatio === "4:3" ? { width: 1024, height: 768 } : { width: 1024, height: 1536 },
+        },
+      };
+    }
+    return {
+      ...profile,
+      params: { ...profile.params, aspect_ratio: aspectRatio },
+    };
+  };
   const profiles = {
     image_source_cleanup: withAspectRatio(baseProfiles.image_source_cleanup),
     image_hero_shot: withAspectRatio(baseProfiles.image_hero_shot),
@@ -412,6 +427,111 @@ async function ensureProviderUrlFromUpload(upload: {
   });
 }
 
+async function imageUrlToAttachment(imageUrl: string, index: number) {
+  try {
+    const parsed = new URL(imageUrl);
+    const publicPath = path.join(process.cwd(), "public", decodeURIComponent(parsed.pathname));
+    const publicRoot = path.join(process.cwd(), "public");
+    if (publicPath.startsWith(`${publicRoot}${path.sep}`)) {
+      const buffer = await fs.readFile(publicPath);
+      const ext = path.extname(publicPath).toLowerCase();
+      const mimeType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+      return {
+        buffer,
+        mimeType,
+        fileName: path.basename(publicPath),
+      };
+    }
+  } catch {
+    // Fall back to fetching remote URLs below.
+  }
+
+  const response = await fetch(imageUrl);
+  if (!response.ok) throw new Error(`Unable to read provider image input ${index + 1}. HTTP ${response.status}.`);
+  const contentType = response.headers.get("content-type") ?? "image/jpeg";
+  if (!contentType.startsWith("image/")) throw new Error(`Provider image input ${index + 1} is not an image.`);
+  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+  return {
+    buffer: Buffer.from(await response.arrayBuffer()),
+    mimeType: contentType,
+    fileName: `vvs-input-${index + 1}.${ext}`,
+  };
+}
+
+async function runGeminiImageStage({
+  gen,
+  profile,
+  prompt,
+  imageUrls,
+  nextStage,
+  jobId,
+}: {
+  gen: { id: string };
+  profile: VvsGenerationProfile;
+  prompt: string;
+  imageUrls: string[];
+  nextStage: JobStage;
+  jobId: string;
+}) {
+  const attachments = await Promise.all(imageUrls.map((imageUrl, index) => imageUrlToAttachment(imageUrl, index)));
+  const result = await generateVvsImage({
+    provider: "gemini",
+    modelId: profile.modelId,
+    prompt,
+    attachments,
+    generationId: gen.id,
+  });
+  await markImageSucceeded(gen.id, result.imageUrl, { provider: "gemini", modelId: result.modelId }, nextStage === "video" ? "image_finalized" : "generating_image");
+  await releaseJob(jobId, nextStage, 0);
+}
+
+async function runFalImageStage({
+  gen,
+  profile,
+  prompt,
+  imageUrls,
+  nextStage,
+  jobId,
+}: {
+  gen: { id: string; providerJobId: string | null };
+  profile: VvsGenerationProfile;
+  prompt: string;
+  imageUrls: string[];
+  nextStage: JobStage;
+  jobId: string;
+}) {
+  let providerJobId = gen.providerJobId;
+  if (!providerJobId) {
+    const submitted = await submitFalImageEdit({ profile, prompt, imageUrls });
+    providerJobId = submitted.providerJobId;
+    await prisma.vvsStudioImageGeneration.update({
+      where: { id: gen.id },
+      data: {
+        providerJobId,
+        modelId: submitted.modelId,
+        providerPayloadJson: safeJson(submitted.payload),
+      },
+    });
+  }
+
+  const polled = await pollFalImageEdit({ profile, providerJobId });
+  await prisma.vvsStudioImageGeneration.update({
+    where: { id: gen.id },
+    data: { providerPayloadJson: safeJson(polled.payload) },
+  });
+
+  if (polled.status === "failed") throw new Error(polled.error ?? "fal image edit failed.");
+  if (polled.status === "pending") {
+    await releaseJob(jobId, profile.stage);
+    return;
+  }
+  if (!polled.outputUrl) throw new Error(`${profile.stage} completed but did not return an output image.`);
+
+  const imageUrl = await saveRemoteVvsImage(polled.outputUrl, gen.id);
+  await markImageSucceeded(gen.id, imageUrl, polled.payload, nextStage === "video" ? "image_finalized" : "generating_image");
+  await releaseJob(jobId, nextStage, 0);
+}
+
 async function ensurePendingImageGeneration({
   jobId,
   accountId,
@@ -463,7 +583,7 @@ async function ensurePendingImageGeneration({
       promptVersion: profile.version,
       providerProfileId: profile.id,
       providerProfileVersion: profile.version,
-      provider: "wavespeed",
+      provider: profile.provider,
       modelId: profile.modelId,
       startedAt: new Date(),
     },
@@ -527,6 +647,16 @@ async function runImageStage({
       });
     }
     await releaseJob(jobId, nextStage, 0);
+    return;
+  }
+
+  if (profile.provider === "gemini") {
+    await runGeminiImageStage({ gen, profile, prompt, imageUrls, nextStage, jobId });
+    return;
+  }
+
+  if (profile.provider === "fal") {
+    await runFalImageStage({ gen, profile, prompt, imageUrls, nextStage, jobId });
     return;
   }
 
@@ -804,7 +934,7 @@ async function processImagePostJob(
         { type: "generation", generationId: cleanup.id, role: "cleaned_product", url: cleanedUrl },
         { type: "style_background", styleKey: selection.style.key, url: backgroundUrl },
       ],
-      nextStage: "image_macro_shot",
+      nextStage: "complete",
     });
     return;
   }
@@ -837,10 +967,6 @@ async function processImagePostJob(
     return;
   }
 
-  const macro = await prisma.vvsStudioImageGeneration.findFirst({
-    where: { jobId: job.id, stage: "image_macro_shot", status: "succeeded", imageUrl: { not: null } },
-  });
-  if (!macro?.imageUrl) throw new Error("Second post shot is not ready.");
   await completeImagePostJob(job.id, shoot.id);
 }
 

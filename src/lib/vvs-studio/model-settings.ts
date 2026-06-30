@@ -3,7 +3,7 @@ import type { VvsImageProvider } from "./types";
 
 const DEFAULTS = {
   imageProvider: "gemini" as VvsImageProvider,
-  geminiImageModel: "gemini-3-pro-image-preview",
+  geminiImageModel: "gemini-3.1-flash-image",
   openaiImageModel: "gpt-image-1",
   videoProvider: "wavespeed",
   wavespeedVideoModel: "bytedance/seedance-2.0-fast/image-to-video",
