@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import CustomerLeadCaptureScreen from "@/app/components/customer-flow/CustomerLeadCaptureScreen";
+import CustomerResultsScreen, { CustomerResultPreviewDialog, type CustomerDesignResult } from "@/app/components/customer-flow/CustomerResultsScreen";
 import DesignProgressBar from "../components/DesignProgressBar";
 import { cx, themeFocusRing } from "@/src/lib/theme/ui-classes";
 import type { NecklaceStyle } from "./necklace-options";
@@ -10,6 +12,7 @@ import type { NecklaceStyle } from "./necklace-options";
 type MetalColor = "yellow_gold" | "white_gold" | "rose_gold";
 type StoneType = "vvs_moissanite" | "natural_diamond" | "lab_diamond" | "cz";
 type SizeKey = "18" | "20" | "22" | "30";
+type FlowStep = "setup" | "contact" | "result";
 
 const METAL_OPTIONS: Array<{ id: MetalColor; label: string; swatch: string }> = [
   { id: "yellow_gold", label: "Yellow Gold", swatch: "from-[#f8d36f] via-[#d8a532] to-[#fff1a8]" },
@@ -58,6 +61,7 @@ function parseBudgetInput(value: string) {
 }
 
 export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?: string; initialStyle: NecklaceStyle }) {
+  const [flowStep, setFlowStep] = useState<FlowStep>("setup");
   const [metalColor, setMetalColor] = useState<MetalColor>("yellow_gold");
   const [size, setSize] = useState<SizeKey>("22");
   const [stoneType, setStoneType] = useState<StoneType>("vvs_moissanite");
@@ -67,6 +71,18 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
   const [budgetMaxInput, setBudgetMaxInput] = useState("5k");
   const [inspoName, setInspoName] = useState("");
   const [pendantName, setPendantName] = useState("");
+  const [pendantFile, setPendantFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
+  const [quoteRequested, setQuoteRequested] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<CustomerDesignResult | null>(null);
+  const [leadName, setLeadName] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
   const selectedSize = SIZE_OPTIONS.find(option => option.id === size) ?? SIZE_OPTIONS[2];
   const backHref = basePath ? `${basePath}/necklaces` : "/necklaces";
   const budgetScaleMax = Math.max(DEFAULT_BUDGET_ANCHOR, budgetMax);
@@ -82,6 +98,178 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
     setBudgetMax(next);
     setBudgetMaxInput(formatBudgetInput(next));
   };
+
+  const accountSlug = basePath?.startsWith("/s/") ? basePath.split("/")[2] : undefined;
+  const loadingSteps = [
+    "Analyzing jewelry geometry",
+    "Mapping pendant placement",
+    "Applying metal and stone details",
+    "Rendering design preview"
+  ];
+  const necklaceResultId = requestId ? `necklace-${requestId}` : "necklace-result";
+  const necklaceResults: CustomerDesignResult[] = resultImageUrl
+    ? [{ id: necklaceResultId, label: `${initialStyle.label} necklace preview`, src: resultImageUrl }]
+    : [];
+
+  const pollForResult = async (nextRequestId: string) => {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const response = await fetch(`/api/requests/${nextRequestId}`);
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error ?? "Unable to load generated necklace.");
+      const result = Array.isArray(json.results) ? json.results[0] : null;
+      if (result?.imageUrl) return result.imageUrl as string;
+      if (json.done) {
+        const failed = Array.isArray(json.attempts) ? json.attempts.find((item: { status?: string; error?: string }) => item.status === "failed") : null;
+        throw new Error(failed?.error ?? "Necklace generation did not return an image.");
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 2000));
+    }
+    throw new Error("Necklace generation timed out. Please try again.");
+  };
+
+  const ensureQuoteRequest = async (nextRequestId: string) => {
+    const response = await fetch("/api/quote-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId: nextRequestId,
+        customerName: leadName.trim(),
+        customerPhone: leadPhone.trim(),
+        customerEmail: leadEmail.trim()
+      })
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.error ?? "Unable to request quote.");
+    setQuoteRequested(true);
+  };
+
+  const handleContinue = async () => {
+    if (submitting) return;
+    if (!leadName.trim() || !leadPhone.trim() || !leadEmail.trim()) {
+      setSubmitError("Enter your name, phone number, and email address.");
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    setResultImageUrl(null);
+    setQuoteRequested(false);
+    setQuoteError(null);
+
+    const form = new FormData();
+    form.set("userId", "demo");
+    if (accountSlug) form.set("accountSlug", accountSlug);
+    form.set("styleId", initialStyle.id);
+    form.set("metalColor", metalColor);
+    form.set("size", size);
+    form.set("stoneType", stoneType);
+    form.set("budgetMinCents", String(budgetMin * 100));
+    form.set("budgetMaxCents", String(budgetMax * 100));
+    form.set("customerName", leadName.trim());
+    form.set("customerPhone", leadPhone.trim());
+    form.set("customerEmail", leadEmail.trim());
+    if (pendantFile) form.set("pendantImage", pendantFile);
+
+    try {
+      const response = await fetch("/api/necklace-requests", {
+        method: "POST",
+        body: form
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error ?? "Unable to continue.");
+      const nextRequestId = typeof json.requestId === "string" ? json.requestId : null;
+      setRequestId(nextRequestId);
+      const quoteAlreadyCreated = typeof json.quoteRequestId === "string";
+      const imageUrl = json.generated && nextRequestId
+        ? await pollForResult(nextRequestId)
+        : typeof json.imageUrl === "string"
+          ? json.imageUrl
+          : null;
+      if (!imageUrl) throw new Error("Necklace image was not returned.");
+      setResultImageUrl(imageUrl);
+      setSelectedResultId(nextRequestId ? `necklace-${nextRequestId}` : "necklace-result");
+      if (quoteAlreadyCreated) {
+        setQuoteRequested(true);
+      } else if (nextRequestId) {
+        await ensureQuoteRequest(nextRequestId);
+      }
+      setFlowStep("result");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to continue.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (flowStep === "contact") {
+    return (
+      <CustomerLeadCaptureScreen
+        title="Generating..."
+        description="Creating your custom necklace design"
+        progressLabel="Preparing necklace preview"
+        loadingSteps={loadingSteps}
+        name={leadName}
+        phone={leadPhone}
+        email={leadEmail}
+        submitting={submitting}
+        error={submitError}
+        onNameChange={setLeadName}
+        onPhoneChange={setLeadPhone}
+        onEmailChange={setLeadEmail}
+        onSubmit={() => void handleContinue()}
+        onBack={() => setFlowStep("setup")}
+      />
+    );
+  }
+
+  if (flowStep === "result") {
+    return (
+      <>
+        <main className="min-h-dvh px-4 py-4 text-[var(--theme-text)] md:px-8">
+          <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6 md:px-12">
+            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
+              <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFlowStep("setup")}
+                  aria-label="Back"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
+                >
+                  ←
+                </button>
+                <DesignProgressBar current={3} className="justify-self-center" />
+                <span aria-hidden="true" />
+              </div>
+
+              <header>
+                <h1 className="text-[2.15rem] font-semibold tracking-tight text-[var(--theme-heading)] md:text-[2.5rem]">Dream it first</h1>
+                <p
+                  className="-mt-1 text-[1.7rem] italic text-[var(--theme-script)]"
+                  style={{ fontFamily: "var(--font-nostalgic)" }}
+                >
+                  we&apos;ll build it.
+                </p>
+              </header>
+
+              <section className="mt-4 flex-1">
+                <CustomerResultsScreen
+                  results={necklaceResults}
+                  expectedCount={1}
+                  selectedResultId={selectedResultId}
+                  title="Choose your favourite"
+                  subtitle="Select the necklace preview that matches your vision best. We'll refine it for production."
+                  errors={[quoteError]}
+                  successMessage={quoteRequested ? "Your design and contact details were sent to the store. They can prepare a quote from this generated option." : null}
+                  onSelect={setSelectedResultId}
+                  onPreview={setPreviewResult}
+                />
+              </section>
+            </div>
+          </div>
+        </main>
+        {previewResult ? <CustomerResultPreviewDialog result={previewResult} onClose={() => setPreviewResult(null)} /> : null}
+      </>
+    );
+  }
 
   return (
     <main className="min-h-dvh px-4 py-2 text-[var(--theme-text)] md:px-8">
@@ -228,9 +416,10 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
               </label>
 
               <div>
-                <div className="flex items-end justify-between gap-4">
-                  <span className="text-sm font-semibold text-[var(--theme-text-soft)]">Budget</span>
-                  <span className="text-sm font-semibold text-[var(--theme-heading)]">{formatBudgetRange(budgetMin, budgetMax)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-bold text-[var(--theme-text)]">Budget</span>
+                  <span className="h-px flex-1 bg-[var(--theme-border)]" aria-hidden />
+                  <span className="text-lg font-bold leading-none text-[var(--theme-heading)]">{formatBudgetRange(budgetMin, budgetMax)}</span>
                 </div>
                 <div className="mt-3 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-4 py-5">
                   <div className="relative h-8">
@@ -302,7 +491,11 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
                     accept="image/*"
                     className="sr-only"
                     suppressHydrationWarning
-                    onChange={event => setPendantName(event.target.files?.[0]?.name ?? "")}
+                    onChange={event => {
+                      const file = event.target.files?.[0] ?? null;
+                      setPendantFile(file);
+                      setPendantName(file?.name ?? "");
+                    }}
                   />
                 </label>
               </div>
@@ -321,6 +514,16 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
                 <div><dt>Pendant</dt><dd className="font-semibold text-[var(--theme-text)]">{pendantName || "None attached"}</dd></div>
               </dl>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitError(null);
+                setFlowStep("contact");
+              }}
+              className={cx("mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-[var(--theme-accent)] text-sm font-bold text-black transition hover:brightness-110", themeFocusRing)}
+            >
+              Continue
+            </button>
           </div>
         </section>
         </div>

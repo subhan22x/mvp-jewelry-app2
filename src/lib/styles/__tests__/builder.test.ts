@@ -208,9 +208,36 @@ describe("buildVariants", () => {
       expect(variant.prompt).toContain("An additional typography reference image is attached");
       expect(variant.prompt).not.toContain("Add a none");
       expect(variant.prompt).not.toContain("above the lettering where the pendant bail normally sits");
-      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/samoa.png`);
+      expect(variant.attachments).toContain(`${process.cwd()}/public/pendants/samoa/reference-rose.png`);
       expect(variant.attachments.some(attachment => attachment.endsWith(".style-text-reference.json"))).toBe(true);
     }
+  });
+
+  it("uses the selected primary-metal Samoa pendant reference", () => {
+    expect(buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      primaryMetal: "yellow_gold",
+      secondaryMetal: "white_gold",
+      emblem: "none"
+    }, { promptMode: "natural_language" })[0].attachments).toContain(`${process.cwd()}/public/pendants/samoa/reference-yellow.png`);
+
+    expect(buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      primaryMetal: "rose_gold",
+      secondaryMetal: "white_gold",
+      emblem: "none"
+    }, { promptMode: "natural_language" })[0].attachments).toContain(`${process.cwd()}/public/pendants/samoa/reference-rose.png`);
+
+    expect(buildVariants({
+      ...baseInput,
+      styleId: "samoa",
+      twoTone: false,
+      primaryMetal: "white_gold",
+      secondaryMetal: null,
+      emblem: "none"
+    }, { promptMode: "natural_language" })[0].attachments).toContain(`${process.cwd()}/public/pendants/samoa/reference-white.png`);
   });
 
   it("adds typography reference descriptors for every iced-out style font mapping", () => {

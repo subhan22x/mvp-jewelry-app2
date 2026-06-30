@@ -1,0 +1,4 @@
+ALTER TABLE "Request" ADD COLUMN IF NOT EXISTS "grillzStyleType" TEXT;
+ALTER TABLE "Request" ADD COLUMN IF NOT EXISTS "grillzStyleLabel" TEXT;
+ALTER TABLE "Request" ADD COLUMN IF NOT EXISTS "grillzTeethJson" TEXT;
+ALTER TABLE "Request" ADD COLUMN IF NOT EXISTS "grillzInspiration" TEXT;

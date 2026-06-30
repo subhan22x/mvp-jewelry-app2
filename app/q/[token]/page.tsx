@@ -45,6 +45,7 @@ function designTitle(quote: { text: string | null; productType: string | null; s
   if (quote.text) return quote.text;
   if (quote.productType === "picture") return "Picture pendant";
   if (quote.productType === "grillz") return "Grillz";
+  if (quote.productType === "necklace") return "Necklace";
   if (quote.productType === "general_quote") return "Custom jewelry quote";
   return cleanLabel(quote.styleId) ?? "Custom pendant";
 }
@@ -52,6 +53,7 @@ function designTitle(quote: { text: string | null; productType: string | null; s
 function productLabel(productType: string | null, pendantFinish: string | null) {
   if (productType === "picture") return "Picture pendant";
   if (productType === "bracelet") return "Bracelet";
+  if (productType === "necklace") return "Necklace";
   if (productType === "grillz") return pendantFinish === "custom_grillz" ? "Custom Grillz" : "Grillz";
   if (productType === "general_quote") return "Custom jewelry";
   return "Name pendant";
@@ -76,7 +78,15 @@ function detailRows(quote: {
   plainKarat: string | null;
   plainChain: string | null;
   diamondQuality: string | null;
+  budgetMinCents: number | null;
+  budgetMaxCents: number | null;
 }) {
+  const budget = quote.budgetMinCents !== null || quote.budgetMaxCents !== null
+    ? [quote.budgetMinCents, quote.budgetMaxCents]
+      .filter((value): value is number => typeof value === "number")
+      .map(value => money(value))
+      .join(" - ")
+    : null;
   return [
     { label: "Estimated delivery", value: quote.estimatedDelivery },
     { label: "Quoted material", value: materialLabel(quote.quoteMaterial, quote.quoteMaterialKarat) },
@@ -92,7 +102,8 @@ function detailRows(quote: {
     { label: "Chain", value: cleanLabel(quote.plainChain) },
     { label: "Stone type", value: cleanLabel(quote.stoneType) },
     { label: "Plain color", value: cleanLabel(quote.plainColor) },
-    { label: "Diamond quality", value: quote.diamondQuality }
+    { label: "Diamond quality", value: quote.diamondQuality },
+    { label: "Budget", value: budget }
   ].filter(row => row.value && row.value !== "N/a" && row.value !== "Not Selected");
 }
 

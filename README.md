@@ -270,6 +270,7 @@ app/
   s/[accountSlug]/design/    # public QR design flow with tenant attribution
   s/[accountSlug]/review/    # public customer review form
   api/requests/route.ts      # POST /api/requests — creates a Request and starts async generation tasks
+  api/necklace-requests/route.ts # POST — creates necklace Requests; generates only when a pendant is uploaded
   api/requests/[id]/route.ts # GET — poll for results; returns {results, done}
   api/quote-requests/route.ts # creates/updates the request's single private quote draft
   api/owner/video-jobs/route.ts # starts quote-bound video generation from the selected image
@@ -292,6 +293,8 @@ src/lib/styles/              # canonical generation system
   <style>/style.yml          # per-style behavior (defaults, variantMatrix, assets)
   <style>/<templateKey>.jsonp # prompt template with {{PLACEHOLDERS}}
 
+src/lib/necklaces/           # necklace style/color reference mapping and pendant-attachment prompt
+
 prisma/
   schema.prisma              # Postgres runtime schema
   schema.postgres.prisma     # Postgres schema used by supabase:push
@@ -301,6 +304,7 @@ prisma/
 
 public/
   pendants/                  # style thumbnails (also used as Gemini reference inputs)
+  necklaces/references/      # necklace style/color images used for static previews and Gemini attachments
   emblems/                   # emblem assets
   generated/                 # generated images, downloaded videos, and GLB models output (dev only)
 ```

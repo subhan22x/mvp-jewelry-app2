@@ -67,6 +67,8 @@ export async function ensureDraftQuoteForRequest(requestId: string): Promise<Ens
         metalType: request.metalType,
         stoneType: request.stoneType,
         diamondQuality: request.diamondQuality,
+        budgetMinCents: request.budgetMinCents,
+        budgetMaxCents: request.budgetMaxCents,
         plainColor: request.plainColor,
         plainMetal: request.plainMetal,
         plainKarat: request.plainKarat,

@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
   if (!reqRow) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   const productType = reqRow.productType ?? 'name';
-  const expectedGenerationCount = productType === 'picture' || productType === 'bracelet' || productType === 'grillz' ? 1 : EXPECTED_GENERATION_COUNT;
+  const expectedGenerationCount = productType === 'picture' || productType === 'bracelet' || productType === 'grillz' || productType === 'necklace' ? 1 : EXPECTED_GENERATION_COUNT;
   const attempts = reqRow.Results.map(r => ({
     id: r.id,
     variant: r.variant,
@@ -41,6 +41,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     metals: { twoTone: reqRow.twoTone, primary: reqRow.primaryMetal, secondary: reqRow.secondaryMetal },
     emblem: reqRow.emblem,
     size: reqRow.size,
+    budget: { minCents: reqRow.budgetMinCents, maxCents: reqRow.budgetMaxCents },
     metalType: reqRow.metalType,
     stoneType: reqRow.stoneType,
     diamondQuality: reqRow.diamondQuality,

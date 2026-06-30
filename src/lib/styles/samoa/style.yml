@@ -21,7 +21,11 @@ variantMatrix:
   - { deviationStrength: 0.50, bubbleOutline: true,  forceAllCaps: false }
 
 assets:
-  pendantRef: public/pendants/samoa.png
+  pendantRef: public/pendants/samoa/reference-white.png
+  pendantRefsByMetal:
+    rose_gold: public/pendants/samoa/reference-rose.png
+    white_gold: public/pendants/samoa/reference-white.png
+    yellow_gold: public/pendants/samoa/reference-yellow.png
   emblemRefs:
     crown: public/emblems/CROWN EMBLEM.png
     heart: public/emblems/heart emblem.png

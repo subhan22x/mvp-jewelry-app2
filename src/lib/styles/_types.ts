@@ -36,6 +36,7 @@ export type StyleConfig = {
   assets?: {
     pendantRef?: string;
     pendantRefs?: string[];
+    pendantRefsByMetal?: Partial<Record<Metal, string>>;
     bailRef?: string;
     emblemRefs?: Record<Emblem, string>;
   };

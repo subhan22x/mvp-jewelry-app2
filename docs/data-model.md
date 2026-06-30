@@ -140,6 +140,8 @@ erDiagram
     string secondaryMetal
     string emblem
     string uploadFileName
+    int budgetMinCents
+    int budgetMaxCents
   }
 
   RESULT {
@@ -463,6 +465,8 @@ erDiagram
     string emblem
     string uploadFileName
     string diamondQuality
+    int budgetMinCents
+    int budgetMaxCents
     string status
   }
 
@@ -842,6 +846,8 @@ accounts/{accountId}/uploads/{mediaAssetId}.{ext}
 ```
 
 ## Request And Quote Lifecycle
+
+Necklace requests follow the same quote lifecycle with one important exception: a necklace request without an uploaded pendant does not call an image provider. It creates one succeeded `Result` whose `imageUrl` is the selected static style/color necklace reference. A necklace request with an uploaded pendant creates one pending `Result` and sends Gemini the selected necklace reference plus the uploaded pendant image. The budget range is stored on both `Request` and the quote snapshot as `budgetMinCents` / `budgetMaxCents`.
 
 ```mermaid
 flowchart TD

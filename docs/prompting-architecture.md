@@ -18,6 +18,7 @@ For each request, the builder:
 6. Adds reference image attachments:
    - the style pendant reference from `assets.pendantRef`
    - or multiple equal style references from `assets.pendantRefs`
+   - or the selected primary-metal reference from `assets.pendantRefsByMetal`
    - optional color-aware iced-out emblem reference, falling back to `assets.emblemRefs`
    - optional typography reference descriptor from `fontReference`
 
@@ -46,6 +47,7 @@ Important fields:
 | `variantMatrix` | Per-variant overrides. |
 | `assets.pendantRef` | Main visual style reference image. |
 | `assets.pendantRefs` | Multiple equal visual style reference images. Used when a style needs more than one pendant reference attached. |
+| `assets.pendantRefsByMetal` | Optional primary-metal keyed visual references for styles with separate rose, white, and yellow gold assets. |
 | `assets.emblemRefs` | Optional visual emblem references. |
 
 ## Typography Reference Attachments

@@ -7,7 +7,7 @@ import { DIRECT_UPLOAD_MAX_BYTES, directUploadExtension } from "@/src/lib/storag
 export const dynamic = "force-dynamic";
 
 const OWNER_PURPOSES = new Set(["owner-profile", "owner-product", "owner-vvs-source"]);
-const PUBLIC_PURPOSES = new Set(["onboarding", "picture-pendant", "storefront-quote"]);
+const PUBLIC_PURPOSES = new Set(["onboarding", "picture-pendant", "storefront-quote", "necklace-pendant"]);
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"]);
 
 const Body = z.object({
