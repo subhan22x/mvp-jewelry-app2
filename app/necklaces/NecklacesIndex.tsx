@@ -51,7 +51,7 @@ export default function NecklacesIndex({ basePath }: { basePath?: string } = {})
                       alt={style.label}
                       fill
                       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-                      className="object-cover object-center"
+                      className="object-contain object-center"
                       priority={index < 4}
                     />
                   ) : (

@@ -75,7 +75,7 @@ export default function BraceletsIndex({ basePath }: { basePath?: string } = {})
                     alt={card.label}
                     fill
                     sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-                    className="object-contain object-center p-4"
+                    className="object-contain object-center"
                     priority
                   />
                 </div>
