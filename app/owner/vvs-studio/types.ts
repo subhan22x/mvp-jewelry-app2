@@ -62,5 +62,5 @@ export const DEFAULT_STATE: VvsWizardState = {
   aspectRatio: "story",
   videoDurationSeconds: 6,
   imageProvider: "gemini",
-  imageModelId: "gemini-3-pro-image-preview",
+  imageModelId: "gemini-3.1-flash-image",
 };

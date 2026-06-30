@@ -37,13 +37,18 @@ describe("VVS Studio prompt profiles", () => {
     expect(prompt).toBe("place this pendant on the platform");
   });
 
-  it("keeps image-post stages isolated with the configured sequential models", () => {
+  it("uses fal GPT Image 2 edit for the first publishable image and Gemini for the rest", () => {
     expect(IMAGE_SOURCE_CLEANUP_PROFILE.stage).toBe("image_source_cleanup");
-    expect(IMAGE_SOURCE_CLEANUP_PROFILE.modelId).toBe("openai/gpt-image-2/edit");
+    expect(IMAGE_SOURCE_CLEANUP_PROFILE.provider).toBe("gemini");
+    expect(IMAGE_SOURCE_CLEANUP_PROFILE.modelId).toBe("gemini-3.1-flash-image");
     expect(IMAGE_HERO_SHOT_PROFILE.stage).toBe("image_hero_shot");
-    expect(IMAGE_HERO_SHOT_PROFILE.modelId).toBe("nano-banana-2/edit-fast");
+    expect(IMAGE_HERO_SHOT_PROFILE.provider).toBe("fal");
+    expect(IMAGE_HERO_SHOT_PROFILE.modelId).toBe("openai/gpt-image-2/edit");
+    expect(IMAGE_HERO_SHOT_PROFILE.params.quality).toBe("medium");
+    expect(IMAGE_HERO_SHOT_PROFILE.params.image_size).toEqual({ width: 1024, height: 1536 });
     expect(IMAGE_MACRO_SHOT_PROFILE.stage).toBe("image_macro_shot");
-    expect(IMAGE_MACRO_SHOT_PROFILE.modelId).toBe("openai/gpt-image-2/edit");
+    expect(IMAGE_MACRO_SHOT_PROFILE.provider).toBe("gemini");
+    expect(IMAGE_MACRO_SHOT_PROFILE.modelId).toBe("gemini-3.1-flash-image");
   });
 
   it("loads image-post prompts from editable templates and renders style direction", () => {
