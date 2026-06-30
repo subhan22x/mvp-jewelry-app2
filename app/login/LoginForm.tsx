@@ -43,6 +43,11 @@ export default function LoginForm() {
       const sessionResponse = await fetch("/api/auth/session");
       if (!sessionResponse.ok) {
         const sessionBody = await sessionResponse.json().catch(() => null);
+        if (sessionResponse.status === 403) {
+          router.replace("/onboarding");
+          router.refresh();
+          return;
+        }
         await supabase.auth.signOut();
         throw new Error(sessionBody?.error ?? "No active store account is linked to this login.");
       }

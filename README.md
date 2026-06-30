@@ -40,6 +40,7 @@ GEMINI_API_KEY=your_key_here
 # GEMINI_MODEL_ID=gemini-3.1-flash-image-preview
 # GENERATED_IMAGE_DIR=public/generated
 # WAVESPEED_API_KEY=your_wavespeed_key_here
+# FAL_KEY=your_fal_key_here
 # VIDEO_ACCESS_CODE=ID8
 # VVS_WORKER_SECRET=long_random_secret
 # CRON_SECRET=long_random_secret
@@ -66,6 +67,17 @@ npm run prisma:generate
 npm run supabase:push
 npm run db:seed   # creates the demo user
 ```
+
+In the Supabase Auth dashboard, add the deployed and local auth callbacks to **Redirect URLs** before testing email signup:
+
+```text
+https://your-public-app-url.example/auth/confirm
+https://your-public-app-url.example/auth/callback
+http://localhost:3000/auth/confirm
+http://localhost:3000/auth/callback
+```
+
+Add both `/auth/confirm` and `/auth/callback` for any alternate local dev port you use, such as `http://localhost:3001`. If these URLs are missing, Supabase can fall back to the bare Site URL after email verification, leaving the user with a confirmed login but no linked owner profile yet. The app also defensively handles bare-root `?code=...` callbacks, but the explicit Redirect URLs are still the clean path.
 
 For an existing Postgres database created before the consolidated quote flow, run `npm run supabase:migrate-quote-flow` before `npm run supabase:push`. The migration is idempotent and performs the historical quote/media backfill without deleting duplicate quote rows.
 
@@ -140,6 +152,7 @@ DIRECT_URL=postgresql://...
 GENERATED_IMAGE_DIR=/var/data/generated
 GOOGLE_API_KEY=...
 WAVESPEED_API_KEY=...
+FAL_KEY=...
 VIDEO_ACCESS_CODE=ID8
 NEXT_PUBLIC_SUPABASE_URL=https://PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
@@ -159,6 +172,7 @@ Generated files are served through `/generated/:file` during local development. 
 | `GEMINI_MODEL_ID`      | `gemini-3.1-flash-image-preview`     | Model used by the connector.                  |
 | `GENERATED_IMAGE_DIR`  | `public/generated`                   | Where generated images, downloaded videos, and GLB models are written when R2 is not configured. |
 | `WAVESPEED_API_KEY`    | (required for videos and 3D models)  | Wavespeed auth for VVS Studio image/video, Seedance video generation, and Rodin image-to-3D generation. The key must be active; Wavespeed returns `401 Unauthorized` for invalid or non-topped-up keys. |
+| `FAL_KEY`              | (required for VVS image posts)       | fal auth for the first VVS Studio publishable image shot through `openai/gpt-image-2/edit`. `FAL_API_KEY` is also accepted. |
 | `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
 | `VVS_WORKER_SECRET`    | (required in production)             | Secret accepted by the VVS Studio durable job worker. |
 | `CRON_SECRET`          | (recommended on Vercel)              | Vercel cron secret. Also accepted by the VVS Studio worker. |
