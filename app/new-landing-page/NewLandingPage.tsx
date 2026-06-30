@@ -171,33 +171,33 @@ export default function NewLandingPage({ className }: { className?: string }) {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 16,
-            padding: "clamp(16px, 3vw, 28px) clamp(20px, 5vw, 56px)",
+            gap: "clamp(8px, 2.5vw, 16px)",
+            padding: "clamp(16px, 3vw, 28px) clamp(14px, 4vw, 56px)",
             background: "#0a0907",
           }}
         >
           {/* Logo + subtitle */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, minWidth: 0 }}>
             <Image
               src="/new-landing/growjewelry-logo.png"
               alt="Grow Jewelry"
               width={160}
               height={44}
-              style={{ height: 48, width: "auto", display: "block", mixBlendMode: "screen" }}
+              style={{ height: "clamp(36px, 10vw, 48px)", width: "auto", maxWidth: "100%", display: "block", mixBlendMode: "screen" }}
             />
-            <p style={{ margin: 0, paddingLeft: 28, color: "#91877b", fontSize: 10.5, fontWeight: 400, letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+            <p style={{ margin: 0, paddingLeft: "clamp(8px, 4vw, 28px)", color: "#91877b", fontSize: "clamp(9px, 2.6vw, 10.5px)", fontWeight: 400, letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
               Grow your business with AI
             </p>
           </div>
 
           {/* Nav actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 18, flexShrink: 0 }}>
-            <Link href="/login" style={{ color: "#91877b", fontSize: 14, textDecoration: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "clamp(10px, 3vw, 18px)", flexShrink: 0 }}>
+            <Link href="/login" style={{ color: "#91877b", fontSize: "clamp(13px, 3.4vw, 14px)", textDecoration: "none", whiteSpace: "nowrap" }}>
               Log in
             </Link>
             <Link href="/onboarding" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "10px 20px", borderRadius: 999, fontSize: 14, fontWeight: 700,
+              display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+              padding: "10px clamp(13px, 3.6vw, 20px)", borderRadius: 999, fontSize: "clamp(13px, 3.4vw, 14px)", fontWeight: 700,
               background: "linear-gradient(165deg, #ebb467, #d4924a)",
               color: "#1b1006", textDecoration: "none",
               boxShadow: "0 0 0 1px rgba(235,180,103,0.32), 0 10px 24px -12px rgba(212,146,74,0.8)",
