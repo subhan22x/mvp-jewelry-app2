@@ -58,6 +58,7 @@ Data collection stays on:
   - `/owner/vvs-studio` is the owner Studio home for social/product content generation.
 - Customer design flow:
   - every `Request`-backed generation family becomes quote-eligible once it has a successful image and captured customer contact.
+  - necklace requests are special: no pendant upload means no provider generation, just a static style/color reference `Result`; pendant upload triggers one Gemini request with the selected necklace reference plus the uploaded pendant.
   - eligibility automatically creates exactly one private draft `QuoteRequest`; customer interaction with a request-quote control is not required.
   - VVS Studio remains owner-only and separate from this automatic rule unless a VVS output is deliberately associated with customer contact.
   - generated/request media should be durable in R2 for production.
@@ -101,6 +102,7 @@ Data collection stays on:
 - Real provider generation requires a public source image URL. Localhost source images are rejected by `assertPublicImageUrl`; use a deployed/preview URL or a tunnel for end-to-end provider testing.
 - GLB files served from R2 need browser `GET` CORS because `<model-viewer>` fetches them client-side.
 - Historical quote, video, and model rows are backfilled only when account/request/source ownership can be matched safely; ambiguous records remain unbound for manual review.
+- See `docs/necklace-generation.md` before changing necklace prompt generation, color reference mapping, upload handling, or quote snapshot behavior.
 
 ## Deployment Notes
 

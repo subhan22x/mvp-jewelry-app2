@@ -152,7 +152,11 @@ function renderLooseStylePlaceholders(raw: string, ctx: { text: string; emblem: 
     .replace(/\{\{two tone Yellow Gold and White Gold\}\}/g, ctx.colorScheme);
 }
 
-function resolvePendantRefs(style: StyleConfig) {
+function resolvePendantRefs(style: StyleConfig, primaryMetal?: Metal) {
+  if (primaryMetal && style.assets?.pendantRefsByMetal?.[primaryMetal]) {
+    return [path.join(process.cwd(), style.assets.pendantRefsByMetal[primaryMetal])];
+  }
+
   const refs = style.assets?.pendantRefs?.length
     ? style.assets.pendantRefs
     : style.assets?.pendantRef
@@ -293,13 +297,13 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
 
   const baseFont = style.defaults.font ?? 'inherit_source_style';
 
-  const attachments: string[] = resolvePendantRefs(style);
-  if (style.assets?.bailRef) {
-    attachments.push(path.join(process.cwd(), style.assets.bailRef));
-  }
   const emblem = data.emblem ?? 'none';
   const primaryMetal = data.primaryMetal!;
   const twoTone = data.twoTone ?? false;
+  const attachments: string[] = resolvePendantRefs(style, primaryMetal);
+  if (style.assets?.bailRef) {
+    attachments.push(path.join(process.cwd(), style.assets.bailRef));
+  }
 
   const emblemRef = resolveEmblemRef({
     style,
@@ -341,7 +345,7 @@ export function buildVariants(input: CustomerInput, options: { promptMode?: Prom
           TEXT: finalLines.join(' '),
           LINES_ARRAY: JSON.stringify(finalLines),
           DEVIATION: merged.deviation,
-          PENDANT_REF: style.assets?.pendantRef ? path.basename(style.assets.pendantRef) : 'attached pendant reference',
+          PENDANT_REF: attachments[0] ? path.basename(attachments[0]) : 'attached pendant reference',
           BAIL_REF: style.assets?.bailRef ? path.basename(style.assets.bailRef) : 'use pendant reference for bail style',
           FONT: baseFont,
           EMBLEM: emblem,

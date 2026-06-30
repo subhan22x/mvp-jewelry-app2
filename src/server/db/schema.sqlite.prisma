@@ -95,6 +95,8 @@ model Request {
   grillzTeethJson String?
   grillzInspiration String?
   uploadFileName String?
+  budgetMinCents Int?
+  budgetMaxCents Int?
   Results        Result[]
   ResultRevisions ResultRevision[]
   Videos         VideoGeneration[]
@@ -249,6 +251,8 @@ model QuoteRequest {
   plainKarat       String?
   plainChain       String?
   diamondQuality   String?
+  budgetMinCents   Int?
+  budgetMaxCents   Int?
   customerName     String
   customerPhone    String
   customerEmail    String

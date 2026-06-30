@@ -7,6 +7,7 @@ import Image from "next/image";
 import ThemedImageOption from "../components/ThemedImageOption";
 import ThemedOptionButton from "../components/ThemedOptionButton";
 import DesignProgressBar from "../components/DesignProgressBar";
+import CustomerResultsScreen from "../components/customer-flow/CustomerResultsScreen";
 import EmblemPicker from "./components/EmblemPicker";
 import LeadCaptureModal from "./components/LeadCaptureModal";
 import { pendantStyles, emblems, type PendantStyle } from "@/lib/assets";
@@ -221,6 +222,13 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
     .sort((a, b) => (a.revisionNumber ?? 0) - (b.revisionNumber ?? 0));
   const selectedGeneration = generations.find(generation => generation.id === selectedGenerationId) ?? null;
   const canCreateRevision = revisionGenerations.length < 2;
+  const customerResults = generations.map(generation => ({
+    id: generation.id,
+    label: generation.label,
+    src: generation.src,
+    status: generation.status,
+    badgeLabel: generation.kind === "revision" ? generation.label : undefined
+  }));
   const prewarmTextReferenceKey = !isPlain && step === 2 && activeStyle && hasPrimaryName
     ? `${activeStyle.id}:${lines.map(entry => entry.trim()).filter(Boolean).join(" ")}`
     : "";
@@ -1193,195 +1201,26 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
             )}
 
             {step === 4 && (
-              <div className="space-y-8">
-                <div className="rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] px-6 py-6">
-                  <h2 className="text-lg font-semibold text-center sm:text-left">
-                    {isGenerating ? "Drafting your designs…" : "Choose your favourite"}
-                  </h2>
-                  <p className="mt-2 text-sm text-[var(--theme-text-soft)] text-center sm:text-left">
-                    {isGenerating
-                      ? "Designs appear as they're generated — pick your favourite when ready."
-                      : "Select the draft that matches your vision best. We'll refine the winner for production."}
-                  </p>
-                  {isGenerating && (
-                    <p className="mt-1 text-xs text-[var(--theme-text-muted)] text-center sm:text-left">
-                      {generations.length} of 2 generated
-                    </p>
-                  )}
-                  {generationError && (
-                    <div className="mt-4 rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                      {generationError}
-                    </div>
-                  )}
-                  {revisionError && (
-                    <div className="mt-4 rounded-2xl border border-sky-400/60 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
-                      {revisionError}
-                    </div>
-                  )}
-                  <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    {([1, 2] as const).map(variantNum => {
-                      const option = generations.find(g => g.kind === "original" && g.variant === variantNum);
-                      if (!option) {
-                        return (
-                          <div
-                            key={variantNum}
-                            className="relative min-h-[220px] rounded-[32px] border border-white/12 bg-gradient-to-br from-white/5 via-white/10 to-white/5 sm:min-h-[260px]"
-                          >
-                            <div className={cx("absolute inset-0 animate-pulse bg-gradient-to-br from-slate-800 via-slate-900 to-black", themeRadius.imageOption)} />
-                            <div className="absolute inset-0 flex items-end justify-center pb-4">
-                              <span className="text-xs uppercase tracking-widest text-white/25">Draft {variantNum}</span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      const isSelected = selectedGenerationId === option.id;
-                      return (
-                        <div key={option.id} className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedGenerationId(option.id)}
-                            className={cx(
-                              "group relative block w-full overflow-hidden transition",
-                              themeRadius.resultCard,
-                              themeSurface.muted,
-                              themeFocusRing,
-                              isSelected
-                                ? cx(themeBorder.selected, "shadow-[0_0_35px_var(--theme-selected-glow)]")
-                                : themeBorder.base
-                            )}
-                            aria-pressed={isSelected}
-                            aria-label={option.label}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={option.src}
-                              alt={option.label}
-                              className="block h-auto w-full transition duration-500 group-hover:scale-105"
-                            />
-                            <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-transparent via-transparent to-black/20" aria-hidden />
-                          </button>
-                          {canCreateRevision && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(option)}
-                              className="absolute left-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
-                              aria-label={`Edit ${option.label}`}
-                            >
-                              edit
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setPreviewOption(option)}
-                            className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
-                            aria-label={`Preview ${option.label}`}
-                          >
-                            view
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {revisionGenerations.map(option => {
-                      const isSelected = selectedGenerationId === option.id;
-                      const isPending = option.status === "pending";
-                      const isFailed = option.status === "failed";
-                      return (
-                        <div key={option.id} className="relative">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!isPending && !isFailed) setSelectedGenerationId(option.id);
-                            }}
-                            disabled={isPending || isFailed}
-                            className={cx(
-                              "group relative block min-h-[220px] w-full overflow-hidden transition sm:min-h-[260px]",
-                              themeRadius.resultCard,
-                              themeSurface.muted,
-                              themeFocusRing,
-                              isSelected
-                                ? cx(themeBorder.selected, "shadow-[0_0_35px_var(--theme-selected-glow)]")
-                                : themeBorder.base,
-                              isPending || isFailed ? "cursor-not-allowed" : ""
-                            )}
-                            aria-pressed={isSelected}
-                            aria-label={option.label}
-                          >
-                            {option.src && !isFailed ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={option.src}
-                                alt={option.label}
-                                className="block h-auto w-full transition duration-500 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-sky-950 via-slate-950 to-black" />
-                            )}
-                            <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                              {option.label}
-                            </span>
-                            <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-transparent via-transparent to-black/20" aria-hidden />
-                            {(isPending || isFailed) && (
-                              <span className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm font-semibold text-white/70">
-                                {isPending ? "Creating revision..." : "Revision failed"}
-                              </span>
-                            )}
-                          </button>
-                          {!isPending && !isFailed && canCreateRevision && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(option)}
-                              className="absolute left-3 top-12 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
-                              aria-label={`Edit ${option.label}`}
-                            >
-                              edit
-                            </button>
-                          )}
-                          {!isPending && !isFailed && (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewOption(option)}
-                              className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
-                              aria-label={`Preview ${option.label}`}
-                            >
-                              view
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-4 text-xs text-[var(--theme-text-muted)]">
-                    {selectedGeneration
-                      ? `${selectedGeneration.label} selected`
-                      : "Select an image to preview or download"}
-                    <span className="mx-2 text-[var(--theme-text-muted)]/50">•</span>
-                    {revisionGenerations.length} of 2 revisions used
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedGeneration?.src) window.open(selectedGeneration.src, "_blank", "noopener,noreferrer");
-                    }}
-                    disabled={!selectedGeneration?.src}
-                    className={`flex-1 rounded-2xl px-5 py-3 text-base font-semibold transition ${
-                      selectedGeneration?.src
-                        ? "border border-[color:var(--theme-border)] bg-black/25 text-[var(--theme-text)] hover:border-[color:var(--theme-border-hover)]"
-                        : "cursor-not-allowed border border-white/15 bg-black/45 text-white/50"
-                    }`}
-                  >
-                    Download
-                  </button>
-                </div>
-                {leadContact ? <div className="rounded-2xl border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-50">Your design and contact details were sent to the store. They can prepare a quote from any generated option.</div> : null}
-                {videoError && (
-                  <div className="rounded-2xl border border-red-500/60 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                    {videoError}
-                  </div>
-                )}
-              </div>
+              <CustomerResultsScreen
+                results={customerResults}
+                expectedCount={2}
+                selectedResultId={selectedGenerationId}
+                isGenerating={isGenerating}
+                generationCountLabel={isGenerating ? `${generations.length} of 2 generated` : undefined}
+                errors={[generationError, revisionError, videoError]}
+                usageLabel={`${revisionGenerations.length} of 2 revisions used`}
+                successMessage={leadContact ? "Your design and contact details were sent to the store. They can prepare a quote from any generated option." : null}
+                canEdit={canCreateRevision}
+                onSelect={setSelectedGenerationId}
+                onPreview={result => {
+                  const option = generations.find(generation => generation.id === result.id);
+                  if (option) setPreviewOption(option);
+                }}
+                onEdit={result => {
+                  const option = generations.find(generation => generation.id === result.id);
+                  if (option) handleOpenEdit(option);
+                }}
+              />
             )}
 
             {step === 5 && (
