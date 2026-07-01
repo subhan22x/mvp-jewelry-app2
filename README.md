@@ -268,6 +268,7 @@ app/
   page.tsx                   # responsive marketing landing page
   design/page.tsx            # home screen with style entry cards
   design/DesignEntry.tsx     # reusable design entry UI for /design and /s/:slug/design
+  components/DesignStepHeader.tsx # shared wizard header: top-left back button + centered progress bar & store logo
   name/page.tsx              # the 4-step name pendant flow (steps 0–2 + results)
   name/__tests__/            # Vitest unit tests for the name builder
   owner/page.tsx             # request-centric quote dashboard; Prepare Quote is the primary action
