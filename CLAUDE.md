@@ -184,6 +184,19 @@ If you add a new placeholder, update `builder.ts` and every template that uses i
 - **Do not treat demo-account resolution as production auth.** The MVP still seeds and resolves the demo account, but real authenticated account context is required before paid SaaS onboarding.
 - **Don't make `diamondQuality` a major prompt control.** Image models won't visually distinguish VS vs VVS reliably. Store it as metadata, use it lightly in prompt wording at most.
 - **Don't trust the `lib/styles/` re-export layer to stay.** It exists only because tsconfig path aliases aren't wired through; once they are, that folder gets deleted.
+- **Don't remove the `outputFileTracingExcludes` in `next.config.mjs`, and don't add an un-fallback'd `public/` filesystem read to the vvs-studio pipeline routes.** See "Deployment gotchas" below — either will re-break Vercel deploys.
+
+## Deployment gotchas
+
+**Serverless function size (Vercel 250MB uncompressed limit).** Several API routes read reference images from `public/` via *dynamic* `fs.readFile(process.cwd()/public/...)` — the generation routes through the Google provider (`src/lib/providers/google.ts`), and the vvs-studio job processor through `imageUrlToAttachment` (`src/lib/vvs-studio/pipeline.ts`). Vercel's file tracer can't resolve those paths statically, so it conservatively bundles the **entire `public/` tree** (~180MB) into each such function — pushing several over 250MB and failing the deploy at the "Deploying outputs" step (the build itself compiles fine). This is triggered/worsened whenever large assets land in `public/` (e.g. the `public/necklaces/references/_originals/*.png` set, or the committed `public/generated` images).
+
+The fix in place is `outputFileTracingExcludes` in `next.config.mjs`:
+
+- A blanket `"/api"` entry drops `public/generated` (written output, served by URL), `public/necklaces/references/_originals` (unused source PNGs), and `public/vvs-studio` (loaded by URL) from **every** API function. These are never read from disk at runtime by any route, so it's always safe.
+- Each generation route still bundles the category reference dir it actually needs, because the Google provider reads those with **no URL fallback** — do **not** exclude `public/pendants`, `public/necklaces/references/*.jpeg`, `public/emblems`, grillz layers, etc. from a route that generates that category.
+- `/api/internal/vvs-studio/jobs/process` excludes all of `public/` — safe there *only because* `imageUrlToAttachment` falls back to `fetch(imageUrl)` when the file isn't on disk.
+
+If you add a new generation route or a new `public/` disk read, keep its needed refs and exclude the rest. Diagnose sizes with `VERCEL_ANALYZE_BUILD_OUTPUT=1`; `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` raises the limit but keeps shipping the bloat, so it's not the preferred fix.
 
 ## Roadmap (cleanup priorities)
 
@@ -207,5 +220,6 @@ In order:
 9. **Wire `waitUntil` for Vercel production.** The current `void Promise.all(...)` pattern works in dev but risks early Lambda termination on Vercel. Use `waitUntil` from `@vercel/functions`.
 10. **Move generated image storage off the local FS** (R2 / S3 / Supabase Storage / Cloudinary). Keep the swap inside `connector.ts` or a small storage helper.
 11. **Persist the customer's selected favorite** after the results step (currently the choice has no storage).
+12. **Load vvs-studio pipeline inputs from R2 / absolute URLs** instead of reading them off `public/` on disk (`imageUrlToAttachment`). This removes the dynamic `fs.readFile` that forces the function to bundle `public/`, so the `outputFileTracingExcludes` workaround for `/api/internal/vvs-studio/jobs/process` can be deleted. See "Deployment gotchas".
 
 Treat earlier items as prerequisites for later ones where they touch the same files.
