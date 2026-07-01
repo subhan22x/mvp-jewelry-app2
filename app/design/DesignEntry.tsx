@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import DesignProgressBar from "../components/DesignProgressBar";
-import { cx, themeBorder, themeRadius, themeSurface } from "@/src/lib/theme/ui-classes";
+import DesignStepHeader from "../components/DesignStepHeader";
+import { cx, themeBorder, themeSurface } from "@/src/lib/theme/ui-classes";
 
 type CategoryCard = {
   id: string;
@@ -21,8 +21,7 @@ const categories: CategoryCard[] = [
 ];
 
 const cardClass = cx(
-  "group relative flex aspect-square min-h-0 flex-col items-center justify-center overflow-hidden p-3 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:shadow-[0_0_28px_var(--theme-selected-glow)] sm:p-5",
-  themeRadius.imageOptionMobile,
+  "group relative flex aspect-square min-h-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl p-3 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:shadow-[0_0_28px_var(--theme-selected-glow)] sm:gap-3 sm:rounded-[28px] sm:p-5",
   themeBorder.base,
   themeBorder.hover,
   themeSurface.strong
@@ -44,9 +43,7 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
   return (
     <main data-tour-id="design-entry" className="min-h-dvh px-4 py-8 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-8 sm:px-6 md:px-12">
-        <div className="mb-8 flex min-h-10 items-center justify-center">
-          <DesignProgressBar current={0} />
-        </div>
+        <DesignStepHeader current={0} />
 
         <header className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.35em] text-[var(--theme-text-soft)]">001</p>
@@ -62,41 +59,39 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
           </p>
         </header>
 
-        <section className="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:gap-8">
+        <section className="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:gap-6">
           {visibleCategories.map(category => {
-            const body = (
+            const content = (
               <>
-                <div className="relative h-16 w-16 sm:h-32 sm:w-32">
+                <div className="relative h-14 w-14 sm:h-28 sm:w-28">
                   <Image
                     src={category.iconSrc}
                     alt=""
                     fill
-                    sizes="(max-width: 640px) 64px, 128px"
+                    sizes="(max-width: 640px) 56px, 112px"
                     className="object-contain"
                     priority={category.id === "pendant"}
                   />
                 </div>
-                <span className="mt-3 text-lg font-semibold tracking-tight text-[var(--theme-text)] sm:mt-5 sm:text-2xl">
+                <span className="text-base font-semibold tracking-tight text-[var(--theme-text)] sm:text-2xl">
                   {category.label}
                 </span>
+                {!category.available && (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/75 sm:text-[10px]">
+                    Coming soon
+                  </span>
+                )}
               </>
             );
 
-            if (!category.available) {
-              return (
-                <div key={category.id} className={disabledCardClass} aria-disabled="true" aria-label={`${category.label} jewelry coming soon`}>
-                  {body}
-                  <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/75">
-                    Coming soon
-                  </span>
-                </div>
-              );
-            }
-
-            return (
+            return category.available ? (
               <Link key={category.id} href={category.href} className={cardClass} aria-label={`${category.label} jewelry`}>
-                {body}
+                {content}
               </Link>
+            ) : (
+              <div key={category.id} className={disabledCardClass} aria-disabled="true" aria-label={`${category.label} jewelry coming soon`}>
+                {content}
+              </div>
             );
           })}
         </section>
