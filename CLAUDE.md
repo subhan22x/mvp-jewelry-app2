@@ -188,9 +188,15 @@ If you add a new placeholder, update `builder.ts` and every template that uses i
 
 ## Deployment gotchas
 
-**Serverless function size (Vercel 250MB uncompressed limit).** The vvs-studio job processor (`/api/internal/vvs-studio/jobs/process`) resolves input images through `imageUrlToAttachment` in `src/lib/vvs-studio/pipeline.ts`, which does a *dynamic* `fs.readFile(process.cwd()/public/...)`. Vercel's file tracer can't resolve that path statically, so it conservatively bundles the **entire `public/` tree** (~180MB) into the function — pushing it over 250MB and failing the deploy at the "Deploying outputs" step (the build itself compiles fine). This is triggered whenever large assets land in `public/` (e.g. the `public/necklaces/references/_originals/*.png` reference set).
+**Serverless function size (Vercel 250MB uncompressed limit).** Several API routes read reference images from `public/` via *dynamic* `fs.readFile(process.cwd()/public/...)` — the generation routes through the Google provider (`src/lib/providers/google.ts`), and the vvs-studio job processor through `imageUrlToAttachment` (`src/lib/vvs-studio/pipeline.ts`). Vercel's file tracer can't resolve those paths statically, so it conservatively bundles the **entire `public/` tree** (~180MB) into each such function — pushing several over 250MB and failing the deploy at the "Deploying outputs" step (the build itself compiles fine). This is triggered/worsened whenever large assets land in `public/` (e.g. the `public/necklaces/references/_originals/*.png` set, or the committed `public/generated` images).
 
-The fix in place is an `outputFileTracingExcludes` entry that stops that function from bundling `public/`. It is safe **only because** `imageUrlToAttachment` falls back to `fetch(imageUrl)` (the CDN copy) when the file isn't on disk. If you add another `public/` disk read without that fallback, or under a different route, exclude that route too. Diagnose sizes with `VERCEL_ANALYZE_BUILD_OUTPUT=1`; `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` raises the limit but keeps shipping the bloat, so it's not the preferred fix.
+The fix in place is `outputFileTracingExcludes` in `next.config.mjs`:
+
+- A blanket `"/api"` entry drops `public/generated` (written output, served by URL), `public/necklaces/references/_originals` (unused source PNGs), and `public/vvs-studio` (loaded by URL) from **every** API function. These are never read from disk at runtime by any route, so it's always safe.
+- Each generation route still bundles the category reference dir it actually needs, because the Google provider reads those with **no URL fallback** — do **not** exclude `public/pendants`, `public/necklaces/references/*.jpeg`, `public/emblems`, grillz layers, etc. from a route that generates that category.
+- `/api/internal/vvs-studio/jobs/process` excludes all of `public/` — safe there *only because* `imageUrlToAttachment` falls back to `fetch(imageUrl)` when the file isn't on disk.
+
+If you add a new generation route or a new `public/` disk read, keep its needed refs and exclude the rest. Diagnose sizes with `VERCEL_ANALYZE_BUILD_OUTPUT=1`; `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` raises the limit but keeps shipping the bloat, so it's not the preferred fix.
 
 ## Roadmap (cleanup priorities)
 

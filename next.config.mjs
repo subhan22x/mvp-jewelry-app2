@@ -12,13 +12,22 @@ const nextConfig = {
       "./public/samples/**/*",
       "./public/vvs-studio/**/*"
     ],
-    // The vvs-studio job processor reads input images via imageUrlToAttachment,
-    // which does a dynamic fs.readFile under public/. That makes the tracer
-    // bundle the entire public/ tree (~180MB) into the function, blowing past
-    // Vercel's 250MB uncompressed limit. Safe to exclude because that read
-    // falls back to fetching the same asset from its URL when it's not on disk.
-    // See CLAUDE.md "Deployment gotchas" — the real fix is loading inputs from
-    // R2/absolute URLs so this exclude can go away.
+    // Generation routes call the Google provider, which reads reference images
+    // from public/ via fs.readFile with no URL fallback, so the tracer bundles
+    // public/ into each function — pushing several past Vercel's 250MB limit.
+    // These three paths are NEVER read from disk at runtime by any API route
+    // (public/generated is written output served by URL; _originals are unused
+    // source PNGs; vvs-studio assets load by URL), so drop them from every API
+    // function. Each route still keeps the category reference dir it needs.
+    // See CLAUDE.md "Deployment gotchas".
+    "/api": [
+      "./public/generated/**/*",
+      "./public/necklaces/references/_originals/**/*",
+      "./public/vvs-studio/**/*"
+    ],
+    // The vvs-studio job processor additionally reads inputs via a dynamic
+    // fs.readFile under public/, dragging the whole tree in. Safe to exclude
+    // entirely because imageUrlToAttachment falls back to fetching by URL.
     "/api/internal/vvs-studio/jobs/process": [
       "./public/**/*"
     ]
