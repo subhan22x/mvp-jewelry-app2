@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import DesignProgressBar from "../components/DesignProgressBar";
+import DesignStepHeader from "../components/DesignStepHeader";
 import NameBuilder from "../name/NameBuilder";
 import { TOUR_STEP_EVENT, TOUR_STORAGE_KEY } from "@/src/lib/tour/steps";
 
@@ -73,17 +73,7 @@ export default function PendantsIndex({ basePath }: { basePath?: string } = {}) 
   return (
     <main className="min-h-dvh px-4 py-5 text-white md:px-8 md:py-10">
       <div className="mx-auto w-full max-w-4xl px-4 pb-14 pt-3 sm:px-6 md:px-12 md:pt-10">
-        <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
-          <Link
-            href={basePath ?? "/design"}
-            aria-label="Back"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-xl leading-none text-white transition hover:border-white/45"
-          >
-            ←
-          </Link>
-          <DesignProgressBar current={0} className="justify-self-center" />
-          <span aria-hidden="true" />
-        </div>
+        <DesignStepHeader current={0} backHref={basePath ?? "/design"} />
 
         {/* Hero copy; tweak typography or messaging here. */}
         <header className="max-w-2xl">

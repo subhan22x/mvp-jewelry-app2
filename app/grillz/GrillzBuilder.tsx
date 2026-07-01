@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import DesignProgressBar from "@/app/components/DesignProgressBar";
+import DesignStepHeader from "@/app/components/DesignStepHeader";
 import ThemedOptionButton from "@/app/components/ThemedOptionButton";
 import LeadCaptureModal from "@/app/name/components/LeadCaptureModal";
 import {
@@ -186,28 +185,7 @@ function DesignFlowShell({
   return (
     <main className="min-h-dvh px-4 py-4 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6 md:px-12">
-        <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
-          {screen === "style" ? (
-            <Link
-              href={backHref}
-              aria-label="Back"
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
-            >
-              ←
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back"
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
-            >
-              ←
-            </button>
-          )}
-          <DesignProgressBar current={progressStep} className="justify-self-center" />
-          <span aria-hidden />
-        </div>
+        <DesignStepHeader current={progressStep} {...(screen === "style" ? { backHref } : { onBack })} />
         {children}
       </div>
     </main>
@@ -228,17 +206,7 @@ function StyleScreen({
   return (
     <main className="min-h-dvh px-4 py-5 text-white md:px-8 md:py-10">
       <div className="mx-auto w-full max-w-4xl px-4 pb-14 pt-3 sm:px-6 md:px-12 md:pt-10">
-        <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
-          <Link
-            href={backHref}
-            aria-label="Back"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-xl leading-none text-white transition hover:border-white/45"
-          >
-            ←
-          </Link>
-          <DesignProgressBar current={0} className="justify-self-center" />
-          <span aria-hidden="true" />
-        </div>
+        <DesignStepHeader current={0} backHref={backHref} />
 
         <header className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.35em] text-white/70">001</p>
