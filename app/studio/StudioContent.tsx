@@ -129,7 +129,7 @@ export default function StudioContent({ embedded = false }: { embedded?: boolean
           <div className={styles.transformCol}>
             <div className={styles.productCard}>
               <Image
-                src="/landing/hero-bg.jpg"
+                src="/landing/product-photo-input.png"
                 alt="A single product photo"
                 width={460}
                 height={460}
