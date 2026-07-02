@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: { unoptimized: true },
+  outputFileTracingIncludes: {
+    // Name pendant generation resolves YAML-configured attachment paths at
+    // runtime, so Next's static tracer can miss these public reference assets.
+    "/api/requests": [
+      "./public/pendants/**/*",
+      "./public/plain-pendants/**/*",
+      "./public/emblems/**/*"
+    ]
+  },
   outputFileTracingExcludes: {
     "/internal/generations": [
       "./public/generated/**/*",
