@@ -23,11 +23,6 @@
     "available": false
   },
   {
-    "id": "jaida",
-    "label": "Jaida",
-    "src": "/pendants/jaida.png"
-  },
-  {
     "id": "jhon",
     "label": "Jhon",
     "src": "/pendants/jhon.png"
@@ -47,6 +42,11 @@
     "id": "lexy",
     "label": "Lexy",
     "src": "/pendants/lexy.png"
+  },
+  {
+    "id": "jaida",
+    "label": "Jaida",
+    "src": "/pendants/jaida.png"
   },
   {
     "id": "neiko",
