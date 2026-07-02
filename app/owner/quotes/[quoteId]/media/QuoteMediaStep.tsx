@@ -46,7 +46,6 @@ export default function QuoteMediaStep({
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error ?? "Unable to finish this quote.");
     router.push(`/owner/quotes/${quoteId}/preview`);
-    router.refresh();
   }
 
   useEffect(() => {
@@ -122,24 +121,28 @@ export default function QuoteMediaStep({
   const jobInProgress = job && (job.status === "pending" || job.status === "processing");
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#17191F]">
-        {imageUrl ? <img src={imageUrl} alt={`${title} selected quote design`} className="aspect-square w-full object-cover" /> : <div className="flex aspect-square items-center justify-center p-8 text-sm text-[#8c909f]">No selected image</div>}
+    <section className="grid items-start gap-6 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
+      <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/5 bg-[#17191F] lg:max-w-none">
+        {imageUrl ? <img src={imageUrl} alt={`${title} selected quote design`} className="h-72 w-full object-cover sm:h-80 lg:h-auto lg:aspect-square" /> : <div className="flex h-72 items-center justify-center p-8 text-sm text-[#8c909f] sm:h-80 lg:aspect-square lg:h-auto">No selected image</div>}
         <div className="p-4"><p className="text-xs uppercase tracking-[0.22em] text-[#D1B873]">Selected design</p><h1 className="mt-2 break-words text-2xl font-bold text-white">{title}</h1></div>
       </div>
 
       <div className="rounded-2xl border border-[#D1B873]/20 bg-[#17191F] p-5 md:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#D1B873]">Customer preview</p>
-        <h2 className="mt-2 text-3xl font-bold text-white">Add an optional preview asset</h2>
+        <h2 className="mt-2 text-3xl font-bold text-white">Choose preview Asset</h2>
         <p className="mt-2 text-sm leading-6 text-[#c2c6d6]">The quote link stays private until the selected asset is ready. Image only is the default.</p>
 
-        <div className="mt-6 grid gap-3">
+        <div className="mt-6 grid grid-cols-3 gap-3">
           {MEDIA_OPTIONS.map(option => {
             const disabled = (option.type === "model3d" && !canGenerate3d) || (option.type === "video" && !canGenerateVideo);
             return (
-              <button key={option.type} type="button" disabled={disabled || Boolean(jobInProgress)} onClick={() => { setSelection(option.type); setJob(option.type === "model3d" ? initialModelJob : option.type === "video" ? initialVideoJob : null); setError(null); }} className={`rounded-2xl border p-4 text-left transition ${selection === option.type ? "border-[#D1B873] bg-[#D1B873]/10" : "border-white/10 bg-black/20 hover:border-white/25"} disabled:cursor-not-allowed disabled:opacity-45`}>
-                <span className="block font-semibold text-white">{option.title}</span>
-                <span className="mt-1 block text-sm leading-5 text-[#9ba3b4]">{option.description}{disabled ? " Not available for this product type yet." : ""}</span>
+              <button key={option.type} type="button" disabled={disabled || Boolean(jobInProgress)} onClick={() => { setSelection(option.type); setJob(option.type === "model3d" ? initialModelJob : option.type === "video" ? initialVideoJob : null); setError(null); }} className={`min-h-[126px] rounded-2xl border p-3 text-center transition sm:min-h-[150px] sm:p-4 ${selection === option.type ? "border-[#D1B873] bg-[#D1B873]/10" : "border-white/10 bg-black/20 hover:border-white/25"} disabled:cursor-not-allowed disabled:opacity-45`}>
+                <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[#D1B873]">
+                  <MediaOptionIcon type={option.type} />
+                </span>
+                <span className="mt-3 block text-sm font-semibold leading-tight text-white sm:text-base">{option.title}</span>
+                <span className="mt-2 hidden text-xs leading-4 text-[#9ba3b4] sm:block">{option.description}{disabled ? " Not available for this product type yet." : ""}</span>
+                {disabled ? <span className="mt-2 block text-[11px] leading-3 text-[#9ba3b4] sm:hidden">Unavailable</span> : null}
               </button>
             );
           })}
@@ -157,5 +160,34 @@ export default function QuoteMediaStep({
         </button>
       </div>
     </section>
+  );
+}
+
+function MediaOptionIcon({ type }: { type: MediaType }) {
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+      {type === "image" && (
+        <>
+          <rect {...common} x="4" y="5" width="16" height="14" rx="2.5" />
+          <path {...common} d="m7.5 15 3.4-3.4 2.8 2.8 1.4-1.4 1.9 2" />
+          <circle cx="15.5" cy="9" r="1.2" fill="currentColor" />
+        </>
+      )}
+      {type === "model3d" && (
+        <>
+          <path {...common} d="m12 3.8 7 4v8.4l-7 4-7-4V7.8l7-4Z" />
+          <path {...common} d="M5.4 8.2 12 12l6.6-3.8M12 12v7.6" />
+        </>
+      )}
+      {type === "video" && (
+        <>
+          <rect {...common} x="4" y="6.5" width="12" height="11" rx="2.2" />
+          <path {...common} d="m16 10 4-2.2v8.4L16 14" />
+          <path {...common} d="M8.8 9.4v5.2l4-2.6-4-2.6Z" />
+        </>
+      )}
+    </svg>
   );
 }

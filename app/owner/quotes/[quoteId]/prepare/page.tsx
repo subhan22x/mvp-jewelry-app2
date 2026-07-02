@@ -14,13 +14,24 @@ export default async function PrepareQuotePage({ params }: { params: Promise<{ q
     where: { id: quoteId, accountId },
     include: {
       request: {
-        include: {
+        select: {
+          productType: true,
+          text: true,
+          styleId: true,
+          metalType: true,
+          stoneType: true,
+          plainMetal: true,
+          plainKarat: true,
+          primaryMetal: true,
+          pendantFinish: true,
           Results: {
             where: { status: "succeeded", imageUrl: { not: null } },
+            select: { id: true, variant: true, imageUrl: true },
             orderBy: { variant: "asc" }
           },
           ResultRevisions: {
             where: { status: "succeeded", imageUrl: { not: null } },
+            select: { id: true, sourceResultId: true, revisionNumber: true, imageUrl: true },
             orderBy: [{ sourceResultId: "asc" }, { revisionNumber: "asc" }]
           }
         }
