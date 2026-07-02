@@ -14,7 +14,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
   // Time-based phone screen switcher — advances every 1.6 s
   useEffect(() => {
     const timer = setInterval(() => {
-      setStep((s) => (s + 1) % 3);
+      setStep((s) => (s + 1) % 5);
     }, 1600);
     return () => clearInterval(timer);
   }, []);
@@ -351,7 +351,13 @@ export default function NewLandingPage({ className }: { className?: string }) {
                         borderRadius: 99,
                         background: "#000",
                       }} />
-                      {["/landing/screen-0.png", "/landing/screen-1.png", "/landing/screen-2.png"].map((src, i) => (
+                      {[
+                        { src: "/landing/screen-0.png", objectPosition: "top center" },
+                        { src: "/landing/screen-1.png", objectPosition: "top center" },
+                        { src: "/landing/screen-2.png", objectPosition: "top center" },
+                        { src: "/landing/screen-3.png", objectPosition: "center center" },
+                        { src: "/landing/screen-4.png", objectPosition: "top center" },
+                      ].map(({ src, objectPosition }, i) => (
                         <Image
                           key={i}
                           src={src}
@@ -360,7 +366,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                           sizes="280px"
                           style={{
                             objectFit: "cover",
-                            objectPosition: "top center",
+                            objectPosition,
                             opacity: step === i ? 1 : 0,
                             transition: "opacity .45s ease",
                           }}
@@ -442,7 +448,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     alignItems: "center",
                     background: "linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(237,228,212,0.18) 50%, transparent calc(50% + 0.5px))",
                   }}>
-                    {[0, 1, 2].map((i) => (
+                    {[0, 1, 2, 3, 4].map((i) => (
                       <span key={i} style={{
                         width: 14,
                         height: 14,
