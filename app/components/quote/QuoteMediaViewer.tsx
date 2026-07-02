@@ -12,6 +12,7 @@ type Props = {
   modelUrl?: string | null;
   videoUrl?: string | null;
   alt: string;
+  compact?: boolean;
 };
 
 export default function QuoteMediaViewer({
@@ -19,7 +20,8 @@ export default function QuoteMediaViewer({
   previewMediaType = "image",
   modelUrl = null,
   videoUrl = null,
-  alt
+  alt,
+  compact = false
 }: Props) {
   const [activeMedia, setActiveMedia] = useState<ActiveMedia>("image");
   const [viewerReady, setViewerReady] = useState(false);
@@ -59,7 +61,7 @@ export default function QuoteMediaViewer({
   const secondaryPanelId = `${idPrefix}-${secondaryMedia ?? "media"}-panel`;
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-[#332d26] bg-[#12110f] shadow-[0_28px_80px_rgba(0,0,0,0.38)]">
+    <section className={`${compact ? "rounded-2xl" : "rounded-[1.75rem]"} overflow-hidden border border-[#332d26] bg-[#12110f] shadow-[0_28px_80px_rgba(0,0,0,0.38)]`}>
       {secondaryMedia ? (
         <div role="tablist" aria-label="Quote preview media" className="flex border-b border-[#332d26] bg-[#191611] p-2">
           <button
@@ -100,9 +102,9 @@ export default function QuoteMediaViewer({
           >
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt={alt} className="aspect-square w-full object-cover" />
+              <img src={imageUrl} alt={alt} className={compact ? "h-[clamp(160px,26dvh,240px)] w-full object-cover md:h-[min(58dvh,540px)]" : "aspect-square w-full object-cover"} />
             ) : (
-              <div className="flex aspect-square w-full items-center justify-center px-6 text-center text-sm text-[#8c8377]">
+              <div className={`${compact ? "h-[clamp(160px,26dvh,240px)] md:h-[min(58dvh,540px)]" : "aspect-square"} flex w-full items-center justify-center px-6 text-center text-sm text-[#8c8377]`}>
                 No quoted image is available.
               </div>
             )}
@@ -176,13 +178,15 @@ export default function QuoteMediaViewer({
         </div>
       ) : null}
 
-      <div className="border-t border-[#332d26] px-4 py-3 text-xs leading-5 text-[#8c8377]">
-        {secondaryMedia === "model3d"
-          ? "Switch between the quoted image and an interactive 3D preview. On a phone, use View in your space for AR."
-          : secondaryMedia === "video"
-            ? "Switch between the quoted image and video preview."
-            : "This quote includes the selected design image."}
-      </div>
+      {!compact ? (
+        <div className="border-t border-[#332d26] px-4 py-3 text-xs leading-5 text-[#8c8377]">
+          {secondaryMedia === "model3d"
+            ? "Switch between the quoted image and an interactive 3D preview. On a phone, use View in your space for AR."
+            : secondaryMedia === "video"
+              ? "Switch between the quoted image and video preview."
+              : "This quote includes the selected design image."}
+        </div>
+      ) : null}
     </section>
   );
 }

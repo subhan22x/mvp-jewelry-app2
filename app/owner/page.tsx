@@ -116,10 +116,20 @@ async function getOwnerData(accountId: string) {
       where: { accountId },
       orderBy: { createdAt: "desc" },
       take: 120,
-      include: {
-        result: { select: { id: true, imageUrl: true, variant: true, status: true } },
-        resultRevision: { select: { id: true, imageUrl: true, revisionNumber: true, status: true } },
-        video: { select: { id: true, status: true, videoUrl: true } },
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
+        customerName: true,
+        customerEmail: true,
+        customerPhone: true,
+        text: true,
+        styleId: true,
+        productType: true,
+        pendantFinish: true,
+        designedImageUrl: true,
+        referenceImageUrlsJson: true,
+        previewMediaType: true,
         model3d: { select: { id: true, status: true, modelUrl: true } },
         request: {
           select: {
@@ -130,14 +140,11 @@ async function getOwnerData(accountId: string) {
             text: true,
             primaryMetal: true,
             secondaryMetal: true,
-            Results: {
-              where: { status: "succeeded", imageUrl: { not: null } },
-              select: { id: true, imageUrl: true },
-              orderBy: { variant: "asc" }
-            },
-            ResultRevisions: {
-              where: { status: "succeeded", imageUrl: { not: null } },
-              select: { id: true, imageUrl: true }
+            _count: {
+              select: {
+                Results: { where: { status: "succeeded", imageUrl: { not: null } } },
+                ResultRevisions: { where: { status: "succeeded", imageUrl: { not: null } } }
+              }
             }
           }
         }
@@ -178,7 +185,7 @@ function MetricCard({ label, value, suffix, accent = false }: { label: string; v
 
 function QuoteCard({ quote, openPreview = false }: { quote: QuoteRow; openPreview?: boolean }) {
   const imageUrl = referenceImage(quote);
-  const generationCount = (quote.request?.Results.length ?? 0) + (quote.request?.ResultRevisions.length ?? 0);
+  const generationCount = (quote.request?._count.Results ?? 0) + (quote.request?._count.ResultRevisions ?? 0);
 
   return (
     <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#D1B873]/30 bg-[#17191F] shadow-[0_8px_30px_rgba(0,0,0,0.4)] md:flex-row">

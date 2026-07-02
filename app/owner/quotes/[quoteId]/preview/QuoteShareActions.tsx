@@ -58,35 +58,22 @@ export default function QuoteShareActions({
     }
   }
 
-  async function shareMessage() {
-    if (!navigator.share) return setFeedback("Native sharing is not available on this device. Copy the message instead.");
-    try {
-      await navigator.share({ title: "Customer quote", text: message });
-      setFeedback("Share sheet opened.");
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
-      setFeedback("Unable to open the share sheet. Copy the message instead.");
-    }
-  }
-
   return (
-    <div className="mt-6 grid gap-3">
-      <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0f1015]">
-        <div className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-black/25 px-4 py-3">
+    <div className="mt-3 grid gap-2 md:mt-6 md:gap-3">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f1015]">
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-black/25 px-3 py-2.5 md:gap-3 md:px-4 md:py-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8c909f]">To</p>
             <p className="mt-1 break-words text-sm font-semibold text-white">{customerPhone || "No phone number"}</p>
           </div>
-          <button type="button" onClick={copyPhone} disabled={!customerPhone} className="rounded-full border border-[#D1B873]/25 bg-[#D1B873]/10 px-3 py-2 text-xs font-semibold text-[#f3d98f] disabled:opacity-45">Copy Phone Number</button>
+          <button type="button" onClick={copyPhone} disabled={!customerPhone} className="rounded-full border border-[#D1B873]/25 bg-[#D1B873]/10 px-3 py-1.5 text-[11px] font-semibold text-[#f3d98f] disabled:opacity-45 md:py-2 md:text-xs">Copy Phone Number</button>
         </div>
-        <div className="grid gap-3 px-4 py-4">
-          <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap font-sans text-sm leading-6 text-white/80">{message}</pre>
-          <button type="button" onClick={copyLink} className="justify-self-end rounded-full border border-[#D1B873]/25 bg-[#D1B873]/10 px-3 py-2 text-xs font-semibold text-[#f3d98f]">Copy Message</button>
+        <div className="grid gap-2 px-3 py-3 md:gap-3 md:px-4 md:py-4">
+          <pre className="max-h-28 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-5 text-white/80 md:max-h-72 md:text-sm md:leading-6">{message}</pre>
+          <button type="button" onClick={copyLink} className="justify-self-end rounded-full border border-[#D1B873]/25 bg-[#D1B873]/10 px-3 py-1.5 text-[11px] font-semibold text-[#f3d98f] md:py-2 md:text-xs">Copy Message</button>
         </div>
       </div>
-      <a href={smsHref} className="rounded-2xl bg-[#D1B873] px-5 py-3 text-center text-sm font-semibold text-[#17120a] hover:bg-[#e6cb82]">Send Message</a>
-      <button type="button" onClick={shareMessage} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 hover:bg-white/10">More Share Options</button>
-      <a href={quoteUrl} target="_blank" rel="noopener noreferrer" className="break-all rounded-2xl border border-[#D1B873]/25 bg-[#D1B873]/10 px-4 py-3 text-center text-sm font-semibold text-[#f3d98f]">{quoteUrl}</a>
+      <a href={smsHref} className="rounded-2xl bg-[#D1B873] px-5 py-2.5 text-center text-sm font-semibold text-[#17120a] hover:bg-[#e6cb82] md:py-3">Send Message</a>
       {feedback ? <p className="text-center text-xs text-[#D1B873]">{feedback}</p> : null}
     </div>
   );
