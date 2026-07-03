@@ -7,6 +7,18 @@ import StudioContent from "../studio/StudioContent";
 import ReelsCarousel from "../studio/ReelsCarousel";
 import studioStyles from "../studio/StudioPage.module.css";
 
+// Real AI-generated pendant renders for the scrolling proof-of-quality strip.
+const PENDANT_SHOWCASE = [
+  { name: "George", src: "/new-landing/pendants/george.jpg" },
+  { name: "Mellissa", src: "/new-landing/pendants/mellissa.jpg" },
+  { name: "Neyman", src: "/new-landing/pendants/neyman.jpg" },
+  { name: "Matthew", src: "/new-landing/pendants/matthew.jpg" },
+  { name: "Hamza", src: "/new-landing/pendants/hamza.jpg" },
+  { name: "Mama", src: "/new-landing/pendants/mama.jpg" },
+  { name: "Alyssa", src: "/new-landing/pendants/alyssa.jpg" },
+  { name: "Naila", src: "/new-landing/pendants/naila.jpg" },
+];
+
 export default function NewLandingPage({ className }: { className?: string }) {
   const [open, setOpen] = useState<number | null>(null);
   const [step, setStep] = useState(0);
@@ -153,6 +165,18 @@ export default function NewLandingPage({ className }: { className?: string }) {
         .nl-channel-n { display: block; color: #d4924a; font-family: var(--font-jbmono), monospace; font-size: clamp(9px,1.5vw,11px); letter-spacing: 0.12em; text-transform: uppercase; }
         .nl-channel-title { margin: 6px 0 0; color: #fff; font-size: clamp(11px,2.2vw,18px); font-weight: 700; line-height: 1.2; }
         .nl-channel-body { margin: 6px 0 0; color: #91877b; font-size: clamp(10px,1.6vw,13px); line-height: 1.5; }
+        /* Pendant showcase — auto-scrolling strip of AI-generated pendants,
+           echoing the .nl-channel card treatment (same border/radius/bg). */
+        .nl-pendant-showcase { padding: clamp(40px,6vw,72px) 0 clamp(48px,6vw,88px); border-bottom: 1px solid rgba(237,228,212,0.09); }
+        .nl-pendant-heading { max-width: 720px; margin: 0 auto clamp(24px,3vw,36px); padding: 0 clamp(20px,5vw,56px); color: #fff; font-size: clamp(17px,4vw,34px); font-weight: 800; line-height: 1.16; text-align: center; }
+        .nl-pendant-track-mask { width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%); }
+        .nl-pendant-track { display: flex; width: max-content; gap: clamp(10px,2vw,20px); padding: 4px clamp(12px,4vw,56px); animation: nl-pendant-scroll 34s linear infinite; }
+        .nl-pendant-track:hover { animation-play-state: paused; }
+        .nl-pendant-card { flex: 0 0 auto; width: clamp(148px,20vw,190px); aspect-ratio: 4 / 5; position: relative; overflow: hidden; border: 1px solid rgba(237,228,212,0.09); border-radius: clamp(10px,2vw,18px); background: linear-gradient(165deg, #15120d, rgba(21,18,13,0.35)); transition: transform .2s ease, border-color .2s ease; }
+        .nl-pendant-card:hover { transform: translateY(-3px); border-color: rgba(212,146,74,0.4); }
+        .nl-pendant-card img { object-fit: cover; object-position: 50% 0%; }
+        @keyframes nl-pendant-scroll { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+        @media (prefers-reduced-motion: reduce) { .nl-pendant-track { animation: none; } }
       `}</style>
 
       <div
@@ -326,7 +350,30 @@ export default function NewLandingPage({ className }: { className?: string }) {
                 background: "#100b06",
               }}
             >
-              <div style={{ overflow: "clip", minHeight: 0 }}>
+              <div style={{ overflow: "clip", minWidth: 0, minHeight: 0 }}>
+                {/* Pendant showcase — auto-scrolling strip of real AI-generated
+                    pendants, proving the output quality up front. */}
+                <div className="nl-pendant-showcase">
+                  <h2 className="nl-pendant-heading">
+                    Jewelers are using AI to generate designs in minutes,{" "}
+                    <span style={{ color: "#d4924a" }}>join them today</span>
+                  </h2>
+                  <div className="nl-pendant-track-mask">
+                    <div className="nl-pendant-track">
+                      {[...PENDANT_SHOWCASE, ...PENDANT_SHOWCASE].map((p, i) => (
+                        <div key={`${p.name}-${i}`} className="nl-pendant-card">
+                          <Image
+                            src={p.src}
+                            alt={`${p.name} custom pendant design`}
+                            fill
+                            sizes="(max-width: 700px) 40vw, 190px"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 {/* ── Scroll-driven phone + features (mirrors old landing) ── */}
                 <div className="nl-features-grid">
                   {/* Sticky phone */}
