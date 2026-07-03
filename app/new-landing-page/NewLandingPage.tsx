@@ -221,14 +221,17 @@ export default function NewLandingPage({ className }: { className?: string }) {
             <Link href="/login" style={{ color: "#91877b", fontSize: "clamp(13px, 3.4vw, 14px)", textDecoration: "none", whiteSpace: "nowrap" }}>
               Log in
             </Link>
-            <Link href="/onboarding" style={{
+            <Link href="/onboarding" style={{ color: "#91877b", fontSize: "clamp(13px, 3.4vw, 14px)", textDecoration: "none", whiteSpace: "nowrap" }}>
+              Sign up
+            </Link>
+            <Link href="/design" style={{
               display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
               padding: "10px clamp(13px, 3.6vw, 20px)", borderRadius: 999, fontSize: "clamp(13px, 3.4vw, 14px)", fontWeight: 700,
               background: "linear-gradient(165deg, #ebb467, #d4924a)",
               color: "#1b1006", textDecoration: "none",
               boxShadow: "0 0 0 1px rgba(235,180,103,0.32), 0 10px 24px -12px rgba(212,146,74,0.8)",
             }}>
-              Start free <span>→</span>
+              Try it out <span>→</span>
             </Link>
           </div>
         </nav>
