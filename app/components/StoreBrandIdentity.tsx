@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+type BrandMode = "logo" | "name" | "none";
+
 type StoreBrand = {
   displayName: string;
   logoUrl: string | null;
-  logoStyle?: "avatar" | "wordmark";
+  mode: BrandMode;
 };
 
 const FALLBACK_BRAND: StoreBrand = {
   displayName: "Flawless",
   logoUrl: "/landing/flawless-lettering-logo.png",
-  logoStyle: "wordmark"
+  mode: "logo"
 };
 
 function accountSlugFromPath(pathname: string) {
@@ -39,7 +41,7 @@ export default function StoreBrandIdentity() {
           ? {
               displayName: json.displayName.trim(),
               logoUrl: typeof json.logoUrl === "string" ? json.logoUrl : null,
-              logoStyle: json.logoStyle === "wordmark" ? "wordmark" : "avatar"
+              mode: json.mode === "name" || json.mode === "none" ? json.mode : "logo"
             }
           : FALLBACK_BRAND;
         return nextBrand;
@@ -55,28 +57,19 @@ export default function StoreBrandIdentity() {
   }, []);
 
   if (!brand) return <div className="mt-3 min-h-20" data-store-brand />;
+  if (brand.mode === "none") return <div className="mt-1" data-store-brand data-brand-mode="none" />;
 
-  const showLogo = Boolean(brand.logoUrl && !imageFailed);
+  const showLogo = brand.mode === "logo" && Boolean(brand.logoUrl) && !imageFailed;
 
   return (
-    <div className="mt-3 flex min-h-20 items-center justify-center" data-store-brand>
-      {showLogo && brand.logoStyle === "wordmark" ? (
-        <div className="flex h-20 w-56 items-center justify-center px-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={brand.logoUrl!}
-            alt={`${brand.displayName} logo`}
-            className="max-h-16 max-w-full object-contain"
-            onError={() => setImageFailed(true)}
-          />
-        </div>
-      ) : showLogo ? (
+    <div className="mt-3 flex min-h-20 items-center justify-center" data-store-brand data-brand-mode={brand.mode}>
+      {showLogo ? (
         <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={brand.logoUrl!}
             alt={`${brand.displayName} logo`}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain p-1.5"
             onError={() => setImageFailed(true)}
           />
         </div>

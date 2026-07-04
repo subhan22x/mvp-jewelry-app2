@@ -29,7 +29,7 @@ export default function ThemeSettingsForm() {
         </p>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         {THEME_OPTIONS.map(option => {
           const active = theme === option.key;
           return (
@@ -37,18 +37,18 @@ export default function ThemeSettingsForm() {
               key={option.key}
               type="button"
               onClick={() => updateTheme(option.key)}
-              className={`rounded-2xl border p-4 text-left transition ${
+              className={`rounded-2xl border p-3 text-left transition sm:p-4 ${
                 active
                   ? "border-[#f7bc5f] bg-[#f7bc5f]/10 shadow-[0_0_24px_rgba(247,188,95,0.18)]"
                   : "border-white/10 bg-[#101114] hover:border-[#f7bc5f]/60"
               }`}
             >
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 sm:gap-2">
                 {option.colors.map(color => (
-                  <span key={color} className="h-7 w-7 rounded-full border border-white/10" style={{ backgroundColor: color }} />
+                  <span key={color} className="h-5 w-5 rounded-full border border-white/10 sm:h-7 sm:w-7" style={{ backgroundColor: color }} />
                 ))}
               </div>
-              <p className="mt-4 text-sm font-bold text-[#e1e2ec]">{option.label}</p>
+              <p className="mt-3 text-sm font-bold text-[#e1e2ec] sm:mt-4">{option.label}</p>
               <p className="mt-1 text-xs text-[#8c909f]">{option.description}</p>
             </button>
           );
