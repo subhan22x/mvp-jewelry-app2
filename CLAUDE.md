@@ -6,6 +6,8 @@ The product itself is documented in `README.md`. Read that first.
 
 The SaaS transition plan is documented in `SAAS_PRODUCT_MAP.md`. Use `Account` as the tenant name in new multi-tenant work; do not introduce parallel terms like workspace or tenant in code unless deliberately refactoring this decision.
 
+Structural refactoring work (deduplication, fail-open guards, schema consolidation, wizard-builder extraction) is specified in `CODE_STRUCTURE_REVIEW.md` — an agent-facing playbook with per-finding step-by-step instructions. If asked to clean up or refactor code structure, start there.
+
 ## Mental model
 
 The system has four editable surfaces, in increasing volatility:
@@ -181,7 +183,7 @@ If you add a new placeholder, update `builder.ts` and every template that uses i
 - **Don't expose advanced prompt knobs to the customer.** No `deviationStrength` slider, no "bubble outline" checkbox.
 - **Don't put long prompt text in TypeScript.** Templates are `.jsonp` for a reason.
 - **Don't replace YAML+templates with a `switch (styleId)`.**
-- **Do not treat demo-account resolution as production auth.** The MVP still seeds and resolves the demo account, but real authenticated account context is required before paid SaaS onboarding.
+- **Do not treat demo-account resolution as production auth.** The MVP still seeds and resolves the demo account, but real authenticated account context is required before paid SaaS onboarding. Concretely: `POST /api/requests` (and its sibling generation routes) fall back to `getDefaultAccountId()` when `accountSlug` is omitted, so a direct API caller can burn the default account's generation credits. Require the slug for public traffic before launch (see "Storefront Abuse Protection Findings" in `SAAS_PRODUCT_MAP.md`).
 - **Don't make `diamondQuality` a major prompt control.** Image models won't visually distinguish VS vs VVS reliably. Store it as metadata, use it lightly in prompt wording at most.
 - **Don't trust the `lib/styles/` re-export layer to stay.** It exists only because tsconfig path aliases aren't wired through; once they are, that folder gets deleted.
 - **Don't remove the `outputFileTracingExcludes` in `next.config.mjs`, and don't add an un-fallback'd `public/` filesystem read to the vvs-studio pipeline routes.** See "Deployment gotchas" below — either will re-break Vercel deploys.
