@@ -7,8 +7,13 @@ export const dynamic = "force-dynamic";
 const fallbackBrand = {
   displayName: "Flawless",
   logoUrl: "/landing/flawless-lettering-logo.png",
-  logoStyle: "wordmark"
+  mode: "logo"
 };
+
+function resolveMode(brandDisplayMode: string, logoUrl: string | null) {
+  const mode = brandDisplayMode === "name" || brandDisplayMode === "none" ? brandDisplayMode : "logo";
+  return mode === "logo" && !logoUrl ? "name" : mode;
+}
 
 export async function GET(req: Request) {
   const accountSlug = new URL(req.url).searchParams.get("accountSlug")?.trim();
@@ -20,6 +25,7 @@ export async function GET(req: Request) {
         name: true,
         logoUrl: true,
         status: true,
+        brandDisplayMode: true,
         StoreProfile: {
           select: { displayName: true, profileImageUrl: true, isPublished: true }
         }
@@ -28,20 +34,19 @@ export async function GET(req: Request) {
     if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) {
       return NextResponse.json({ error: "Store not found." }, { status: 404 });
     }
+    const logoUrl = account.StoreProfile.profileImageUrl || account.logoUrl;
+    const mode = resolveMode(account.brandDisplayMode, logoUrl);
     return NextResponse.json({
       displayName: account.StoreProfile.displayName || account.name,
-      logoUrl: account.StoreProfile.profileImageUrl || account.logoUrl
+      logoUrl: mode === "logo" ? logoUrl : null,
+      mode
     });
   }
 
   const owner = await getOwnerContext();
   if (!owner) return NextResponse.json(fallbackBrand);
   if (owner.role === "saas_admin") {
-    return NextResponse.json({
-      displayName: "Flawless",
-      logoUrl: "/landing/flawless-lettering-logo.png",
-      logoStyle: "wordmark"
-    });
+    return NextResponse.json(fallbackBrand);
   }
 
   const account = await prisma.account.findUnique({
@@ -49,13 +54,17 @@ export async function GET(req: Request) {
     select: {
       name: true,
       logoUrl: true,
+      brandDisplayMode: true,
       StoreProfile: { select: { displayName: true, profileImageUrl: true } }
     }
   });
   if (!account) return NextResponse.json(fallbackBrand);
 
+  const logoUrl = account.StoreProfile?.profileImageUrl || account.logoUrl;
+  const mode = resolveMode(account.brandDisplayMode, logoUrl);
   return NextResponse.json({
     displayName: account.StoreProfile?.displayName || account.name,
-    logoUrl: account.StoreProfile?.profileImageUrl || account.logoUrl
+    logoUrl: mode === "logo" ? logoUrl : null,
+    mode
   });
 }

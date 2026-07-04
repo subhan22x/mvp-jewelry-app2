@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/client";
 import { getNamePromptMode } from "@/src/lib/prompt-mode";
 import OwnerFrame from "../OwnerFrame";
 import PromptModeForm from "../PromptModeForm";
+import DesignWizardBrandingCard from "./DesignWizardBrandingCard";
 import StorefrontShareCard from "./StorefrontShareCard";
 import ThemeSettingsForm from "./ThemeSettingsForm";
 import VvsPipelineSettingsForm from "./VvsPipelineSettingsForm";
@@ -16,7 +17,13 @@ export default async function OwnerSettingsPage() {
     getNamePromptMode(owner.accountId),
     prisma.account.findUnique({
       where: { id: owner.accountId },
-      select: { slug: true, StoreProfile: { select: { isPublished: true } } }
+      select: {
+        slug: true,
+        name: true,
+        logoUrl: true,
+        brandDisplayMode: true,
+        StoreProfile: { select: { isPublished: true, displayName: true, profileImageUrl: true } }
+      }
     })
   ]);
 
@@ -31,6 +38,13 @@ export default async function OwnerSettingsPage() {
           <StorefrontShareCard
             accountSlug={account.slug}
             isPublished={account.StoreProfile?.isPublished ?? false}
+          />
+        )}
+        {account && (
+          <DesignWizardBrandingCard
+            displayName={account.StoreProfile?.displayName || account.name}
+            logoUrl={account.StoreProfile?.profileImageUrl || account.logoUrl}
+            initialMode={account.brandDisplayMode === "name" || account.brandDisplayMode === "none" ? account.brandDisplayMode : "logo"}
           />
         )}
         <ThemeSettingsForm />

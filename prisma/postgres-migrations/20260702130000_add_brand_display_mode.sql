@@ -1,0 +1,1 @@
+ALTER TABLE "Account" ADD COLUMN IF NOT EXISTS "brandDisplayMode" TEXT NOT NULL DEFAULT 'logo';
