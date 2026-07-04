@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/server/db/client";
 import ReviewForm from "./ReviewForm";
+import { requirePublicTenantPage } from "@/src/lib/tenant-page";
 
 export const dynamic = "force-dynamic";
 
@@ -10,24 +11,23 @@ type PageProps = {
 
 export default async function PublicReviewPage({ params }: PageProps) {
   const { accountSlug } = await params;
+  const tenant = await requirePublicTenantPage(accountSlug);
   const account = await prisma.account.findUnique({
-    where: { slug: accountSlug },
+    where: { slug: tenant.accountSlug },
     select: {
       slug: true,
       name: true,
-      status: true,
       StoreProfile: {
         select: {
           displayName: true,
           profileImageUrl: true,
-          isPublished: true,
         },
       },
     },
   });
-  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) notFound();
+  if (!account?.StoreProfile) notFound();
 
-  const displayName = account.StoreProfile.displayName || account.name;
+  const displayName = tenant.displayName;
 
   return (
     <main className="min-h-screen bg-[#151311] text-[#F5F0E8]">

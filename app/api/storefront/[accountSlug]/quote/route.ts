@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
+import { resolvePublicTenantAccess } from "@/src/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,15 @@ function jsonError(message: string, status = 400) {
 
 export async function POST(req: Request, { params }: { params: Promise<{ accountSlug: string }> }) {
   const { accountSlug } = await params;
+  const access = await resolvePublicTenantAccess(accountSlug);
+  if (access.status === "access_denied") return jsonError("Storefront access is denied.", 403);
+  if (access.status !== "ok") return jsonError("Store profile not found.", 404);
+
   const account = await prisma.account.findUnique({
-    where: { slug: accountSlug },
+    where: { id: access.tenant.accountId },
     include: { StoreProfile: true }
   });
-  if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) return jsonError("Store profile not found.", 404);
+  if (!account?.StoreProfile) return jsonError("Store profile not found.", 404);
 
   const form = await req.formData();
   const parsed = quoteSchema.safeParse({
