@@ -1,24 +1,61 @@
-import { getNamePromptMode } from "@/src/lib/prompt-mode";
-import PromptModeForm from "../PromptModeForm";
-import OwnerFrame from "../OwnerFrame";
+import { prisma } from "@/server/db/client";
+import { evaluateAccountEntitlement } from "@/src/lib/billing/entitlements";
+import { BILLING_PLANS } from "@/src/lib/billing/plans";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
+import { getMonthlyUsageSummary } from "@/src/lib/usage";
+import OwnerFrame from "../OwnerFrame";
+import AccountPageContent from "./AccountPageContent";
 
 export const dynamic = "force-dynamic";
 
-export default async function OwnerAccountPage() {
+export default async function OwnerAccountPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ billing?: string }>;
+}) {
   const owner = await requireOwnerContext();
-  const promptMode = await getNamePromptMode(owner.accountId);
+  const [account, usage, params] = await Promise.all([
+    prisma.account.findUnique({
+      where: { id: owner.accountId },
+      select: {
+        id: true,
+        status: true,
+        stripeCustomerId: true,
+        subscriptionStatus: true,
+        subscriptionPlanKey: true,
+        subscriptionCurrentPeriodEnd: true,
+        trialEndsAt: true,
+        cancelAtPeriodEnd: true,
+        billingIssueStartedAt: true,
+      },
+    }),
+    Promise.all([
+      getMonthlyUsageSummary(owner.accountId, "quote_responded"),
+      getMonthlyUsageSummary(owner.accountId, "vvs_product_post_generated"),
+    ]),
+    searchParams ?? Promise.resolve({} as { billing?: string }),
+  ]);
+
+  if (!account) throw new Error("Account not found.");
+
+  const billingMessage = params.billing === "success"
+    ? "Checkout completed. Stripe will confirm your subscription by webhook."
+    : params.billing === "cancelled"
+      ? "Checkout was cancelled. Start the Basic trial when you are ready."
+      : null;
 
   return (
-    <OwnerFrame active="Settings">
-      <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-8 px-4 md:px-6">
-        <section className="min-w-0">
-          <h1 className="mt-3 text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Account</h1>
-          <p className="mt-2 text-[15px] text-[#c2c6d6]">Manage owner-level settings for the admin panel.</p>
-        </section>
-
-        <PromptModeForm initialMode={promptMode} />
-      </div>
+    <OwnerFrame active="Account">
+      <AccountPageContent
+        billingMessage={billingMessage}
+        entitlement={evaluateAccountEntitlement(account)}
+        activePlanKey={account.subscriptionPlanKey ?? "basic"}
+        trialEndsAt={account.trialEndsAt}
+        subscriptionCurrentPeriodEnd={account.subscriptionCurrentPeriodEnd}
+        stripeCustomerId={account.stripeCustomerId}
+        usage={[usage[0], usage[1]]}
+        plans={BILLING_PLANS}
+      />
     </OwnerFrame>
   );
 }

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 
-type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings";
+type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings" | "account";
 
 const ownerNav = [
   { label: "Quotes", href: "/owner", icon: "quotes" },
   { label: "Design", href: "/owner/design", icon: "design" },
   { label: "Studio", href: "/owner/vvs-studio", icon: "vvs" },
+  { label: "Account", href: "/owner/account", icon: "account" },
   { label: "Settings", href: "/owner/settings", icon: "settings" }
 ] satisfies Array<{ label: string; href: string; icon: OwnerNavIcon }>;
 
@@ -51,6 +52,13 @@ function NavIcon({ icon }: { icon: OwnerNavIcon }) {
         <>
           <path {...common} d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
           <path {...common} d="M19 12a7.7 7.7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" />
+        </>
+      )}
+      {icon === "account" && (
+        <>
+          <path {...common} d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
+          <path {...common} d="M7.5 10h4.5M7.5 14h8.5" />
+          <path {...common} d="M16.5 9.5h.01" />
         </>
       )}
     </svg>
