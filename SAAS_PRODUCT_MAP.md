@@ -22,7 +22,10 @@ Generated images, videos, prompts, and system behavior are owned/controlled by t
 - Tenant routing: path-based for beta, such as `/a/:accountSlug` or `/s/:accountSlug`.
 - Prompt/model control: SaaS admin only. Store owners do not edit prompts.
 - Messaging: real email and/or SMS quote follow-up is in scope.
-- Plan details are intentionally deferred. Build billing hooks without hardcoding tiers/prices yet.
+- Plan names for v1 are `Basic`, `Value`, and `Bundle`; only `Basic` is purchasable in the first billing launch.
+- The free trial is 7 days and requires a card through Stripe Checkout before the trial starts.
+- Failed subscription payment gets a 2-day owner-dashboard grace period with a payment-failed banner.
+- Accounts without active entitlement should not expose the public storefront; public account routes show an access-denied page instead.
 
 ## Target Product Surface
 
@@ -116,7 +119,7 @@ Billing behavior to implement before launch:
 - Stripe webhooks are the source of truth for subscription status.
 - Store owners can open Stripe checkout or billing portal from their account page.
 - SaaS admin can see each account's subscription status.
-- Exact plans and prices are TBD and should not be hardcoded yet.
+- Basic, Value, and Bundle are the named tiers. Only Basic is active for v1; exact limits/prices for the later tiers are still TBD.
 
 Usage behavior to implement before launch:
 
@@ -220,6 +223,19 @@ These items make the product durable after beta.
 17. Backup and restore testing.
 18. Prompt/model versioning.
 19. Support impersonation with audit logs.
+
+### Storefront Abuse Protection Findings (2026-07-02)
+
+The public design wizard (`/s/:slug/design`) is intentionally unauthenticated, so generation cost abuse is the primary threat. Assessment of the current state and the layered plan, in priority order:
+
+- **Already in place:** per-account monthly usage buckets (`src/lib/usage.ts`) are checked before generation and consumed after, with idempotent crediting. Worst case today is exhausting one store's monthly quota, not unbounded spend.
+- **Gap — demo fallback:** `accountSlug` is optional on `POST /api/requests` and falls back to `getDefaultAccountId()`. A direct API caller who omits the slug burns the default account's credits. Require the slug for public traffic before launch.
+- **Layer 1 — per-IP rate limiting on generation endpoints** (`/api/requests`, `/api/*-requests`, storefront quote/review POSTs). None exists today. Cheapest path on Vercel: WAF rate-limit rule (no code); code path: Upstash Redis sliding window (~5 generations/hour/IP). Never rate-limit browsing.
+- **Layer 2 — invisible bot check on the generate action only** (Vercel BotID or Cloudflare Turnstile). No friction for QR-scan customers; blocks scripted farms rotating IPs.
+- **Layer 3 — provider-side budget caps** on the Gemini and Wavespeed accounts. The true worst-case ceiling.
+- **Layer 4 — upload hygiene:** the storefront quote route caps at 6 files; verify `savePublicUpload` enforces size + MIME limits. Cap the wizard `text` field length (it flows into prompts).
+- **Accepted for now:** unverified `Lead` rows (junk phone numbers) — volume is covered by rate limiting; add owner-side spam marking later rather than customer friction. Provider error messages pass through to clients (mild info leak; sanitize eventually).
+- **Slug permanence:** printed QR codes break if the slug changes. Treat the slug as immutable once published, or add old-slug redirects (see open questions 8–9).
 
 ## Open Questions To Decide Before Launch
 

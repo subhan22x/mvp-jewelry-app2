@@ -119,11 +119,13 @@ The polished store-owner dashboard lives at `/owner`. It is request- and quote-c
 - Visible owner navigation is intentionally limited to Quotes (`/owner`), Design (`/owner/design`), Studio (`/owner/vvs-studio`), and Settings (`/owner/settings`) for the MVP.
 - `/owner/profile`, `/owner/collections`, and `/owner/reviews` remain available by direct URL for internal/admin use, but are hidden from normal owner navigation.
 - `/owner/profile` edits the stored storefront profile, profile image, phone, Instagram handle, website, city/country location, and two extra public links. It also exposes copy/share controls for `/s/:slug` and the QR design URL `/s/:slug/design`.
+- `/owner/settings` includes a "Your design wizard link" share card: the persistent public URL `/s/:slug/design` with a copy button, an on-screen QR code, and a downloadable 1024px QR PNG for print. The QR is generated client-side (`qrcode` package); the link never leaves the browser. If the storefront is unpublished, the card warns the owner and links to `/owner/profile` to publish first.
 - The profile editor uses a country-aware phone input and best-effort verifier icons for Instagram, Website, and extra links.
 - `/owner/collections` manages product pieces by fixed categories. Draft pieces use `Product.isActive = false`; published pieces remain stored for the future storefront.
 - `/owner/reviews` shows persisted `StoreReview` rows, filters/searches reviews, and includes a request-review pane for sharing `/s/:slug/review`.
 - During the MVP, `/s/:slug` redirects customers into `/s/:slug/design`. `/s/:slug/design` is the public QR entrypoint and keeps generated requests, leads, quotes, and usage tied to the store account. `/s/:slug/review` and `/s/:slug/quote` remain directly accessible.
 - The Prompt System control now lives on `/owner/account` and switches new name generations between `json` and `natural_language` prompt modes.
+- `/owner/account` also shows account status, the current subscription plan, free-trial state, Stripe Checkout for the Basic plan, and the Stripe billing portal when a customer is linked.
 - `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
 ## Vercel deployment
@@ -196,6 +198,12 @@ Generated files are served through `/generated/:file` during local development. 
 | `R2_BUCKET_NAME`       | (required in production)            | R2 bucket for generated media. |
 | `R2_ENDPOINT`          | derived from `R2_ACCOUNT_ID`         | Optional explicit R2 S3 endpoint. |
 | `R2_PUBLIC_BASE_URL`   | (required for R2)                    | Public base URL or custom domain for R2 objects. |
+| `STRIPE_SECRET_KEY`    | (required for billing)               | Server-side Stripe secret key used for Checkout, Portal, and webhook processing. |
+| `STRIPE_WEBHOOK_SECRET` | (required for billing webhooks)     | Signing secret for `/api/billing/webhook`. |
+| `STRIPE_PRICE_BASIC`   | (required for v1 billing)            | Stripe Price ID for the Basic subscription. |
+| `STRIPE_PRICE_VALUE`   | empty                                | Reserved Stripe Price ID for the future Value plan. |
+| `STRIPE_PRICE_BUNDLE`  | empty                                | Reserved Stripe Price ID for the future Bundle plan. |
+| `STRIPE_TRIAL_DAYS`    | `7`                                  | Free-trial length used when creating the first Stripe subscription through Checkout. |
 
 ## npm scripts
 
