@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
+import { resolvePublicTenantAccess } from "@/src/lib/tenant";
 
 type Ctx = { params: Promise<{ accountSlug: string }> };
 
@@ -23,11 +24,19 @@ function optional(value?: string) {
 export async function POST(req: Request, { params }: Ctx) {
   const { accountSlug } = await params;
   try {
+    const access = await resolvePublicTenantAccess(accountSlug);
+    if (access.status === "access_denied") {
+      return NextResponse.json({ error: "Storefront access is denied." }, { status: 403 });
+    }
+    if (access.status !== "ok") {
+      return NextResponse.json({ error: "Store profile not found." }, { status: 404 });
+    }
+
     const account = await prisma.account.findUnique({
-      where: { slug: accountSlug },
-      select: { id: true, status: true, StoreProfile: { select: { isPublished: true } } },
+      where: { id: access.tenant.accountId },
+      select: { id: true, StoreProfile: { select: { isPublished: true } } },
     });
-    if (!account || account.status !== "active" || !account.StoreProfile?.isPublished) {
+    if (!account?.StoreProfile?.isPublished) {
       return NextResponse.json({ error: "Store profile not found." }, { status: 404 });
     }
 
