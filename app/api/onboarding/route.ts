@@ -91,6 +91,8 @@ export async function POST(req: Request) {
         logoUrl,
         themeKey: "classic_black_gold",
         status: "active",
+        subscriptionPlanKey: "basic",
+        subscriptionStatus: "incomplete",
         StoreProfile: {
           create: {
             displayName: body.businessName,

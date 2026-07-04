@@ -77,13 +77,21 @@ try {
     where: { slug: accountSlug },
     update: {
       name: storeName,
-      status: "active"
+      status: "active",
+      subscriptionPlanKey: "basic",
+      subscriptionStatus: "trialing",
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      hasUsedTrial: true
     },
     create: {
       id: crypto.randomUUID(),
       name: storeName,
       slug: accountSlug,
-      status: "active"
+      status: "active",
+      subscriptionPlanKey: "basic",
+      subscriptionStatus: "trialing",
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      hasUsedTrial: true
     }
   });
 

@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
+import { assertAccountCanUsePaidFeatures, billingErrorResponse } from "@/src/lib/billing/entitlements";
+import { BASIC_USAGE_LIMITS } from "@/src/lib/billing/plans";
 
 export const USAGE_KINDS = [
   "design_image_generated",
@@ -15,17 +17,7 @@ export const USAGE_KINDS = [
 
 export type UsageKind = (typeof USAGE_KINDS)[number];
 
-const DEFAULT_MONTHLY_LIMITS: Record<UsageKind, number> = {
-  design_image_generated: 100,
-  design_video_generated: 20,
-  design_3d_generated: 20,
-  quote_requested: 250,
-  quote_responded: 250,
-  quote_fulfilled: 250,
-  vvs_video_generated: 20,
-  vvs_product_post_generated: 50,
-  vvs_product_post_fulfilled: 50,
-};
+const DEFAULT_MONTHLY_LIMITS: Record<UsageKind, number> = BASIC_USAGE_LIMITS;
 
 export class UsageLimitError extends Error {
   status = 402;
@@ -103,6 +95,8 @@ export async function getMonthlyUsageSummary(accountId: string, kind: UsageKind)
 }
 
 export async function ensureUsageAvailable(accountId: string, kind: UsageKind, quantity = 1) {
+  await assertAccountCanUsePaidFeatures(accountId);
+
   if (!("accountUsageBucket" in prisma)) {
     return { accountId, kind, included: DEFAULT_MONTHLY_LIMITS[kind], used: 0 };
   }
@@ -195,6 +189,9 @@ export async function consumeUsageCredit({
 }
 
 export function usageErrorResponse(error: unknown) {
+  const billing = billingErrorResponse(error);
+  if (billing) return billing;
+
   if (error instanceof UsageLimitError) {
     return {
       error: error.message,

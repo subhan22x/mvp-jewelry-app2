@@ -27,11 +27,21 @@ model Account {
   name                 String
   slug                 String              @unique
   logoUrl              String?
+  brandDisplayMode     String              @default("logo") // logo | name | none — what the design wizard header shows
   themeKey             String              @default("classic_black_gold")
   status               String              @default("active") // active | disabled | canceled
   stripeCustomerId     String?             @unique
   stripeSubscriptionId String?             @unique
   subscriptionStatus   String?
+  subscriptionPlanKey  String?
+  stripePriceId        String?
+  stripeProductId      String?
+  subscriptionCurrentPeriodEnd DateTime?
+  trialEndsAt          DateTime?
+  cancelAtPeriodEnd    Boolean             @default(false)
+  billingIssueStartedAt DateTime?
+  billingUpdatedAt     DateTime?
+  hasUsedTrial         Boolean             @default(false)
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   Memberships          AccountMembership[]
@@ -59,6 +69,18 @@ model Account {
   GenerationLabCases        GenerationLabCase[]
   GenerationLabReviews      GenerationLabResultReview[]
   GenerationLabPromptOverrides GenerationLabPromptOverride[]
+}
+
+model StripeWebhookEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  type          String
+  accountId     String?
+  payloadJson   String?
+  processedAt   DateTime @default(now())
+
+  @@index([accountId, processedAt])
+  @@index([type, processedAt])
 }
 
 model AccountMembership {
