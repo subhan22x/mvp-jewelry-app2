@@ -1,6 +1,8 @@
+import { prisma } from "@/server/db/client";
 import { getNamePromptMode } from "@/src/lib/prompt-mode";
 import OwnerFrame from "../OwnerFrame";
 import PromptModeForm from "../PromptModeForm";
+import StorefrontShareCard from "./StorefrontShareCard";
 import ThemeSettingsForm from "./ThemeSettingsForm";
 import VvsPipelineSettingsForm from "./VvsPipelineSettingsForm";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
@@ -10,7 +12,13 @@ export const dynamic = "force-dynamic";
 
 export default async function OwnerSettingsPage() {
   const owner = await requireOwnerContext();
-  const promptMode = await getNamePromptMode(owner.accountId);
+  const [promptMode, account] = await Promise.all([
+    getNamePromptMode(owner.accountId),
+    prisma.account.findUnique({
+      where: { id: owner.accountId },
+      select: { slug: true, StoreProfile: { select: { isPublished: true } } }
+    })
+  ]);
 
   return (
     <OwnerFrame active="Settings">
@@ -19,6 +27,12 @@ export default async function OwnerSettingsPage() {
           <h1 className="text-[32px] font-bold tracking-tight text-[#e1e2ec] md:text-4xl">Settings</h1>
           <p className="mt-2 text-[15px] text-[#c2c6d6]">Account preferences, prompt mode, and operational controls.</p>
         </section>
+        {account && (
+          <StorefrontShareCard
+            accountSlug={account.slug}
+            isPublished={account.StoreProfile?.isPublished ?? false}
+          />
+        )}
         <ThemeSettingsForm />
         <VvsPipelineSettingsForm enabled={canManageVvsPipelineSettings(owner.email)} />
         <PromptModeForm initialMode={promptMode} />
