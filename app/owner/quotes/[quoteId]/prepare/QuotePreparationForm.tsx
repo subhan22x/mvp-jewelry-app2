@@ -166,19 +166,19 @@ export default function QuotePreparationForm({
           </label>
           {deliveryOption === "custom" ? <input value={customDelivery} onChange={event => setCustomDelivery(event.target.value)} placeholder="Custom delivery timeline" className="h-10 rounded-2xl border border-white/10 bg-black/45 px-3 text-sm text-white md:h-12 md:px-4 md:text-base" /> : null}
           <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Material
+            <label className="min-w-0 grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Material
               <select value={material} onChange={event => setMaterial(event.target.value)} className="h-10 min-w-0 rounded-2xl border border-white/10 bg-black/45 px-3 text-sm normal-case tracking-normal text-white md:h-12 md:px-4 md:text-base"><option value="">Select</option>{MATERIAL_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
             </label>
-            <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Gold karat
+            <label className="min-w-0 grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Gold karat
               <select value={karat} onChange={event => setKarat(event.target.value)} disabled={material !== "gold"} className="h-10 min-w-0 rounded-2xl border border-white/10 bg-black/45 px-3 text-sm normal-case tracking-normal text-white disabled:opacity-40 md:h-12 md:px-4 md:text-base"><option value="">Select</option>{["10k", "14k", "18k"].map(value => <option key={value}>{value.toUpperCase()}</option>)}</select>
             </label>
           </div>
           <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Stone
+            <label className="min-w-0 grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Stone
               <select value={stone} onChange={event => setStone(event.target.value)} className="h-10 min-w-0 rounded-2xl border border-white/10 bg-black/45 px-3 text-sm normal-case tracking-normal text-white md:h-12 md:px-4 md:text-base"><option value="">Select</option>{STONE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
             </label>
-            <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Price
-              <div className="flex h-10 items-center rounded-2xl border border-white/10 bg-black/45 px-3 md:h-12 md:px-4"><span className="text-white/45">$</span><input required type="number" min="0" step="0.01" value={price} onChange={event => setPrice(event.target.value)} className="min-w-0 flex-1 bg-transparent px-1.5 text-sm font-normal tracking-normal text-white outline-none md:px-2 md:text-base" /></div>
+            <label className="min-w-0 grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Price
+              <div className="flex min-w-0 w-full h-10 items-center rounded-2xl border border-white/10 bg-black/45 px-3 md:h-12 md:px-4"><span className="shrink-0 text-white/45">$</span><input required type="number" min="0" step="0.01" value={price} onChange={event => setPrice(event.target.value)} className="min-w-0 w-full flex-1 bg-transparent px-1.5 text-sm font-normal tracking-normal text-white outline-none md:px-2 md:text-base" /></div>
             </label>
           </div>
           <label className="grid gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8c909f] md:gap-2 md:text-xs">Message
