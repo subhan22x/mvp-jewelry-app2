@@ -16,6 +16,7 @@ const Body = z.object({
 export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
+    const { accountSlug, ...leadData } = body;
     const request = body.requestId
       ? await prisma.request.findUnique({ where: { id: body.requestId }, select: { accountId: true } })
       : null;
@@ -23,9 +24,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Request not found." }, { status: 404 });
     }
     const accountId = request?.accountId
-      ?? await resolveAccountIdFromSlug(body.accountSlug)
+      ?? await resolveAccountIdFromSlug(accountSlug)
       ?? getDefaultAccountId();
-    const lead = await prisma.lead.create({ data: { ...body, accountId } });
+    const lead = await prisma.lead.create({ data: { ...leadData, accountId } });
     if (lead.requestId) {
       await ensureDraftQuoteForRequest(lead.requestId).catch(error => {
         console.error(`[quote draft ${lead.requestId}] automatic creation failed:`, error);
