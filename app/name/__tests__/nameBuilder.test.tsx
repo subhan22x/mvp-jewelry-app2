@@ -154,6 +154,10 @@ async function type(user: ReturnType<typeof userEvent.setup>, el: HTMLElement, t
   await act(async () => { await user.type(el, text); });
 }
 
+function getGenerateButton() {
+  return screen.getByRole("button", { name: /^generate$/i });
+}
+
 // Navigation helpers
 async function toStep1(user: ReturnType<typeof userEvent.setup>, name = "Aurora") {
   await type(user, screen.getByPlaceholderText(/text on pendant/i), name);
@@ -187,7 +191,7 @@ async function toStep4(user: ReturnType<typeof userEvent.setup>) {
   await toStep2(user);
   mockPostSuccess();
   mockGetSuccess(); // first immediate poll returns all 2 with done:true
-  await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+  await tap(user, getGenerateButton());
   await submitLeadForm(user);
   await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2));
 }
@@ -222,6 +226,17 @@ describe("Step 0 — Name & Style", () => {
     await type(user, input, "Aurora");
     await act(async () => { await user.clear(input); });
     expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
+  });
+
+  it("limits each name line to 24 characters", async () => {
+    const { user } = await setup();
+    const input = screen.getByPlaceholderText(/text on pendant/i);
+    const maximumName = "A".repeat(24);
+
+    await type(user, input, `${maximumName}B`);
+
+    expect(input).toHaveValue(maximumName);
+    expect(input).toHaveAttribute("maxLength", "24");
   });
 
   it("adds a second line and hides the add button at max (2)", async () => {
@@ -380,7 +395,7 @@ describe("Step 1 — Emblem & Gold", () => {
     await toStep1(user);
     await tap(user, screen.getByRole("button", { name: /crown/i }));
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(getGenerateButton()).toBeInTheDocument();
   });
 
   it("shows a warning below next when emblem is enabled but none is selected", async () => {
@@ -389,7 +404,7 @@ describe("Step 1 — Emblem & Gold", () => {
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
 
     expect(screen.getByText(/please select an emblem before continuing/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^accept$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^generate$/i })).not.toBeInTheDocument();
   });
 
   it("clears the warning after selecting an emblem", async () => {
@@ -408,7 +423,7 @@ describe("Step 1 — Emblem & Gold", () => {
     await tap(user, screen.getByLabelText(/toggle emblem/i));
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
 
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(getGenerateButton()).toBeInTheDocument();
     expect(screen.queryByText(/please select an emblem before continuing/i)).not.toBeInTheDocument();
   });
 
@@ -490,12 +505,12 @@ describe("Step 2 — Review", () => {
     expect((screen.getByPlaceholderText(/text on pendant/i) as HTMLInputElement).value).toBe("Aurora");
   });
 
-  it("accept button sends POST to /api/requests and transitions to step 4", async () => {
+  it("generate button sends POST to /api/requests and transitions to step 4", async () => {
     const { user } = await setup();
     await toStep2(user);
     mockPostSuccess();
     mockGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await submitLeadForm(user);
     await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2));
     expect(mockFetch).toHaveBeenCalledWith(
@@ -504,7 +519,7 @@ describe("Step 2 — Review", () => {
     );
   });
 
-  it("plain accept sends plain fields to /api/requests", async () => {
+  it("plain generate sends plain fields to /api/requests", async () => {
     const { user } = await setup({ mode: "plain" });
     await toPlainStep1(user);
     await tap(user, screen.getAllByRole("button", { name: /^silver$/i })[0]);
@@ -514,7 +529,7 @@ describe("Step 2 — Review", () => {
     await tap(user, screen.getByRole("button", { name: /^next$/i }));
     mockPostSuccess();
     mockGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await submitLeadForm(user);
 
     const postCall = mockFetch.mock.calls.find(([url, init]) => url === "/api/requests" && init?.method === "POST");
@@ -533,21 +548,21 @@ describe("Step 2 — Review", () => {
     const { user } = await setup();
     await toStep2(user);
     mockPostError("Gemini unavailable");
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await waitFor(() => expect(screen.getByText(/gemini unavailable/i)).toBeInTheDocument());
-    // Still on step 2 — accept button still present
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    // Still on step 2 — generate button still present
+    expect(getGenerateButton()).toBeInTheDocument();
   });
 
   it("can retry after a POST error", async () => {
     const { user } = await setup();
     await toStep2(user);
     mockPostError();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await waitFor(() => screen.getByText(/gemini unavailable/i));
     mockPostSuccess();
     mockGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await submitLeadForm(user);
     await waitFor(() => expect(screen.getAllByRole("button", { name: /^draft \d$/i })).toHaveLength(2));
     expect(mockFetch).toHaveBeenCalledTimes(4); // 2 × POST + 1 × GET + 1 × leads
@@ -561,7 +576,7 @@ describe("Lead capture modal", () => {
     await toStep2(user);
     mockPostSuccess();
     mockFetch.mockReturnValueOnce(new Promise(() => {})); // GET never resolves
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await waitFor(() =>
       expect(screen.getByRole("dialog", { name: /to continue/i })).toBeInTheDocument()
     );
@@ -572,7 +587,7 @@ describe("Lead capture modal", () => {
     await toStep2(user);
     mockPostSuccess();
     mockFetch.mockReturnValueOnce(new Promise(() => {}));
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     const dialog = await screen.findByRole("dialog", { name: /to continue/i });
     await act(async () => { await user.click(dialog); });
     expect(dialog).toBeInTheDocument();
@@ -583,7 +598,7 @@ describe("Lead capture modal", () => {
     await toStep2(user);
     mockPostSuccess();
     mockGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     const dialog = await screen.findByRole("dialog", { name: /to continue/i });
     await type(user, screen.getByLabelText(/^name$/i), "Test User");
     await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
@@ -598,7 +613,7 @@ describe("Lead capture modal", () => {
     await toStep2(user);
     mockPostSuccess();
     mockGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await screen.findByRole("dialog", { name: /to continue/i });
     await type(user, screen.getByLabelText(/^name$/i), "Test User");
     await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
@@ -615,7 +630,7 @@ describe("Lead capture modal", () => {
     await toStep2(user);
     mockPostSuccess();
     mockGetSuccess();
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await screen.findByRole("dialog", { name: /to continue/i });
     await type(user, screen.getByLabelText(/^name$/i), "Test User");
     await type(user, screen.getByPlaceholderText(/phone number/i), "5555551234");
@@ -633,24 +648,24 @@ describe("Lead capture modal", () => {
     await toStep2(user);
     mockPostSuccess();
     mockFetch.mockReturnValueOnce(new Promise(() => {}));
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await screen.findByRole("dialog", { name: /to continue/i });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await tap(user, screen.getAllByRole("button", { name: /^back$/i })[0]);
     expect(screen.queryByRole("dialog", { name: /to continue/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(getGenerateButton()).toBeInTheDocument();
   });
 });
 
 // ---------------------------------------------------------------------------
 describe("Step 4 — Progressive loading & Results", () => {
-  it("shows skeletons for pending tiles immediately after accept", async () => {
+  it("shows skeletons for pending tiles immediately after generate", async () => {
     const { user } = await setup();
     await toStep2(user);
     // POST resolves, but GET never resolves — tiles should be skeletons
     mockPostSuccess();
     mockFetch.mockReturnValueOnce(new Promise(() => {})); // pending GET
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await waitFor(() => expect(screen.getByText(/drafting your designs/i)).toBeInTheDocument());
     expect(screen.queryAllByRole("button", { name: /^draft \d$/i })).toHaveLength(0);
   });
@@ -685,7 +700,7 @@ describe("Step 4 — Progressive loading & Results", () => {
         done: false
       })
     });
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await waitFor(() => screen.getByText(/1 of 2 generated/i));
   });
 
@@ -694,7 +709,7 @@ describe("Step 4 — Progressive loading & Results", () => {
     await toStep2(user);
     mockPostSuccess();
     mockGetFailed("Provider failed after 1.25 seconds");
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await submitLeadForm(user);
     await waitFor(() => expect(screen.queryByText(/drafting your designs/i)).not.toBeInTheDocument());
     expect(screen.getByText(/provider failed after 1\.25 seconds/i)).toBeInTheDocument();
@@ -821,7 +836,7 @@ describe("Step 4 — Progressive loading & Results", () => {
     await toStep4(user);
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await tap(user, screen.getAllByRole("button", { name: /^back$/i })[0]);
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(getGenerateButton()).toBeInTheDocument();
   });
 
   it("global back cancels in-flight polling so it cannot re-navigate to step 4", async () => {
@@ -830,13 +845,13 @@ describe("Step 4 — Progressive loading & Results", () => {
     mockPostSuccess();
     let resolveGet!: (v: unknown) => void;
     mockFetch.mockReturnValueOnce(new Promise(r => { resolveGet = r; }));
-    await tap(user, screen.getByRole("button", { name: /^accept$/i }));
+    await tap(user, getGenerateButton());
     await waitFor(() => screen.getByText(/drafting your designs/i));
 
     // Navigate back before GET resolves
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await tap(user, screen.getAllByRole("button", { name: /^back$/i })[0]);
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(getGenerateButton()).toBeInTheDocument();
 
     // Resolve the pending GET — must NOT jump us to step 4
     await act(async () => {
@@ -851,7 +866,7 @@ describe("Step 4 — Progressive loading & Results", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const backButtons = screen.getAllByRole("button", { name: /^back$/i });
     await tap(user, backButtons[backButtons.length - 1]);
-    expect(screen.getByRole("button", { name: /^accept$/i })).toBeInTheDocument();
+    expect(getGenerateButton()).toBeInTheDocument();
   });
 });
 

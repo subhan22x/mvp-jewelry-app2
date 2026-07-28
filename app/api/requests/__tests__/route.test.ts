@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  accountFindUnique: vi.fn(),
   requestCreate: vi.fn(),
   requestFindUnique: vi.fn(),
   resultCreate: vi.fn(),
@@ -11,6 +12,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/db/client", () => ({
   prisma: {
+    account: {
+      findUnique: mocks.accountFindUnique
+    },
     request: {
       create: mocks.requestCreate,
       findUnique: mocks.requestFindUnique
@@ -50,6 +54,17 @@ describe("/api/requests", () => {
     vi.setSystemTime(new Date("2026-05-01T12:00:00.000Z"));
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mocks.accountFindUnique.mockResolvedValue({
+      id: "demo-account",
+      status: "active",
+      subscriptionStatus: null,
+      subscriptionPlanKey: null,
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      billingIssueStartedAt: null
+    });
 
     mocks.requestCreate.mockResolvedValue({ id: "req-test" });
     mocks.resultCreate.mockImplementation(({ data }) =>
@@ -95,6 +110,7 @@ describe("/api/requests", () => {
     expect(mocks.resultCreate).toHaveBeenCalledTimes(2);
     expect(mocks.resultCreate).toHaveBeenNthCalledWith(1, {
       data: expect.objectContaining({
+        accountId: "demo-account",
         requestId: "req-test",
         variant: 1,
         prompt: "prompt 1",
@@ -178,6 +194,7 @@ describe("/api/requests", () => {
     expect(response.status).toBe(201);
     expect(mocks.requestCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        accountId: "demo-account",
         pendantFinish: "plain",
         styleId: "plain_style_1",
         primaryMetal: "rose_gold",
@@ -255,6 +272,7 @@ describe("/api/requests", () => {
     expect(response.status).toBe(201);
     expect(mocks.requestCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        accountId: "demo-account",
         plainMetal: "gold_plated",
         plainKarat: null,
         plainChain: "cable"
