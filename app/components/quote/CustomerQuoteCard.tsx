@@ -103,11 +103,11 @@ export default function CustomerQuoteCard({
           </div>
         ) : null}
 
-        <div className="rounded-[1.35rem] border-2 border-[#d7bd75] px-5 py-6 text-center md:px-7 md:py-8">
-          <p className="font-[family-name:var(--font-archivo-narrow)] text-lg font-bold uppercase leading-none text-[#d7bd75] md:text-2xl">
+        <div className="relative isolate overflow-hidden rounded-[1.35rem] border border-[#f3c66f]/45 bg-[linear-gradient(145deg,rgba(177,119,47,0.38)_0%,rgba(111,78,40,0.44)_42%,rgba(71,57,42,0.54)_100%)] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,236,190,0.42),inset_0_-1px_0_rgba(0,0,0,0.28),0_14px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,214,145,0.22),transparent_43%)] before:content-[''] after:pointer-events-none after:absolute after:left-8 after:right-8 after:top-px after:h-px after:bg-gradient-to-r after:from-transparent after:via-[#ffe2a6]/65 after:to-transparent after:content-[''] md:px-7 md:py-5">
+          <p className="relative z-10 font-[family-name:var(--font-archivo-narrow)] text-sm font-bold uppercase leading-none tracking-[0.08em] text-[#efbd61] md:text-base">
             Estimated cost
           </p>
-          <p className="mt-4 break-words font-[family-name:var(--font-boldonse)] text-[2.75rem] leading-none tracking-[-0.07em] text-[#d7bd75] md:mt-5 md:text-[4.25rem]">
+          <p className="relative z-10 mt-3 break-words pb-1 font-[family-name:var(--font-boldonse)] text-[2.75rem] leading-[1.18] tracking-[0.13em] text-[#f0aa45] drop-shadow-[0_2px_1px_rgba(41,25,9,0.36)] md:mt-4 md:text-[3.75rem]">
             {estimatedCost}
           </p>
         </div>
