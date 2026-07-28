@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  accountFindUnique: vi.fn(),
   requestFindUnique: vi.fn(),
   videoCreate: vi.fn(),
   videoFindUnique: vi.fn(),
@@ -12,6 +13,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/db/client", () => ({
   prisma: {
+    account: {
+      findUnique: mocks.accountFindUnique
+    },
     request: {
       findUnique: mocks.requestFindUnique
     },
@@ -46,9 +50,21 @@ describe("/api/videos", () => {
     process.env.VIDEO_ACCESS_CODE = "ID8";
     process.env.APP_BASE_URL = "https://pendant.example.com";
 
+    mocks.accountFindUnique.mockResolvedValue({
+      id: "demo-account",
+      status: "active",
+      subscriptionStatus: null,
+      subscriptionPlanKey: null,
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      billingIssueStartedAt: null
+    });
+
     mocks.buildJewelryVideoPrompt.mockReturnValue("video prompt");
     mocks.requestFindUnique.mockResolvedValue({
       id: "req-test",
+      accountId: "demo-account",
       productType: "name",
       Results: [
         {
@@ -97,6 +113,7 @@ describe("/api/videos", () => {
     await expect(response.json()).resolves.toEqual({ videoId: "video-test" });
     expect(mocks.videoCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        accountId: "demo-account",
         requestId: "req-test",
         sourceResultId: "result-1",
         sourceImageUrl: "https://pendant.example.com/generated/req-test-v1.png",
@@ -168,6 +185,7 @@ describe("/api/videos", () => {
     const { POST } = await import("../route");
     mocks.requestFindUnique.mockResolvedValue({
       id: "req-test",
+      accountId: "demo-account",
       productType: "name",
       Results: [{ id: "result-2", variant: 2, status: "succeeded", imageUrl: "/generated/req-test-v2.png" }]
     });

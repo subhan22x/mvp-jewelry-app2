@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  accountFindUnique: vi.fn(),
   requestCreate: vi.fn(),
   resultCreate: vi.fn(),
   resultUpdate: vi.fn(),
@@ -11,6 +12,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/server/db/client', () => ({
   prisma: {
+    account: {
+      findUnique: mocks.accountFindUnique
+    },
     request: {
       create: mocks.requestCreate
     },
@@ -62,6 +66,17 @@ describe('/api/picture-requests', () => {
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
+    mocks.accountFindUnique.mockResolvedValue({
+      id: 'demo-account',
+      status: 'active',
+      subscriptionStatus: null,
+      subscriptionPlanKey: null,
+      trialEndsAt: null,
+      subscriptionCurrentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      billingIssueStartedAt: null
+    });
+
     mocks.requestCreate.mockResolvedValue({ id: 'picture-req' });
     mocks.resultCreate.mockImplementation(({ data }) =>
       Promise.resolve({
@@ -108,6 +123,7 @@ describe('/api/picture-requests', () => {
     }));
     expect(mocks.requestCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        accountId: 'demo-account',
         userId: 'demo',
         productType: 'picture',
         styleId: 'oval',
@@ -122,6 +138,7 @@ describe('/api/picture-requests', () => {
     expect(mocks.resultCreate).toHaveBeenCalledTimes(1);
     expect(mocks.resultCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        accountId: 'demo-account',
         requestId: 'picture-req',
         variant: 1,
         prompt: 'picture prompt',
