@@ -27,7 +27,7 @@ function BackArrow() {
 }
 
 const backButtonClass =
-  "absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-[var(--theme-text)] transition hover:border-white/45";
+  "absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/35 text-[var(--theme-text)] transition hover:border-white/45";
 
 /**
  * Shared design-wizard header: back control pinned top-left, with the progress
@@ -36,7 +36,7 @@ const backButtonClass =
  */
 export default function DesignStepHeader({ current, backHref, onBack }: DesignStepHeaderProps) {
   return (
-    <div className="relative mb-8 flex min-h-10 w-full flex-col items-center">
+    <div className="relative mb-8 flex min-h-11 w-full flex-col items-center">
       {backHref ? (
         <Link href={backHref} aria-label="Back" className={backButtonClass}>
           <BackArrow />

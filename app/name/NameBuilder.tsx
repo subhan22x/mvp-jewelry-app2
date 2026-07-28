@@ -136,6 +136,7 @@ const PLAIN_CHAINS: ReadonlyArray<{ id: PlainChainKey; label: string }> = [
 ];
 
 const MAX_NAME_LINES = 2;
+const MAX_CHARS_PER_LINE = 24;
 
 const buildPendantColumns = (styles: readonly PendantStyle[], perColumn = 2) =>
   styles.reduce<PendantStyle[][]>((columns, style, index) => {
@@ -255,7 +256,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
   }, [activeStyle, lines, prewarmTextReferenceKey]);
 
   const updateLine = (value: string, index: number) => {
-    setLines(prev => prev.map((entry, idx) => (idx === index ? value : entry)));
+    setLines(prev => prev.map((entry, idx) => (idx === index ? value.slice(0, MAX_CHARS_PER_LINE) : entry)));
     setUppercaseApplied(false);
   };
 
@@ -713,12 +714,12 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
     <main className="min-h-dvh px-4 py-4 text-[var(--theme-text)] md:px-8">
       <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6 md:px-12">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
-          <div className="mb-8 grid min-h-10 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3">
+          <div className="mb-8 grid min-h-11 grid-cols-[2.75rem_1fr_2.75rem] items-center gap-3">
             <button
               type="button"
               onClick={handleBack}
               aria-label="Back"
-              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
+              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
             >
               ←
             </button>
@@ -748,6 +749,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                           value={value}
                           onChange={event => updateLine(event.target.value, index)}
                           placeholder={index === 0 ? "text on pendant..." : "add another line"}
+                          maxLength={MAX_CHARS_PER_LINE}
                           className="flex-1 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] px-4 py-3 text-base outline-none transition focus:border-[color:var(--theme-border-hover)]"
                         />
                         <div className="flex items-center gap-2">
@@ -1093,7 +1095,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                             fill
                             sizes="(max-width: 640px) 220px, 360px"
                             className="object-cover"
-                            priority={false}
+                            priority
                           />
                         ) : activeStyle && (
 	                        <Image
@@ -1287,7 +1289,7 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                 onClick={handleNext}
                 disabled={isNextDisabled}
                 aria-disabled={isNextDisabled}
-                className={`rounded-full border px-4 py-2 text-sm uppercase tracking-wide transition ${isNextDisabled ? "cursor-not-allowed border-white/20 bg-white/5 text-white/40" : "border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)] hover:bg-[var(--theme-accent)] hover:text-[var(--theme-accent-contrast)]"}`}
+                className={`min-h-11 rounded-full border px-4 py-2 text-sm uppercase tracking-wide transition ${isNextDisabled ? "cursor-not-allowed border-white/20 bg-white/5 text-white/40" : "border-[color:var(--theme-selected-border)] bg-[var(--theme-selected-bg)] text-[var(--theme-text)] hover:bg-[var(--theme-accent)] hover:text-[var(--theme-accent-contrast)]"}`}
               >
                 next
               </button>

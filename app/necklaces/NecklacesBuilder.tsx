@@ -388,7 +388,7 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
                           type="button"
                           onClick={() => setSize(option.id)}
                           className={cx(
-                            "rounded-xl border-2 px-2 py-2 text-xs font-semibold transition",
+                            "min-h-11 rounded-xl border-2 px-2 py-2 text-xs font-semibold transition",
                             themeFocusRing,
                             isActive
                               ? "border-[color:var(--theme-selected-border)] bg-[var(--theme-surface-muted)] text-[var(--theme-heading)]"
