@@ -451,6 +451,19 @@ describe("Step 1 — Emblem & Gold", () => {
     expect(screen.getByText("Snake chain")).toBeInTheDocument();
     expect(screen.queryByText("Diamond Quality")).not.toBeInTheDocument();
   });
+
+  it("shows an accessible metallic swatch beside every plain color label", async () => {
+    const { user } = await setup({ mode: "plain" });
+    await toPlainStep1(user);
+
+    for (const label of ["Gold", "Silver", "Rose Gold"]) {
+      const colorButton = screen.getAllByRole("button", { name: new RegExp(`^${label}$`, "i") })[0];
+      expect(colorButton.querySelector('[aria-hidden="true"]')).toHaveClass(
+        "rounded-full",
+        "bg-gradient-to-br"
+      );
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

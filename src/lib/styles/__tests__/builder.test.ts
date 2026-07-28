@@ -446,6 +446,29 @@ describe("buildVariants", () => {
     expect(variants[0].attachments).toContain(`${process.cwd()}/public/plain-pendants/plain_style_6.png`);
   });
 
+  it.each([
+    "plain_style_1",
+    "plain_style_2",
+    "plain_style_3",
+    "plain_style_4",
+    "plain_style_5",
+    "plain_style_6"
+  ])("places every %s generation on black suede", styleId => {
+    const variants = buildVariants({
+      userId: "demo",
+      pendantFinish: "plain",
+      styleId,
+      text: "Aurora",
+      plainColor: "gold",
+      plainMetal: "gold_plated",
+      plainChain: "rope"
+    });
+
+    for (const variant of variants) {
+      expect(variant.prompt).toContain("make the background suede black");
+    }
+  });
+
   it("rejects plain solid-gold prompts without karat", () => {
     expect(() => buildVariants({
       userId: "demo",
