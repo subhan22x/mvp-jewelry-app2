@@ -107,10 +107,10 @@ const PLAIN_STYLES: ReadonlyArray<{ id: PlainStyleKey; label: string; src: strin
   { id: "plain_style_6", label: "Wesley", src: "/plain-pendants/plain_style_6.png" }
 ];
 
-const PLAIN_COLORS: ReadonlyArray<{ id: PlainColorKey; label: string; summary: string }> = [
-  { id: "gold", label: "Gold", summary: "Gold" },
-  { id: "silver", label: "Silver", summary: "Silver" },
-  { id: "rose_gold", label: "Rose Gold", summary: "Rose gold" }
+const PLAIN_COLORS: ReadonlyArray<{ id: PlainColorKey; label: string; summary: string; swatch: string }> = [
+  { id: "gold", label: "Gold", summary: "Gold", swatch: "from-[#f8d36f] via-[#d8a532] to-[#fff1a8]" },
+  { id: "silver", label: "Silver", summary: "Silver", swatch: "from-[#ffffff] via-[#dce4ee] to-[#aab6c5]" },
+  { id: "rose_gold", label: "Rose Gold", summary: "Rose gold", swatch: "from-[#f0b092] via-[#d68768] to-[#f7d8ca]" }
 ];
 
 const PLAIN_METALS: ReadonlyArray<{ id: PlainMetalKey; label: string }> = [
@@ -858,7 +858,16 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                             selected={plainColor === option.id}
                             onClick={() => setPlainColor(option.id)}
                           >
-                            {option.label}
+                            <span className="flex items-center justify-center gap-3">
+                              <span
+                                aria-hidden="true"
+                                className={cx(
+                                  "h-7 w-7 shrink-0 rounded-full border border-white/45 bg-gradient-to-br shadow-[inset_0_1px_1px_rgba(255,255,255,0.55)]",
+                                  option.swatch
+                                )}
+                              />
+                              <span>{option.label}</span>
+                            </span>
                           </ThemedOptionButton>
                         ))}
                       </div>
