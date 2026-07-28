@@ -223,7 +223,7 @@ function StyleScreen({
         </header>
 
         <section className="mt-7 grid grid-cols-2 gap-4 sm:gap-6 md:mt-12 md:grid-cols-3">
-          {GRILLZ_STYLES.map(style => {
+          {GRILLZ_STYLES.map((style, index) => {
             const isActive = styleId === style.id;
             const className = `${landingCardClass} ${isActive ? "border-[3px] border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.35)]" : ""}`;
             return (
@@ -242,6 +242,7 @@ function StyleScreen({
                       fill
                       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
                       className="object-contain object-center"
+                      priority={index === 0}
                     />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center px-4 text-center">

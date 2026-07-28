@@ -118,11 +118,16 @@ export default function PendantsIndex({ basePath }: { basePath?: string } = {}) 
                   {card.label}
                   {card.subtitle ? <><br />{card.subtitle}</> : null}
                 </span>
+                {card.disabled && (
+                  <span className="mt-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/75 sm:text-[10px]">
+                    Coming soon
+                  </span>
+                )}
               </>
             );
 
             return card.disabled || !card.href ? (
-              <div key={card.id} className={className}>
+              <div key={card.id} className={className} aria-disabled="true" aria-label={`${card.label} coming soon`}>
                 {body}
               </div>
             ) : (

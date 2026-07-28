@@ -186,7 +186,7 @@ export default function LogoPendantBuilder({ basePath }: { basePath?: string } =
               <Link
                 href={basePath ? `${basePath}/pendants` : "/pendants"}
                 aria-label="Back"
-                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
+                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
               >
                 ←
               </Link>
@@ -195,7 +195,7 @@ export default function LogoPendantBuilder({ basePath }: { basePath?: string } =
                 type="button"
                 onClick={handleBack}
                 aria-label="Back"
-                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
+                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
               >
                 ←
               </button>
@@ -475,9 +475,15 @@ export default function LogoPendantBuilder({ basePath }: { basePath?: string } =
                   </button>
                   <button
                     type="button"
-                    className="flex-1 rounded-2xl bg-[var(--theme-accent)] px-5 py-3 text-base font-semibold text-[var(--theme-accent-contrast)] transition hover:bg-[var(--theme-border-hover)]"
+                    disabled
+                    aria-disabled="true"
+                    aria-label="Save Logo Draft, coming soon"
+                    className="flex flex-1 cursor-not-allowed flex-col items-center gap-1 rounded-2xl bg-[var(--theme-accent)] px-5 py-2.5 text-base font-semibold text-[var(--theme-accent-contrast)] opacity-45 saturate-[0.7]"
                   >
                     Save Logo Draft
+                    <span className="rounded-full border border-black/20 bg-black/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--theme-accent-contrast)]">
+                      Coming soon
+                    </span>
                   </button>
                 </div>
               </div>
