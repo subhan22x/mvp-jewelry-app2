@@ -1,6 +1,6 @@
 import "./globals.css";
 import { Suspense } from "react";
-import { Figtree, Plus_Jakarta_Sans } from "next/font/google";
+import { Archivo_Narrow, Boldonse, Figtree, Instrument_Sans, Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import ThemeSwitcher from "./ThemeSwitcher";
 import ThemeStyles from "./ThemeStyles";
@@ -8,6 +8,14 @@ import GuidedTour from "./components/GuidedTour";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 const plusJakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["700"], variable: "--font-plus-jakarta" });
+const instrumentSans = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument-sans" });
+const archivoNarrow = Archivo_Narrow({ subsets: ["latin"], variable: "--font-archivo-narrow" });
+const boldonse = Boldonse({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-boldonse",
+  adjustFontFallback: false
+});
 const nostalgic = localFont({
   src: "../public/fonts/perfectly-nostalgic-bold-italic.ttf",
   variable: "--font-nostalgic"
@@ -52,7 +60,10 @@ const browserPermissionErrorGuard = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${figtree.variable} ${plusJakarta.variable} ${nostalgic.variable} ${theShuffle.variable}`}>
+    <html
+      lang="en"
+      className={`${figtree.variable} ${plusJakarta.variable} ${instrumentSans.variable} ${archivoNarrow.variable} ${boldonse.variable} ${nostalgic.variable} ${theShuffle.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: browserPermissionErrorGuard }} />
         <ThemeStyles />

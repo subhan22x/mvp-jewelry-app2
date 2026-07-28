@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/server/db/client";
 import { proxiedPublicQuoteModelUrl } from "@/src/lib/model3d/proxy";
-import QuoteMediaViewer, { type QuotePreviewMediaType } from "./QuoteMediaViewer";
+import CustomerQuoteCard from "@/app/components/quote/CustomerQuoteCard";
+import type { QuotePreviewMediaType } from "./QuoteMediaViewer";
+import { quoteMaterialLabel, quoteStoneLabel } from "@/src/lib/quotes/quote-message";
 
 export const dynamic = "force-dynamic";
 
@@ -22,23 +24,18 @@ function absoluteUrl(url: string | null | undefined) {
 
 function money(cents: number | null) {
   if (typeof cents !== "number") return null;
+  const hasCents = cents % 100 !== 0;
   return (cents / 100).toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0
   });
 }
 
 function cleanLabel(value: string | null | undefined) {
   if (!value) return null;
   return value.replaceAll("_", " ").replace(/\b\w/g, letter => letter.toUpperCase());
-}
-
-function materialLabel(material: string | null, karat: string | null) {
-  const materialText = cleanLabel(material);
-  if (!materialText) return null;
-  return material === "gold" && karat ? `${karat.toUpperCase()} ${materialText}` : materialText;
 }
 
 function designTitle(quote: { text: string | null; productType: string | null; styleId: string | null }) {
@@ -50,61 +47,15 @@ function designTitle(quote: { text: string | null; productType: string | null; s
   return cleanLabel(quote.styleId) ?? "Custom pendant";
 }
 
-function productLabel(productType: string | null, pendantFinish: string | null) {
-  if (productType === "picture") return "Picture pendant";
-  if (productType === "bracelet") return "Bracelet";
-  if (productType === "necklace") return "Necklace";
-  if (productType === "grillz") return pendantFinish === "custom_grillz" ? "Custom Grillz" : "Grillz";
-  if (productType === "general_quote") return "Custom jewelry";
-  return "Name pendant";
-}
-
-function detailRows(quote: {
-  estimatedDelivery: string | null;
-  quoteMaterial: string | null;
-  quoteMaterialKarat: string | null;
-  quoteStoneType: string | null;
-  productType: string | null;
-  pendantFinish: string | null;
-  styleId: string | null;
-  text: string | null;
+function metalColors(quote: {
   primaryMetal: string | null;
   secondaryMetal: string | null;
-  size: string | null;
-  metalType: string | null;
-  stoneType: string | null;
   plainColor: string | null;
-  plainMetal: string | null;
-  plainKarat: string | null;
-  plainChain: string | null;
-  diamondQuality: string | null;
-  budgetMinCents: number | null;
-  budgetMaxCents: number | null;
 }) {
-  const budget = quote.budgetMinCents !== null || quote.budgetMaxCents !== null
-    ? [quote.budgetMinCents, quote.budgetMaxCents]
-      .filter((value): value is number => typeof value === "number")
-      .map(value => money(value))
-      .join(" - ")
-    : null;
-  return [
-    { label: "Estimated delivery", value: quote.estimatedDelivery },
-    { label: "Quoted material", value: materialLabel(quote.quoteMaterial, quote.quoteMaterialKarat) },
-    { label: "Quoted stone", value: cleanLabel(quote.quoteStoneType) },
-    { label: "Product", value: productLabel(quote.productType, quote.pendantFinish) },
-    { label: "Text", value: quote.text },
-    { label: "Finish", value: cleanLabel(quote.pendantFinish) },
-    { label: "Style", value: cleanLabel(quote.styleId) },
-    { label: "Metal colors", value: [cleanLabel(quote.primaryMetal), cleanLabel(quote.secondaryMetal)].filter(Boolean).join(" + ") || null },
-    { label: "Size", value: cleanLabel(quote.size) },
-    { label: "Metal type", value: cleanLabel(quote.metalType ?? quote.plainMetal) },
-    { label: "Karat", value: cleanLabel(quote.plainKarat) },
-    { label: "Chain", value: cleanLabel(quote.plainChain) },
-    { label: "Stone type", value: cleanLabel(quote.stoneType) },
-    { label: "Plain color", value: cleanLabel(quote.plainColor) },
-    { label: "Diamond quality", value: quote.diamondQuality },
-    { label: "Budget", value: budget }
-  ].filter(row => row.value && row.value !== "N/a" && row.value !== "Not Selected");
+  const values = [quote.primaryMetal, quote.secondaryMetal]
+    .filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index)
+    .map(value => cleanLabel(value));
+  return values.join(" + ") || cleanLabel(quote.plainColor);
 }
 
 async function getPublicQuote(token: string) {
@@ -179,66 +130,29 @@ export default async function PublicQuotePage({ params }: QuotePageProps) {
   const videoUrl = previewMediaType === "video" && quote.video?.status === "succeeded"
     ? absoluteUrl(quote.video.videoUrl)
     : null;
-  const rows = detailRows(quote);
 
   return (
-    <main className="min-h-dvh bg-[#151311] px-4 py-5 text-[#f5f0e8] md:px-6 md:py-10">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-        <section className="min-w-0">
-          <div className="mb-5 flex items-center gap-3">
-            {quote.account.StoreProfile?.profileImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={quote.account.StoreProfile.profileImageUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d3a84f] text-sm font-black text-black">
-                {storeName.slice(0, 1).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8d8377]">Quote from</p>
-              <p className="truncate text-base font-black">{storeName}</p>
-            </div>
-          </div>
-
-          <QuoteMediaViewer
-            imageUrl={imageUrl}
-            previewMediaType={previewMediaType}
-            modelUrl={modelUrl}
-            videoUrl={videoUrl}
-            alt={`${title} quoted design`}
-          />
-        </section>
-
-        <section className="min-w-0 rounded-[1.75rem] border border-[#332d26] bg-[#1c1915] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.3)] md:p-7">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-[#d3a84f]">Custom jewelry quote</p>
-          <h1 className="mt-3 break-words text-4xl font-black leading-tight tracking-normal text-[#f5f0e8]">{title}</h1>
-
-          <div className="mt-6 rounded-[1.25rem] border border-[#3e3527] bg-[#12110f] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8d8377]">Quote total</p>
-            <p className="mt-1 text-4xl font-black text-[#d3a84f]">{money(quote.quotedPriceCents) ?? "Contact store"}</p>
-          </div>
-
-          {quote.quoteNotes && (
-            <div className="mt-4 rounded-[1.25rem] border border-[#3e3527] bg-[#12110f] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8d8377]">Message</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#ddd4c7]">{quote.quoteNotes}</p>
-            </div>
-          )}
-
-          <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-            {rows.map(row => (
-              <div key={row.label} className="min-w-0 rounded-[1.1rem] border border-[#3e3527] bg-[#12110f] p-3">
-                <dt className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8d8377]">{row.label}</dt>
-                <dd className="mt-1 break-words text-sm font-bold leading-5 text-[#f5f0e8]">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <p className="mt-5 text-xs leading-5 text-[#8d8377]">
-            This quote is a read-only snapshot shared by {storeName}. Contact the store directly to approve changes or place an order.
-          </p>
-        </section>
+    <main className="min-h-dvh bg-[#050505] px-4 py-6 text-white md:px-8 md:py-12">
+      <div className="mx-auto flex w-full justify-center">
+        <CustomerQuoteCard
+          storeName={storeName}
+          storeProfileImageUrl={quote.account.StoreProfile?.profileImageUrl}
+          imageUrl={imageUrl}
+          previewMediaType={previewMediaType}
+          modelUrl={modelUrl}
+          videoUrl={videoUrl}
+          imageAlt={`${title} quoted design`}
+          estimatedDelivery={quote.estimatedDelivery}
+          quotedMaterial={quoteMaterialLabel(quote.quoteMaterial, quote.quoteMaterialKarat)}
+          quotedStone={quoteStoneLabel(quote.quoteStoneType)}
+          metalColors={metalColors(quote)}
+          estimatedCost={money(quote.quotedPriceCents) ?? "Contact store"}
+          quoteNotes={quote.quoteNotes}
+        />
       </div>
+      <p className="mx-auto mt-5 max-w-[560px] text-center text-xs leading-5 text-[#8d8980]">
+        This is a read-only quote from {storeName}. Contact the store directly to approve changes or place an order.
+      </p>
     </main>
   );
 }
