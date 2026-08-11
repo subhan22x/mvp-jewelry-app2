@@ -7,7 +7,11 @@ const nextConfig = {
     "/api/requests": [
       "./public/pendants/**/*",
       "./public/plain-pendants/**/*",
-      "./public/emblems/**/*"
+      "./public/emblems/**/*",
+      "./public/style-fonts/**/*"
+    ],
+    "/api/text-reference/prewarm": [
+      "./public/style-fonts/**/*"
     ]
   },
   outputFileTracingExcludes: {
