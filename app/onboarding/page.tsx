@@ -542,11 +542,11 @@ export default function OnboardingPage() {
             )}
             <button
               type="button"
-              className="ob-continue"
+              className={`ob-continue${screen === SCREEN_COUNT - 1 ? " ob-final-cta" : ""}`}
               onClick={() => (screen === SCREEN_COUNT - 1 ? void handleSubmit() : go(screen + 1))}
               disabled={isSubmitting || !authChecked}
             >
-              {screen === SCREEN_COUNT - 1 ? (isSubmitting ? "Creating your studio…" : "Create Your Studio") : "Continue"}
+              {screen === SCREEN_COUNT - 1 ? (isSubmitting ? "Creating your studio…" : "Accelerate your designs using AI") : "Continue"}
               <ArrowRight />
             </button>
           </div>
@@ -609,37 +609,64 @@ function ScreenGetStarted({
   );
 }
 
-const friction = [
-  { key: "Design", body: "Customers can’t picture the piece — so they hesitate, and walk.", icon: "pencil" },
-  { key: "Pricing", body: "Back-and-forth quotes stall the deal for days.", icon: "tag" },
-  { key: "Communication", body: "Specs get lost between DMs, texts, and the bench.", icon: "chat" }
-] as const;
+function FrictionRoadmap() {
+  return (
+    <div className="ob-problem-visual">
+      <svg
+        className="ob-roadmap"
+        viewBox="0 0 360 300"
+        role="img"
+        aria-labelledby="friction-roadmap-title friction-roadmap-description"
+      >
+        <title id="friction-roadmap-title">Three points of friction in a custom jewelry sale</title>
+        <desc id="friction-roadmap-description">A winding path connects design, pricing, and communication, with a broken handoff before pricing.</desc>
+        <defs>
+          <radialGradient id="ob-roadmap-glow" cx="50%" cy="48%" r="56%">
+            <stop offset="0%" stopColor="#b36b38" stopOpacity=".2" />
+            <stop offset="100%" stopColor="#b36b38" stopOpacity="0" />
+          </radialGradient>
+        </defs>
 
-function FrictionIcon({ type }: { type: (typeof friction)[number]["icon"] }) {
-  if (type === "pencil") {
-    return <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 21l3.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L3 21z" stroke={GOLD} strokeWidth="1.6" strokeLinejoin="round" /><path d="M14 6l4 4" stroke={GOLD} strokeWidth="1.6" /></svg>;
-  }
-  if (type === "tag") {
-    return <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M20.5 13.3l-7.2 7.2a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1-.6-1.4V4.5a2 2 0 0 1 2-2H12a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 .1 3.2z" stroke={GOLD} strokeWidth="1.6" strokeLinejoin="round" /><circle cx="8" cy="8" r="1.4" fill={GOLD} /></svg>;
-  }
-  return <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8 8 0 0 1-11.6 7.1L3 20.5l1.9-6.4A8 8 0 1 1 21 11.5z" stroke={GOLD} strokeWidth="1.6" strokeLinejoin="round" /></svg>;
+        <ellipse cx="180" cy="145" rx="166" ry="134" fill="url(#ob-roadmap-glow)" />
+        <path className="ob-journey-line" d="M32 292V225c0-26 7-48 18-62" />
+        <path className="ob-journey-line" d="M67 100c0-45 53-49 86-22 28 23 43 57 40 90" />
+        <path className="ob-journey-line" d="M211 244c32 34 71 15 86-22 16-40 5-85-21-112" />
+        <path className="ob-journey-break" d="M193 177l-8 9m18-3-5 11" />
+
+        <g className="ob-friction-node">
+          <circle className="ob-node-ring" cx="67" cy="136" r="43" />
+          <circle className="ob-node-core" cx="67" cy="136" r="35" />
+          <path className="ob-node-icon" d="M56 147l3-10 13-13 7 7-13 13-10 3zm4-11 7 7" />
+          <text x="67" y="187">DESIGN</text>
+        </g>
+
+        <g className="ob-friction-node">
+          <circle className="ob-node-ring" cx="185" cy="220" r="44" />
+          <circle className="ob-node-core" cx="185" cy="220" r="36" />
+          <path className="ob-node-icon" d="M174 211h13l10 10-12 12-11-11v-11zm6 5h.1" />
+          <text x="185" y="274">PRICING</text>
+        </g>
+
+        <g className="ob-friction-node">
+          <circle className="ob-node-ring" cx="292" cy="76" r="43" />
+          <circle className="ob-node-core" cx="292" cy="76" r="35" />
+          <path className="ob-node-icon" d="M278 75a14 12 0 1 1 5 9l-7 2 2-7a12 12 0 0 1 0-4z" />
+          <text x="292" y="127">COMMUNICATION</text>
+        </g>
+      </svg>
+    </div>
+  );
 }
 
 function ScreenProblem() {
   return (
     <section className="ob-screen">
-      <div className="ob-body ob-centered-body">
+      <FrictionRoadmap />
+      <div className="ob-body ob-story-body ob-problem-body">
         <Eyebrow>The Problem</Eyebrow>
         <div className="ob-gap-16" />
         <Headline white="Most jewelers lose custom orders to" accent="friction." />
-        <div className="ob-friction-list">
-          {friction.map((item) => (
-            <div className="ob-friction-card" key={item.key}>
-              <div className="ob-friction-icon"><FrictionIcon type={item.icon} /></div>
-              <div><strong>{item.key}</strong><p>{item.body}</p></div>
-            </div>
-          ))}
-        </div>
+        <p className="ob-sub ob-welcome-sub">Unclear visuals, slow pricing, and scattered messages break the sale before it reaches the bench.</p>
       </div>
     </section>
   );
@@ -652,7 +679,7 @@ function ScreenSolution() {
         <div className="ob-solution-glow" />
         <div className="ob-phone ob-float"><img src="/onboarding/app-screen-1.png" alt="VVS pendant design flow" /></div>
       </div>
-      <div className="ob-body ob-bottom-body">
+      <div className="ob-body ob-story-body">
         <Eyebrow>The Fix</Eyebrow>
         <div className="ob-gap-16" />
         <Headline white="We fix that — by letting your customers" accent="design it." />
@@ -771,6 +798,7 @@ const onboardingStyles = `
   .ob-body { position:absolute; inset:0; z-index:10; display:flex; flex-direction:column; padding:110px 26px 156px; }
   .ob-bottom-body { justify-content:flex-end; }
   .ob-centered-body { justify-content:center; }
+  .ob-story-body { top:58%; bottom:auto; padding:0 26px; }
   .ob-form-body { position:absolute; inset:0; z-index:10; overflow-y:auto; display:flex; flex-direction:column; padding:96px 26px 150px; user-select:text; scrollbar-width:none; }
   .ob-form-body::-webkit-scrollbar { display:none; }
   .ob-account-body { padding-bottom:164px; }
@@ -815,11 +843,16 @@ const onboardingStyles = `
   .ob-instagram-check { display:grid; place-items:center; flex:0 0 22px; height:22px; margin-right:12px; border-radius:50%; background:${GOLD}; color:#1a0e04; font-size:12px; font-weight:900; }
   .ob-input-bare { background:none; border:0; height:48px; padding:0 14px 0 2px; border-radius:0; }
   .ob-input-bare:focus { background:none; }
-  .ob-friction-list { display:flex; flex-direction:column; gap:11px; margin-top:26px; }
-  .ob-friction-card { display:flex; gap:14px; align-items:flex-start; padding:15px 16px; border-radius:16px; background:rgba(237,228,212,.045); border:1px solid rgba(237,228,212,.09); }
-  .ob-friction-icon { flex:0 0 50px; height:50px; border-radius:13px; display:flex; align-items:center; justify-content:center; background:rgba(212,146,74,.14); border:1px solid rgba(232,176,106,.3); }
-  .ob-friction-card strong { font:700 15.5px/1.2 var(--font-figtree),sans-serif; color:#fff; }
-  .ob-friction-card p { margin:3px 0 0; font:400 13.5px/1.45 var(--font-figtree),sans-serif; color:${DIM}; }
+  .ob-problem-body .ob-eyebrow { gap:10px; font-size:14px; letter-spacing:.18em; }
+  .ob-problem-body .ob-eyebrow span { width:25px; height:2px; }
+  .ob-problem-visual { position:absolute; top:7%; left:16px; right:16px; height:48%; z-index:4; display:flex; align-items:center; justify-content:center; }
+  .ob-roadmap { width:100%; max-width:380px; overflow:visible; font-family:var(--font-figtree),sans-serif; filter:drop-shadow(0 22px 36px rgba(0,0,0,.34)); }
+  .ob-journey-line { fill:none; stroke:rgba(237,228,212,.52); stroke-width:3.4; stroke-linecap:round; stroke-dasharray:1 10; }
+  .ob-journey-break { fill:none; stroke:#dc845e; stroke-width:3.4; stroke-linecap:round; }
+  .ob-node-ring { fill:none; stroke:rgba(232,176,106,.16); stroke-width:1; }
+  .ob-node-core { fill:rgba(24,14,8,.94); stroke:rgba(232,176,106,.78); stroke-width:1.7; }
+  .ob-node-icon { fill:none; stroke:${GOLD}; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .ob-friction-node text { fill:${CREAM}; font-size:9.5px; font-weight:800; letter-spacing:.13em; text-anchor:middle; }
   .ob-solution-visual { position:absolute; top:7%; left:0; right:0; height:52%; display:flex; justify-content:center; align-items:flex-start; }
   .ob-solution-glow { position:absolute; top:12%; width:240px; height:240px; border-radius:50%; background:radial-gradient(circle,rgba(232,176,106,.32),rgba(232,176,106,0) 70%); filter:blur(8px); }
   .ob-phone { position:relative; width:186px; border-radius:26px; overflow:hidden; border:1px solid rgba(237,228,212,.14); box-shadow:0 30px 60px -18px rgba(0,0,0,.7),0 0 0 6px rgba(255,255,255,.03); }
@@ -856,8 +889,10 @@ const onboardingStyles = `
   .ob-actions button { pointer-events:auto; }
   .ob-back { width:54px; height:54px; flex:0 0 54px; border-radius:999px; border:1px solid rgba(237,228,212,.16); background:rgba(237,228,212,.05); display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .ob-continue { flex:1; height:54px; border-radius:999px; cursor:pointer; border:0; background:linear-gradient(170deg,#e8b06a,#d4924a); box-shadow:0 0 0 1px rgba(232,176,106,.35),0 12px 28px -10px rgba(212,146,74,.7); color:#1a0e04; font-size:16px; font-weight:700; letter-spacing:-.01em; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .ob-final-cta { gap:6px; font-size:14px; }
   .ob-continue:disabled { opacity:.65; cursor:wait; }
   .ob-error { pointer-events:auto; margin:0; padding:9px 12px; border-radius:12px; border:1px solid rgba(248,113,113,.25); background:rgba(127,29,29,.82); color:#fee2e2; font:600 12px/1.35 var(--font-figtree),sans-serif; text-align:center; }
-  @media (max-height:760px) { .ob-form-body { padding-top:78px; } .ob-body { padding-top:92px; padding-bottom:136px; } .ob-nav { bottom:14px; } .ob-account-body { padding-bottom:140px; } }
+  @media (max-height:760px) { .ob-form-body { padding-top:78px; } .ob-body { padding-top:92px; padding-bottom:136px; } .ob-story-body { top:55%; padding:0 26px; } .ob-problem-visual { top:6%; height:45%; } .ob-nav { bottom:14px; } .ob-account-body { padding-bottom:140px; } }
+  @media (max-height:640px) { .ob-story-body { top:48%; } .ob-problem-visual { top:4%; height:41%; } .ob-solution-visual { top:2%; transform:scale(.84); transform-origin:top center; } }
   @media (min-width:431px) { .ob-app { border-left:1px solid rgba(237,228,212,.08); border-right:1px solid rgba(237,228,212,.08); } }
 `;
