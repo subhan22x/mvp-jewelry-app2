@@ -61,12 +61,31 @@ export async function POST(req: Request) {
   const body = parsed.data;
   const authEmail = data.user.email?.toLowerCase() ?? null;
   const [existingUser, existingEmailUser] = await Promise.all([
-    prisma.user.findUnique({ where: { authUserId: data.user.id }, select: { id: true } }),
+    prisma.user.findUnique({
+      where: { authUserId: data.user.id },
+      select: {
+        id: true,
+        Memberships: {
+          where: { status: "active", account: { status: "active" } },
+          select: { accountId: true },
+          orderBy: { createdAt: "asc" },
+          take: 1
+        }
+      }
+    }),
     authEmail
       ? prisma.user.findUnique({ where: { email: authEmail }, select: { id: true, authUserId: true } })
       : Promise.resolve(null)
   ]);
-  if (existingUser) return jsonError("This login already has a store profile.");
+  const existingMembership = existingUser?.Memberships[0];
+  if (existingMembership) {
+    return NextResponse.json({
+      accountId: existingMembership.accountId,
+      ownerUrl: "/owner",
+      alreadyCreated: true
+    });
+  }
+  if (existingUser) return jsonError("This login has a store profile without an active account. Contact support before retrying.", 409);
   if (existingEmailUser && existingEmailUser.authUserId !== data.user.id) {
     return jsonError("An account with this email already exists.");
   }

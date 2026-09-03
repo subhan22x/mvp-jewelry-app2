@@ -127,6 +127,22 @@ SUPABASE_SECRET_KEY="sb_secret_..."
 - Configure the Supabase Authentication URL settings so confirmation emails can return to `/auth/callback`.
 - Add both local and deployed callback URLs before testing onboarding in each environment.
 
+### Signup email verification
+
+The onboarding flow accepts either the six-digit Supabase email OTP or the confirmation link. Configure the **Confirm signup** template under **Authentication > Email Templates** to include both values:
+
+```html
+<h2>Verify your email</h2>
+<p>Enter this code in Grow Jewelry:</p>
+<p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">{{ .Token }}</p>
+<p>Or confirm and sign in automatically:</p>
+<p><a href="{{ .ConfirmationURL }}">Confirm email and continue</a></p>
+```
+
+`{{ .Token }}` and `{{ .ConfirmationURL }}` represent the same one-time verification. Using either one confirms the address and invalidates the other. Keep the OTP expiry at one hour or less, keep the resend interval enabled, and disable link tracking in the SMTP provider so it does not rewrite confirmation URLs.
+
+The app stores the unfinished onboarding draft in same-origin browser storage so an email link opened in another tab can finish the setup. Passwords are never included. The same non-sensitive text fields are also attached to the Supabase user metadata as a cross-device recovery fallback; this metadata is used only to restore user-entered profile content and never for authorization.
+
 ## Runtime Prisma Datasource
 
 The runtime datasource is already:

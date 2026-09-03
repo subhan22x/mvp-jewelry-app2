@@ -5,6 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthApiError } from "@supabase/auth-js";
 import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
+import {
+  ONBOARDING_DRAFT_STORAGE_KEY,
+  ONBOARDING_METADATA_KEY,
+  type OnboardingDraft,
+  onboardingDraftFromMetadata,
+  onboardingDraftMetadata,
+  parseOnboardingDraft,
+  storedDraftForAuthenticatedEmail
+} from "@/src/lib/onboarding/draft";
 import { createClient } from "@/src/lib/supabase/client";
 
 const GOLD = "#e8b06a";
@@ -13,16 +22,6 @@ const DIM = "rgba(237,228,212,0.62)";
 const SCREEN_COUNT = 6;
 
 type InstagramStatus = "idle" | "checking" | "found" | "not_found" | "invalid" | "unknown";
-
-type Draft = {
-  ownerName: string;
-  phone: string;
-  instagramHandle: string;
-  businessName: string;
-  email: string;
-  password: string;
-  logo?: { dataUrl: string; name: string; type: string };
-};
 
 function onboardingErrorMessage(error: unknown) {
   if (isAuthApiError(error)) {
@@ -187,6 +186,24 @@ function dataUrlToFile(dataUrl: string, name: string, type: string) {
   return new File([bytes], name, { type });
 }
 
+function storeOnboardingDraft(draft: OnboardingDraft) {
+  localStorage.setItem(ONBOARDING_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+}
+
+function readOnboardingDraft() {
+  const stored = localStorage.getItem(ONBOARDING_DRAFT_STORAGE_KEY);
+  const legacy = sessionStorage.getItem(ONBOARDING_DRAFT_STORAGE_KEY);
+  const draft = parseOnboardingDraft(stored ?? legacy);
+  if (draft && !stored) storeOnboardingDraft(draft);
+  return draft;
+}
+
+function clearOnboardingDraft() {
+  localStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+  sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [screen, setScreen] = useState(0);
@@ -206,10 +223,11 @@ export default function OnboardingPage() {
 
   const [authChecked, setAuthChecked] = useState(false);
   const [authedEmail, setAuthedEmail] = useState<string | null>(null);
+  const [authMetadataDraft, setAuthMetadataDraft] = useState<OnboardingDraft | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const autoSubmitStarted = useRef(false);
 
   const logoPreview = useMemo(() => (logoFile ? URL.createObjectURL(logoFile) : null), [logoFile]);
 
@@ -274,7 +292,8 @@ export default function OnboardingPage() {
           return;
         }
       }
-      setAuthedEmail(data.user?.email ?? null);
+      setAuthedEmail(data.user?.email?.trim().toLowerCase() ?? null);
+      setAuthMetadataDraft(onboardingDraftFromMetadata(data.user?.user_metadata, data.user?.email ?? ""));
       setAuthChecked(true);
     }).catch(() => {
       if (!active) return;
@@ -288,34 +307,34 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!authChecked) return;
-    const rawDraft = sessionStorage.getItem("vvs_onb_draft");
-    if (!rawDraft) return;
+    const storedDraft = authedEmail
+      ? storedDraftForAuthenticatedEmail(readOnboardingDraft(), authedEmail)
+      : readOnboardingDraft();
+    const draft = storedDraft ?? authMetadataDraft;
+    if (!draft) return;
     try {
-      const draft = JSON.parse(rawDraft) as Draft;
       setOwnerName(draft.ownerName ?? "");
       setPhone(draft.phone ?? "");
       setInstagramHandle(draft.instagramHandle ?? "");
       setBusinessName(draft.businessName ?? "");
       setEmail(draft.email ?? "");
-      setPassword(draft.password ?? "");
-      setConfirmPassword(draft.password ?? "");
-      if (draft.logo) setLogoFile(dataUrlToFile(draft.logo.dataUrl, draft.logo.name, draft.logo.type));
+      const restoredLogo = draft.logo ? dataUrlToFile(draft.logo.dataUrl, draft.logo.name, draft.logo.type) : undefined;
+      if (restoredLogo) setLogoFile(restoredLogo);
       setScreen(5);
-      if (authedEmail) {
-        setPendingAutoSubmit(true);
+      if (authedEmail && !autoSubmitStarted.current) {
+        autoSubmitStarted.current = true;
+        setIsSubmitting(true);
         setSubmitError("Email confirmed. Finishing your studio setup...");
-        sessionStorage.removeItem("vvs_onb_draft");
+        void createStudio(draft, restoredLogo).catch(error => {
+          autoSubmitStarted.current = false;
+          setSubmitError(onboardingErrorMessage(error));
+          setIsSubmitting(false);
+        });
       }
     } catch {
-      sessionStorage.removeItem("vvs_onb_draft");
+      clearOnboardingDraft();
     }
-  }, [authChecked, authedEmail]);
-
-  useEffect(() => {
-    if (!pendingAutoSubmit || !authChecked || !authedEmail || isSubmitting) return;
-    setPendingAutoSubmit(false);
-    void handleSubmit();
-  }, [pendingAutoSubmit, authChecked, authedEmail, isSubmitting]);
+  }, [authChecked, authedEmail, authMetadataDraft]);
 
   const go = useCallback((next: number) => {
     setScreen(Math.max(0, Math.min(SCREEN_COUNT - 1, next)));
@@ -345,19 +364,42 @@ export default function OnboardingPage() {
     setDrag(0);
   }
 
-  async function buildDraft(): Promise<Draft> {
-    let logo: Draft["logo"];
+  async function buildDraft(): Promise<OnboardingDraft> {
+    let logo: OnboardingDraft["logo"];
     if (logoFile && logoFile.size <= 2_500_000) {
       logo = { dataUrl: await fileToDataUrl(logoFile), name: logoFile.name, type: logoFile.type };
     }
-    return { ownerName, phone, instagramHandle, businessName, email, password, logo };
+    return { ownerName, phone, instagramHandle, businessName, email, logo };
+  }
+
+  async function createStudio(draft: OnboardingDraft, draftLogo = logoFile) {
+    const form = new FormData();
+    form.set("payload", JSON.stringify({
+      businessName: draft.businessName,
+      ownerName: draft.ownerName,
+      phone: draft.phone,
+      instagramHandle: draft.instagramHandle
+    }));
+    if (draftLogo) {
+      const upload = await uploadFileDirectly(draftLogo, "onboarding");
+      if (upload) form.set("logoUpload", JSON.stringify(upload));
+      else form.set("logo", draftLogo);
+    }
+
+    const response = await fetch("/api/onboarding", { method: "POST", body: form });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.error ?? "Failed to create account.");
+    localStorage.removeItem("vvs_onb");
+    clearOnboardingDraft();
+    router.replace(json.ownerUrl ?? "/owner");
+    router.refresh();
   }
 
   async function onGoogleClick() {
     setIsGoogleSubmitting(true);
     setSubmitError(null);
     try {
-      sessionStorage.setItem("vvs_onb_draft", JSON.stringify(await buildDraft()));
+      storeOnboardingDraft(await buildDraft());
       const supabase = createClient();
       const redirectTo = `${window.location.origin}/auth/confirm?next=/onboarding`;
       const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
@@ -391,43 +433,38 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
     try {
       const supabase = createClient();
+      const draft = await buildDraft();
       if (!authedEmail) {
         const normalizedEmail = email.trim().toLowerCase();
+        draft.email = normalizedEmail;
+        storeOnboardingDraft(draft);
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/confirm?next=/onboarding` }
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/confirm?next=/onboarding`,
+            data: { [ONBOARDING_METADATA_KEY]: onboardingDraftMetadata(draft) }
+          }
         });
         if (error || !data.user) throw error ?? new Error("Unable to create your account.");
 
         if (!data.session && data.user.identities?.length === 0) {
           const signIn = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
           if (signIn.error || !signIn.data.session) {
+            if (isAuthApiError(signIn.error) && signIn.error.code === "email_not_confirmed") {
+              router.push(`/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+              return;
+            }
             throw new Error("This email already has a login. Use the password you created earlier.");
           }
         } else if (!data.session) {
-          sessionStorage.setItem("vvs_onb_draft", JSON.stringify(await buildDraft()));
           router.push(`/auth/check-email?email=${encodeURIComponent(normalizedEmail)}`);
           return;
         }
       }
 
-      const form = new FormData();
-      form.set("payload", JSON.stringify({ businessName, ownerName, phone, instagramHandle }));
-      if (logoFile) {
-        const upload = await uploadFileDirectly(logoFile, "onboarding");
-        if (upload) form.set("logoUpload", JSON.stringify(upload));
-        else form.set("logo", logoFile);
-      }
-
-      const response = await fetch("/api/onboarding", { method: "POST", body: form });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json.error ?? "Failed to create account.");
-      localStorage.removeItem("vvs_onb");
-      sessionStorage.removeItem("vvs_onb_draft");
-      router.push(json.ownerUrl ?? "/owner");
+      await createStudio(draft);
     } catch (error) {
-      setPendingAutoSubmit(false);
       setSubmitError(onboardingErrorMessage(error));
       setIsSubmitting(false);
     }
