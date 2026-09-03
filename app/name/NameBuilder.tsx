@@ -719,9 +719,20 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
               type="button"
               onClick={handleBack}
               aria-label="Back"
-              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-xl leading-none text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
+              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] text-[var(--theme-text)] transition hover:border-[color:var(--theme-border-hover)]"
             >
-              ←
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
             </button>
             <DesignProgressBar current={progressStepForBuilder(step)} className="justify-self-center" />
             <span aria-hidden="true" />
