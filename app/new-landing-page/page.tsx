@@ -19,9 +19,10 @@ const shuffle = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "flawless.design | Design, film and grow",
+  title: "Grow Jewelry | Design, film and grow",
   description:
-    "Design custom jewelry orders, generate studio-grade reels, and grow organic leads — all from one place."
+    "Design custom jewelry orders, generate studio-grade reels, and grow organic leads with Grow Jewelry.",
+  alternates: { canonical: "https://growjewelry.io" }
 };
 
 export default function Page() {

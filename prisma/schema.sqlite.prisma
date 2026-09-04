@@ -349,6 +349,12 @@ model StoreProfile {
   coverTextColor      String   @default("light") // light | dark
   phone               String?
   whatsappPhone       String?
+  smsNotificationPhone   String?
+  smsNotificationsEnabled Boolean  @default(false)
+  smsConsentAt            DateTime?
+  smsConsentSource        String?
+  smsConsentVersion       String?
+  smsOptedOutAt           DateTime?
   websiteUrl          String?
   extraLinksJson      String?
   instagramHandle     String?

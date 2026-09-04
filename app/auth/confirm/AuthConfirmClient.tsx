@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { safeInternalPath } from "@/src/lib/auth/redirect";
 import { createClient } from "@/src/lib/supabase/client";
 
@@ -51,10 +52,15 @@ export default function AuthConfirmClient() {
 
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
+      const tokenHash = searchParams.get("token_hash");
+      const tokenType = searchParams.get("type") as EmailOtpType | null;
       const supabase = createClient();
 
       try {
-        if (accessToken && refreshToken) {
+        if (tokenHash && tokenType) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: tokenType });
+          if (verifyError) throw verifyError;
+        } else if (accessToken && refreshToken) {
           const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken

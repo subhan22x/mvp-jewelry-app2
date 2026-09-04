@@ -1,14 +1,16 @@
 {
-  "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": false,
-    "code-simplifier@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "Bash(systemctl --user daemon-reload)",
       "Bash(systemctl --user restart unison-downloads.service)",
-      "Bash(systemctl --user status unison-downloads.service --no-pager)"
+      "Bash(systemctl --user status unison-downloads.service --no-pager)",
+      "Bash(gh --version)",
+      "Bash(vercel --version)"
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": true
   }
 }
