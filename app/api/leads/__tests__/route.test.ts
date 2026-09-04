@@ -52,7 +52,8 @@ describe("/api/leads", () => {
         name: "Amna",
         phone: "+1 (324) 234-2343",
         email: "amna@gmail.com",
-        accountId: "account-dev"
+        accountId: "account-dev",
+        qrKitId: null
       }
     });
     expect(await response.json()).toMatchObject({ leadId: "lead-test" });

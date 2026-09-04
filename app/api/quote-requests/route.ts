@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const body = Body.parse(await req.json());
     const request = await prisma.request.findUnique({
       where: { id: body.requestId },
-      select: { id: true, accountId: true }
+      select: { id: true, accountId: true, qrKitId: true }
     });
 
     if (!request) {
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
         data: {
           accountId: request.accountId,
           requestId: request.id,
+          qrKitId: request.qrKitId,
           name: contact.name,
           phone: contact.phone,
           email: contact.email

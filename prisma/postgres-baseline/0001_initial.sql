@@ -606,3 +606,71 @@ ALTER TABLE "public"."VvsStudioVideoGeneration" ADD CONSTRAINT "VvsStudioVideoGe
 
 -- AddForeignKey
 ALTER TABLE "public"."VvsStudioVideoGeneration" ADD CONSTRAINT "VvsStudioVideoGeneration_shootId_fkey" FOREIGN KEY ("shootId") REFERENCES "public"."VvsStudioShoot"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- QR kit attribution
+CREATE TABLE "public"."QrKitBatch" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "printTemplateVersion" TEXT NOT NULL,
+    "createdByUserId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "QrKitBatch_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "public"."QrKit" (
+    "id" TEXT NOT NULL,
+    "batchId" TEXT NOT NULL,
+    "displayCode" TEXT NOT NULL,
+    "publicToken" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'available',
+    "accountId" TEXT,
+    "assignedAt" TIMESTAMP(3),
+    "deployedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "QrKit_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "QrKit_status_check" CHECK ("status" IN ('available', 'assigned', 'suspended', 'lost', 'retired'))
+);
+
+CREATE TABLE "public"."QrKitEvent" (
+    "id" TEXT NOT NULL,
+    "qrKitId" TEXT NOT NULL,
+    "accountId" TEXT,
+    "actorUserId" TEXT,
+    "type" TEXT NOT NULL,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "QrKitEvent_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "QrKitEvent_type_check" CHECK ("type" IN ('created', 'assigned', 'deployed', 'suspended', 'reactivated', 'marked_lost', 'retired', 'reset'))
+);
+
+ALTER TABLE "public"."Request" ADD COLUMN "qrKitId" TEXT;
+ALTER TABLE "public"."Lead" ADD COLUMN "qrKitId" TEXT;
+ALTER TABLE "public"."QuoteRequest" ADD COLUMN "qrKitId" TEXT;
+
+CREATE UNIQUE INDEX "QrKitBatch_code_key" ON "public"."QrKitBatch"("code");
+CREATE INDEX "QrKitBatch_createdAt_idx" ON "public"."QrKitBatch"("createdAt");
+CREATE UNIQUE INDEX "QrKit_displayCode_key" ON "public"."QrKit"("displayCode");
+CREATE UNIQUE INDEX "QrKit_publicToken_key" ON "public"."QrKit"("publicToken");
+CREATE INDEX "QrKit_batchId_idx" ON "public"."QrKit"("batchId");
+CREATE INDEX "QrKit_status_accountId_idx" ON "public"."QrKit"("status", "accountId");
+CREATE INDEX "QrKitEvent_qrKitId_createdAt_idx" ON "public"."QrKitEvent"("qrKitId", "createdAt");
+CREATE INDEX "QrKitEvent_accountId_createdAt_idx" ON "public"."QrKitEvent"("accountId", "createdAt");
+CREATE INDEX "Request_qrKitId_createdAt_idx" ON "public"."Request"("qrKitId", "createdAt");
+CREATE INDEX "Lead_qrKitId_createdAt_idx" ON "public"."Lead"("qrKitId", "createdAt");
+CREATE INDEX "QuoteRequest_qrKitId_createdAt_idx" ON "public"."QuoteRequest"("qrKitId", "createdAt");
+
+ALTER TABLE "public"."QrKitBatch" ADD CONSTRAINT "QrKitBatch_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."QrKit" ADD CONSTRAINT "QrKit_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "public"."QrKitBatch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."QrKit" ADD CONSTRAINT "QrKit_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "public"."Account"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."QrKitEvent" ADD CONSTRAINT "QrKitEvent_qrKitId_fkey" FOREIGN KEY ("qrKitId") REFERENCES "public"."QrKit"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."QrKitEvent" ADD CONSTRAINT "QrKitEvent_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "public"."Account"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."QrKitEvent" ADD CONSTRAINT "QrKitEvent_actorUserId_fkey" FOREIGN KEY ("actorUserId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."Request" ADD CONSTRAINT "Request_qrKitId_fkey" FOREIGN KEY ("qrKitId") REFERENCES "public"."QrKit"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Lead" ADD CONSTRAINT "Lead_qrKitId_fkey" FOREIGN KEY ("qrKitId") REFERENCES "public"."QrKit"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."QuoteRequest" ADD CONSTRAINT "QuoteRequest_qrKitId_fkey" FOREIGN KEY ("qrKitId") REFERENCES "public"."QrKit"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "public"."QrKitBatch" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."QrKit" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."QrKitEvent" ENABLE ROW LEVEL SECURITY;
