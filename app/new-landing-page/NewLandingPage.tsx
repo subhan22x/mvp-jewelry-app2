@@ -117,9 +117,6 @@ export default function NewLandingPage({ className }: { className?: string }) {
         .nl-feature { display: flex; min-height: 76vh; max-width: 520px; flex-direction: column; justify-content: center; transition: opacity .4s ease; }
         .nl-timeline { display: flex; }
         .nl-pillar-inner { width: 100%; max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: clamp(16px, 4vw, 48px); padding: clamp(24px, 4vw, 48px) clamp(20px, 5vw, 56px); text-align: left; }
-        @media (max-width: 700px) {
-          .nl-design-pillar-inner { padding-left: clamp(32px, 8vw, 44px); }
-        }
         /* Accent line on the pillar headings — matches the homepage h1 <em>
            (gold TheShuffle script, own line, slightly larger, upright). */
         .nl-accent { display: block; margin-top: 0.12em; color: #d4924a; font-family: var(--font-shuffle), cursive; font-size: 1.08em; font-weight: 400; font-style: normal; letter-spacing: 0; line-height: 1; }
@@ -313,7 +310,7 @@ export default function NewLandingPage({ className }: { className?: string }) {
                     position: "relative",
                     zIndex: 2,
                     flex: "1 1 0",
-                    minWidth: 0,
+                    minWidth: "clamp(132px, 34vw, 140px)",
                     fontWeight: 800,
                     fontSize: "clamp(23px, 3.7vw, 46px)",
                     lineHeight: 1.14,
@@ -898,7 +895,13 @@ export default function NewLandingPage({ className }: { className?: string }) {
               color: "#58534d",
             }}
           >
-            &copy; 2026 flawless.design &middot; All rights reserved
+            &copy; 2026 Grow Jewelry &middot; growjewelry.io &middot; All rights reserved
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 18px", fontSize: 12 }}>
+            <Link href="/privacy" style={{ color: "#91877b", textDecoration: "none" }}>Privacy Policy</Link>
+            <Link href="/terms" style={{ color: "#91877b", textDecoration: "none" }}>Terms and Conditions</Link>
+            <Link href="/sms-consent" style={{ color: "#91877b", textDecoration: "none" }}>SMS Consent</Link>
+            <a href="mailto:support@growjewelry.io" style={{ color: "#91877b", textDecoration: "none" }}>support@growjewelry.io</a>
           </div>
         </footer>
       </div>

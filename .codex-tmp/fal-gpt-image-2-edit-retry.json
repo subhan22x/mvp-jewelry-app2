@@ -1,0 +1,41 @@
+{
+  "endpoint": "openai/gpt-image-2/edit",
+  "input": {
+    "prompt": "Create a polished studio product photo from this jewelry pendant reference. Preserve the pendant structure and details, improve lighting and clarity, and keep it centered on a simple dark luxury background.",
+    "image_urls": [
+      "<uploaded-url>"
+    ],
+    "image_size": {
+      "width": 1024,
+      "height": 768
+    },
+    "quality": "medium",
+    "num_images": 1,
+    "output_format": "jpeg",
+    "sync_mode": false
+  },
+  "request_id": "019f19a2-666e-7c12-bdfb-23a60916e721",
+  "status": {
+    "status": "COMPLETED",
+    "request_id": "019f19a2-666e-7c12-bdfb-23a60916e721",
+    "response_url": "https://queue.fal.run/openai/gpt-image-2/requests/019f19a2-666e-7c12-bdfb-23a60916e721",
+    "status_url": "https://queue.fal.run/openai/gpt-image-2/requests/019f19a2-666e-7c12-bdfb-23a60916e721/status",
+    "cancel_url": "https://queue.fal.run/openai/gpt-image-2/requests/019f19a2-666e-7c12-bdfb-23a60916e721/cancel",
+    "logs": null,
+    "metrics": {
+      "inference_time": 76.0365641117096
+    }
+  },
+  "result": {
+    "images": [
+      {
+        "url": "https://v3b.fal.media/files/b/0aa06676/tx0DZeBU8-g3gkqLVXPrI_lHDXBB4m.jpg",
+        "content_type": "image/jpeg",
+        "file_name": "tx0DZeBU8-g3gkqLVXPrI_lHDXBB4m.jpg",
+        "file_size": null,
+        "width": null,
+        "height": null
+      }
+    ]
+  }
+}

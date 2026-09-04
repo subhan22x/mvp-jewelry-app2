@@ -64,6 +64,7 @@ Data collection stays on:
   - generated/request media should be durable in R2 for production.
 - Internal tools:
   - `/internal/generations` is for prompt/output review and style/font tooling.
+  - Use `/internal/generations` first when asked how long a past generation took. It displays each persisted `Result.durationMs` beside the request text, style, variant, status, and model; do not start with an ad-hoc database query when this review tool is available.
   - internal generation review must show data actually stored/sent for that generation, not reconstructed current state.
 
 ## Prompting And Generation Rules

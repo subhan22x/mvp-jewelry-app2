@@ -1,0 +1,112 @@
+{
+  "pricing": {
+    "prices": [
+      {
+        "endpoint_id": "openai/gpt-image-2/edit",
+        "unit_price": 1,
+        "unit": "units",
+        "currency": "USD"
+      }
+    ],
+    "next_cursor": null,
+    "has_more": false
+  },
+  "estimate_cost_unit_1": {
+    "estimate_type": "unit_price",
+    "total_cost": 1,
+    "currency": "USD"
+  },
+  "usage_24h": {
+    "next_cursor": "Mg",
+    "has_more": true,
+    "time_series": [
+      {
+        "bucket": "2026-06-29T17:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T18:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T19:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T20:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T21:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T22:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T23:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-30T00:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-30T01:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-30T02:00:00+00:00",
+        "results": []
+      }
+    ],
+    "summary": []
+  },
+  "analytics_24h": {
+    "next_cursor": "Mg",
+    "has_more": true,
+    "time_series": [
+      {
+        "bucket": "2026-06-29T17:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T18:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T19:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T20:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T21:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T22:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-29T23:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-30T00:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-30T01:00:00+00:00",
+        "results": []
+      },
+      {
+        "bucket": "2026-06-30T02:00:00+00:00",
+        "results": []
+      }
+    ]
+  }
+}

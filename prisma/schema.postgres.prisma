@@ -20,6 +20,8 @@ model User {
   createdAt    DateTime            @default(now())
   Requests     Request[]
   Memberships  AccountMembership[]
+  QrKitBatches QrKitBatch[] @relation("QrKitBatchCreator")
+  QrKitEvents  QrKitEvent[] @relation("QrKitEventActor")
 }
 
 model Account {
@@ -69,6 +71,61 @@ model Account {
   GenerationLabCases        GenerationLabCase[]
   GenerationLabReviews      GenerationLabResultReview[]
   GenerationLabPromptOverrides GenerationLabPromptOverride[]
+  QrKits                   QrKit[]
+  QrKitEvents              QrKitEvent[]
+}
+
+model QrKitBatch {
+  id                   String   @id @default(cuid())
+  code                 String   @unique
+  label                String
+  printTemplateVersion String
+  createdByUserId      String
+  createdByUser        User     @relation("QrKitBatchCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt            DateTime @default(now())
+
+  kits                 QrKit[]
+
+  @@index([createdAt])
+}
+
+model QrKit {
+  id            String      @id @default(cuid())
+  batchId       String
+  batch         QrKitBatch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  displayCode   String      @unique
+  publicToken   String      @unique
+  status        String      @default("available") // available | assigned | suspended | lost | retired
+  accountId     String?
+  account       Account?    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  assignedAt    DateTime?
+  deployedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  events        QrKitEvent[]
+  Requests      Request[]
+  Leads         Lead[]
+  QuoteRequests QuoteRequest[]
+
+  @@index([batchId])
+  @@index([status, accountId])
+}
+
+model QrKitEvent {
+  id          String   @id @default(cuid())
+  qrKitId     String
+  qrKit       QrKit    @relation(fields: [qrKitId], references: [id], onDelete: Restrict)
+  accountId   String?
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  actorUserId String?
+  actorUser   User?    @relation("QrKitEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  type        String   // created | assigned | deployed | suspended | reactivated | marked_lost | retired | reset
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([qrKitId, createdAt])
+  @@index([accountId, createdAt])
 }
 
 model StripeWebhookEvent {
@@ -105,6 +162,8 @@ model Request {
   account        Account  @relation(fields: [accountId], references: [id])
   userId         String
   user           User     @relation(fields: [userId], references: [id])
+  qrKitId        String?
+  qrKit          QrKit?   @relation(fields: [qrKitId], references: [id], onDelete: Restrict)
   productType    String   @default("name") // name | picture
   pendantFinish  String   @default("icedout") // icedout | plain
   styleId        String
@@ -136,6 +195,7 @@ model Request {
   GenerationLabCases GenerationLabCase[]
 
   @@index([accountId, createdAt])
+  @@index([qrKitId, createdAt])
 }
 
 model Result {
@@ -190,6 +250,8 @@ model Lead {
   id        String   @id @default(cuid())
   accountId String   @default("demo-account")
   account   Account  @relation(fields: [accountId], references: [id])
+  qrKitId   String?
+  qrKit     QrKit?   @relation(fields: [qrKitId], references: [id], onDelete: Restrict)
   requestId String?
   name      String
   phone     String
@@ -197,6 +259,7 @@ model Lead {
   createdAt DateTime @default(now())
 
   @@index([accountId, createdAt])
+  @@index([qrKitId, createdAt])
 }
 
 model VideoGeneration {
@@ -254,6 +317,8 @@ model QuoteRequest {
   id               String           @id @default(cuid())
   accountId        String           @default("demo-account")
   account          Account          @relation(fields: [accountId], references: [id])
+  qrKitId          String?
+  qrKit            QrKit?           @relation(fields: [qrKitId], references: [id], onDelete: Restrict)
   requestId        String?          @unique
   request          Request?         @relation(fields: [requestId], references: [id])
   resultId         String?
@@ -303,6 +368,7 @@ model QuoteRequest {
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
+  @@index([qrKitId, createdAt])
 }
 
 model UsagePlan {
@@ -378,6 +444,12 @@ model StoreProfile {
   coverTextColor      String   @default("light") // light | dark
   phone               String?
   whatsappPhone       String?
+  smsNotificationPhone   String?
+  smsNotificationsEnabled Boolean  @default(false)
+  smsConsentAt            DateTime?
+  smsConsentSource        String?
+  smsConsentVersion       String?
+  smsOptedOutAt           DateTime?
   websiteUrl          String?
   extraLinksJson      String?
   instagramHandle     String?
