@@ -15,6 +15,7 @@ import {
   storedDraftForAuthenticatedEmail
 } from "@/src/lib/onboarding/draft";
 import { createClient } from "@/src/lib/supabase/client";
+import { SMS_CONSENT_TEXT } from "@/src/lib/sms-consent";
 
 const GOLD = "#e8b06a";
 const CREAM = "#ede4d4";
@@ -213,6 +214,7 @@ export default function OnboardingPage() {
 
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [instagramHandle, setInstagramHandle] = useState("");
   const [instagramStatus, setInstagramStatus] = useState<InstagramStatus>("idle");
   const [businessName, setBusinessName] = useState("");
@@ -315,6 +317,7 @@ export default function OnboardingPage() {
     try {
       setOwnerName(draft.ownerName ?? "");
       setPhone(draft.phone ?? "");
+      setSmsConsent(draft.smsConsent ?? false);
       setInstagramHandle(draft.instagramHandle ?? "");
       setBusinessName(draft.businessName ?? "");
       setEmail(draft.email ?? "");
@@ -369,7 +372,7 @@ export default function OnboardingPage() {
     if (logoFile && logoFile.size <= 2_500_000) {
       logo = { dataUrl: await fileToDataUrl(logoFile), name: logoFile.name, type: logoFile.type };
     }
-    return { ownerName, phone, instagramHandle, businessName, email, logo };
+    return { ownerName, phone, smsConsent, instagramHandle, businessName, email, logo };
   }
 
   async function createStudio(draft: OnboardingDraft, draftLogo = logoFile) {
@@ -378,6 +381,7 @@ export default function OnboardingPage() {
       businessName: draft.businessName,
       ownerName: draft.ownerName,
       phone: draft.phone,
+      smsConsent: draft.smsConsent,
       instagramHandle: draft.instagramHandle
     }));
     if (draftLogo) {
@@ -490,10 +494,12 @@ export default function OnboardingPage() {
           <ScreenGetStarted
             ownerName={ownerName}
             phone={phone}
+            smsConsent={smsConsent}
             instagramHandle={instagramHandle}
             instagramStatus={instagramStatus}
             setOwnerName={setOwnerName}
             setPhone={setPhone}
+            setSmsConsent={setSmsConsent}
             setInstagramHandle={setInstagramHandle}
           />
           <ScreenProblem />
@@ -581,18 +587,22 @@ function ScreenWelcome() {
 function ScreenGetStarted({
   ownerName,
   phone,
+  smsConsent,
   instagramHandle,
   instagramStatus,
   setOwnerName,
   setPhone,
+  setSmsConsent,
   setInstagramHandle
 }: {
   ownerName: string;
   phone: string;
+  smsConsent: boolean;
   instagramHandle: string;
   instagramStatus: InstagramStatus;
   setOwnerName: (value: string) => void;
   setPhone: (value: string) => void;
+  setSmsConsent: (value: boolean) => void;
   setInstagramHandle: (value: string) => void;
 }) {
   return (
@@ -602,6 +612,19 @@ function ScreenGetStarted({
         <div className="ob-form-stack">
           <FormField label="Your name" placeholder="Jordan Vance" value={ownerName} onChange={setOwnerName} autoComplete="name" />
           <FormField label="Phone number" placeholder="(555) 123-4567" value={phone} onChange={setPhone} type="tel" autoComplete="tel" />
+          <label className="ob-sms-consent">
+            <input
+              type="checkbox"
+              checked={smsConsent}
+              onChange={(event) => setSmsConsent(event.target.checked)}
+            />
+            <span>
+              {SMS_CONSENT_TEXT}{" "}
+              <a href="/terms" target="_blank" rel="noreferrer">Terms</a>
+              {" · "}
+              <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>
+            </span>
+          </label>
           <InstagramField value={instagramHandle} onChange={setInstagramHandle} status={instagramStatus} />
         </div>
       </div>
@@ -843,6 +866,9 @@ const onboardingStyles = `
   .ob-instagram-check { display:grid; place-items:center; flex:0 0 22px; height:22px; margin-right:12px; border-radius:50%; background:${GOLD}; color:#1a0e04; font-size:12px; font-weight:900; }
   .ob-input-bare { background:none; border:0; height:48px; padding:0 14px 0 2px; border-radius:0; }
   .ob-input-bare:focus { background:none; }
+  .ob-sms-consent { display:flex; align-items:flex-start; gap:10px; margin-top:-4px; color:rgba(237,228,212,.64); font:400 11px/1.45 var(--font-figtree),sans-serif; cursor:pointer; }
+  .ob-sms-consent input { width:16px; height:16px; flex:0 0 16px; margin:2px 0 0; accent-color:${GOLD}; }
+  .ob-sms-consent a { color:${GOLD}; text-decoration:underline; text-underline-offset:2px; }
   .ob-problem-body .ob-eyebrow { gap:10px; font-size:14px; letter-spacing:.18em; }
   .ob-problem-body .ob-eyebrow span { width:25px; height:2px; }
   .ob-problem-visual { position:absolute; top:7%; left:16px; right:16px; height:48%; z-index:4; display:flex; align-items:center; justify-content:center; }

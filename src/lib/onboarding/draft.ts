@@ -4,6 +4,7 @@ export const ONBOARDING_METADATA_KEY = "vvs_onboarding";
 export type OnboardingDraft = {
   ownerName: string;
   phone: string;
+  smsConsent: boolean;
   instagramHandle: string;
   businessName: string;
   email: string;
@@ -33,6 +34,7 @@ export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null
     return {
       ownerName: cleanString(value.ownerName),
       phone: cleanString(value.phone),
+      smsConsent: value.smsConsent === true,
       instagramHandle: cleanString(value.instagramHandle),
       businessName: cleanString(value.businessName),
       email: cleanString(value.email),
@@ -52,6 +54,7 @@ export function onboardingDraftMetadata(draft: OnboardingDraft) {
   return {
     ownerName: draft.ownerName,
     phone: draft.phone,
+    smsConsent: draft.smsConsent,
     instagramHandle: draft.instagramHandle,
     businessName: draft.businessName
   };
@@ -66,6 +69,7 @@ export function onboardingDraftFromMetadata(metadata: unknown, email: string): O
   const draft = {
     ownerName: cleanString(value.ownerName),
     phone: cleanString(value.phone),
+    smsConsent: value.smsConsent === true,
     instagramHandle: cleanString(value.instagramHandle),
     businessName: cleanString(value.businessName),
     email

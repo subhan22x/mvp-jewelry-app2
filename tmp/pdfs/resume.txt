@@ -1,0 +1,52 @@
+                                          Subhan Hussain
+                     subhanhussain22@gmail.com | www.subhan22.com| github.com/subhan22x
+Skills
+
+Languages & Frameworks: TypeScript, JavaScript, Python, SQL, HTML, CSS, Java, React, Next.js, Node.js, LangChain,
+Prisma​
+Databases & Storage: PostgreSQL, Supabase, Vector Databases, Cloudflare R2​
+Tools & Platforms: Git, Docker, Vercel, Cloudflare S3​
+AI Tools: RAG, Pi Agent, Hermes Agent, Gemini Studio
+
+Experience
+Full Stack Development Intern, Market Prism – Remote​                                            Feb 2026 – May 2026
+     ●​ Built new responsive interfaces and reusable UI components using React and TypeScript, helped in expanding the
+         feature suite.
+     ●​ Improved user flows and interface consistency through UX-focused design refinements.
+     ●​ Helped in development of APIs for new features and integrated them with frontend workflows.
+     ●​ Refactored legacy code to improve maintainability and support future development.
+
+
+Data Analyst, USHA Construction – Houston, TX​                                                       May 2026 – Present
+   ●​ Collect and organize operational data from active construction projects to produce accurate, recurring progress
+       reports.
+   ●​ Track project status, milestones, timelines, and outstanding items, giving stakeholders a clearer view of ongoing
+       work.
+   ●​ Review incoming project information for inconsistencies and missing details before incorporating it into reports.
+   ●​ Convert raw project data into concise summaries that help management monitor progress, identify delays, and
+       coordinate follow-up actions.
+
+
+Projects
+Jewelry Designer Widget | B2B Saas ​                                                                 www.growjewelry.io/
+●​ Built and sold (has active customers) a full-stack web app that generates with AI custom jewelry from user-selected
+   preferences such as text and design choices, takes in user info for marketing and helps the business owner send a
+   quote to that customer.
+●​ Implemented asynchronous image, video, and 3D generation workflows with progressive result polling, persistent
+   metadata using Next.js, TypeScript, Prisma, Supabase, Gemini AI image models, Vercel and Cloudflare R2 Storage
+
+
+Enterprise multi-tenant RAG Chatbot @ ENGIE​                                  Private Repo (NDA signed) subhan22.com
+●​ Worked with Project Managers and Technical Team at ENGIE to develop a multi-user chatbot that allows cross team
+   and across leadership level communication using data stored in company servers.
+●​ Implemented a Custom RAG solution that accounts for different access level depending on the team and the user, and
+   cites the correct data while implementing strict privacy checks
+
+
+
+​
+Education
+University of Houston – Bachelors of Science in Computer Science ​
+Clements High School – Debate Club, STEM Track​
+​
+

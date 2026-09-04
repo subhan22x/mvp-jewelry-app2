@@ -11,6 +11,7 @@ describe("onboarding draft", () => {
     const draft = parseOnboardingDraft(JSON.stringify({
       ownerName: "Jordan",
       phone: "555-0100",
+      smsConsent: true,
       instagramHandle: "jordanice",
       businessName: "Jordan ICE",
       email: "owner@example.com",
@@ -21,6 +22,7 @@ describe("onboarding draft", () => {
     expect(draft).toEqual({
       ownerName: "Jordan",
       phone: "555-0100",
+      smsConsent: true,
       instagramHandle: "jordanice",
       businessName: "Jordan ICE",
       email: "owner@example.com",
@@ -38,6 +40,7 @@ describe("onboarding draft", () => {
     const original = {
       ownerName: "Jordan",
       phone: "555-0100",
+      smsConsent: true,
       instagramHandle: "jordanice",
       businessName: "Jordan ICE",
       email: "owner@example.com"
@@ -51,6 +54,7 @@ describe("onboarding draft", () => {
     const draft = parseOnboardingDraft(JSON.stringify({
       ownerName: "Jordan",
       phone: "",
+      smsConsent: false,
       instagramHandle: "",
       businessName: "Jordan ICE",
       email: "first@example.com"

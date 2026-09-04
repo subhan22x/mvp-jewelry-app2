@@ -6,6 +6,7 @@ import DesignWizardBrandingCard from "./DesignWizardBrandingCard";
 import StorefrontShareCard from "./StorefrontShareCard";
 import ThemeSettingsForm from "./ThemeSettingsForm";
 import VvsPipelineSettingsForm from "./VvsPipelineSettingsForm";
+import SmsNotificationSettingsForm from "./SmsNotificationSettingsForm";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import { canManageVvsPipelineSettings } from "@/src/lib/vvs-studio/pipeline-settings";
 
@@ -22,7 +23,16 @@ export default async function OwnerSettingsPage() {
         name: true,
         logoUrl: true,
         brandDisplayMode: true,
-        StoreProfile: { select: { isPublished: true, displayName: true, profileImageUrl: true } }
+        StoreProfile: {
+          select: {
+            isPublished: true,
+            displayName: true,
+            profileImageUrl: true,
+            smsNotificationPhone: true,
+            smsNotificationsEnabled: true,
+            smsConsentAt: true
+          }
+        }
       }
     })
   ]);
@@ -48,6 +58,13 @@ export default async function OwnerSettingsPage() {
           />
         )}
         <ThemeSettingsForm />
+        {account && (
+          <SmsNotificationSettingsForm
+            initialPhone={account.StoreProfile?.smsNotificationPhone ?? ""}
+            initialEnabled={account.StoreProfile?.smsNotificationsEnabled ?? false}
+            initialConsentAt={account.StoreProfile?.smsConsentAt?.toISOString() ?? null}
+          />
+        )}
         <VvsPipelineSettingsForm enabled={canManageVvsPipelineSettings(owner.email)} />
         <PromptModeForm initialMode={promptMode} />
       </div>

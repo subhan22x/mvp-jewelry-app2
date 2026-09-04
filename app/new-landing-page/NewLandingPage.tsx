@@ -895,7 +895,13 @@ export default function NewLandingPage({ className }: { className?: string }) {
               color: "#58534d",
             }}
           >
-            &copy; 2026 flawless.design &middot; All rights reserved
+            &copy; 2026 Grow Jewelry &middot; growjewelry.io &middot; All rights reserved
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 18px", fontSize: 12 }}>
+            <Link href="/privacy" style={{ color: "#91877b", textDecoration: "none" }}>Privacy Policy</Link>
+            <Link href="/terms" style={{ color: "#91877b", textDecoration: "none" }}>Terms and Conditions</Link>
+            <Link href="/sms-consent" style={{ color: "#91877b", textDecoration: "none" }}>SMS Consent</Link>
+            <a href="mailto:support@growjewelry.io" style={{ color: "#91877b", textDecoration: "none" }}>support@growjewelry.io</a>
           </div>
         </footer>
       </div>

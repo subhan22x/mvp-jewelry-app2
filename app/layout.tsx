@@ -25,7 +25,10 @@ const theShuffle = localFont({
   variable: "--font-the-shuffle"
 });
 
-export const metadata = { title: "Pendant MVP", description: "Custom pendant ideation" };
+export const metadata = {
+  title: "Grow Jewelry",
+  description: "AI design studio for jewelers",
+};
 
 const browserPermissionErrorGuard = `
 (() => {

@@ -6,14 +6,24 @@ import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { slugify } from "@/src/lib/slug";
 import { createClient } from "@/src/lib/supabase/server";
+import { SMS_CONSENT_SOURCE, smsConsentRecord } from "@/src/lib/sms-consent";
 
 export const dynamic = "force-dynamic";
 
 const onboardingSchema = z.object({
   businessName: z.string().trim().min(2),
   ownerName: z.string().trim().optional(),
-  phone: z.string().trim().optional(),
+  phone: z.string().trim().max(30).optional(),
+  smsConsent: z.boolean().default(false),
   instagramHandle: z.string().trim().optional()
+}).superRefine((value, context) => {
+  if (value.smsConsent && !value.phone) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["phone"],
+      message: "Enter a phone number to enable text notifications."
+    });
+  }
 });
 
 function jsonError(message: string, status = 400) {
@@ -117,6 +127,8 @@ export async function POST(req: Request) {
             displayName: body.businessName,
             profileImageUrl: logoUrl,
             phone: body.phone || null,
+            smsNotificationPhone: body.smsConsent ? body.phone : null,
+            ...(body.smsConsent ? smsConsentRecord(SMS_CONSENT_SOURCE.onboarding) : {}),
             instagramHandle: cleanHandle(body.instagramHandle),
             isPublished: false
           }
