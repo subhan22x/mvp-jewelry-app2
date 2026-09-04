@@ -4,7 +4,7 @@ Use these answers for the Grow Jewelry sole-proprietor A2P 10DLC campaign. Twili
 
 Do not resubmit the campaign until all four public URLs below are deployed, publicly accessible, and manually verified:
 
-- https://growjewelry.io/on3. `Grow Jewelry: An account alert needs your attention: [account alert summary]. Sign in at https://growjewelry.io/owner/settings. Reply HELP for help or STOP to opt out.boarding
+- https://growjewelry.io/onboarding
 - https://growjewelry.io/privacy
 - https://growjewelry.io/terms
 - https://growjewelry.io/sms-consent
