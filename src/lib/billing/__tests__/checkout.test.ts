@@ -16,7 +16,7 @@ function client() {
   };
 }
 let stripe: ReturnType<typeof client>;
-const start = () => startAccountCheckout({ stripe: stripe as unknown as Stripe, accountId: "acct", email: "owner@example.com", plan: BILLING_PLANS[0], expectedPriceId: "price_basic", baseUrl: "https://growjewelry.io" });
+const start = (intent: "trial" | "subscribe" = "trial") => startAccountCheckout({ stripe: stripe as unknown as Stripe, accountId: "acct", email: "owner@example.com", plan: BILLING_PLANS[0], intent, expectedPriceId: "price_basic", baseUrl: "https://growjewelry.io" });
 beforeEach(() => {
   vi.clearAllMocks(); stripe = client();
   vi.stubEnv("STRIPE_PRODUCT_BASIC", "prod_basic");
@@ -34,14 +34,24 @@ describe("Basic Checkout", () => {
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
   });
   it("reuses an open Checkout across repeated clicks", async () => {
-    stripe.checkout.sessions.list.mockImplementation(() => list([{ mode: "subscription", metadata: { accountId: "acct", priceId: "price_basic", trialEligible: "true" }, url: "https://checkout.stripe.com/existing" }]));
+    stripe.checkout.sessions.list.mockImplementation(() => list([{ mode: "subscription", metadata: { accountId: "acct", priceId: "price_basic", checkoutIntent: "trial", trialEligible: "true" }, url: "https://checkout.stripe.com/existing" }]));
     expect(await start()).toBe("https://checkout.stripe.com/existing");
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
   });
   it("does not repeat a trial when Stripe history precedes the local webhook", async () => {
     stripe.subscriptions.list.mockImplementation(() => list([{ status: "canceled", trial_start: 123 }]));
-    await start();
+    await expect(start()).rejects.toThrow("already used");
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+  it("does not grant a trial for an explicit subscription", async () => {
+    await start("subscribe");
     expect(stripe.checkout.sessions.create.mock.calls[0][0].subscription_data).not.toHaveProperty("trial_period_days");
+  });
+  it("expires a session when the checkout intent changes", async () => {
+    stripe.checkout.sessions.list.mockImplementation(() => list([{ id: "cs_old", mode: "subscription", metadata: { accountId: "acct", priceId: "price_basic", checkoutIntent: "trial", trialEligible: "true" }, url: "https://checkout.stripe.com/old" }]));
+    await start("subscribe");
+    expect(stripe.checkout.sessions.expire).toHaveBeenCalledWith("cs_old");
+    expect(stripe.checkout.sessions.create).toHaveBeenCalled();
   });
   it("requires refreshing the page if Stripe changed the displayed price", async () => {
     stripe.products.retrieve.mockResolvedValue({ id: "prod_basic", active: true, name: "Basic", description: null, default_price: { id: "price_new", product: "prod_basic", active: true, type: "recurring", currency: "usd", unit_amount: 30000, billing_scheme: "per_unit", recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } } });

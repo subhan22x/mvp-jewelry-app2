@@ -4,7 +4,7 @@ Stripe owns the product catalog, prices, customers, subscriptions, invoices, and
 
 ## Initial production configuration
 
-Basic starts at USD 250/month with a seven-day card-required trial. Value and Bundle remain unavailable. The existing $200 quote and $50 Studio products are preserved and are not attached to Basic automatically.
+Basic starts at USD 250/month. New accounts receive five lifetime image Generate clicks without a card; the seven-day card-required Stripe trial is a separate opt-in. Value and Bundle remain unavailable. The existing $200 quote and $50 Studio products are preserved and are not attached to Basic automatically.
 
 Configured on September 30, 2026:
 
@@ -55,7 +55,7 @@ Legacy `STRIPE_PRICE_BASIC` configuration remains accepted as a fallback to loca
 
 ## Subscription lifecycle
 
-- Checkout uses subscription mode, collects a payment method, and offers the first trial only.
+- Checkout uses subscription mode and collects a payment method. Subscribe to Basic bills immediately; Start 7 day trial explicitly requests the first trial. The server verifies trial history, and Checkout reuse/idempotency include the selected intent.
 - Account-scoped Postgres transaction locks serialize Checkout creation and webhook synchronization across instances.
 - Existing nonterminal subscriptions go to the Portal instead of creating another subscription. Open app Checkout sessions are reused.
 - Stripe subscription history also prevents repeat trials when local webhook delivery is delayed.
@@ -66,6 +66,7 @@ Legacy `STRIPE_PRICE_BASIC` configuration remains accepted as a fallback to loca
 - Older canceled-subscription events cannot overwrite a replacement subscription.
 - Unrecognized subscription Products cannot provision access.
 - Invoice failures/recovery and subscription status events synchronize the same subscription snapshot.
+- Signup credits are recorded in the existing UsageEvent ledger at onboarding. An account lock reserves one credit per owner image Generate request, including all normal variants. Entirely failed attempts refund their reservation; successful attempts consume one lifetime credit. The owner dashboard and Design remain accessible while credits or pending attempts remain. The bottom reminder is hidden at five credits and appears at four or fewer; exhaustion shows the subscription overlay after pending work completes. Signup credits do not grant video, 3D, Studio or public storefront access.
 - Active subscriptions and unexpired trials allow paid features. `past_due`/`unpaid` have the existing two-day grace period. Canceled, paused, incomplete, and expired trials are blocked.
 - Billing, profile, and settings remain reachable for account recovery; inactive accounts see a billing gate on other owner screens.
 - Existing legacy active accounts without any subscription state retain their pre-existing allowance, as explicitly confirmed by the product owner. New onboarding creates `incomplete`, not a legacy allowance, and sends the owner to the account page to start billing.

@@ -1,3 +1,4 @@
+import { SIGNUP_GENERATIONS } from "@/src/lib/billing/signup-credits";
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
         status: "active",
         subscriptionPlanKey: "basic",
         subscriptionStatus: "incomplete",
+        UsageEvents: { create: { kind: "signup_generation_grant", quantity: SIGNUP_GENERATIONS, sourceType: "Account", sourceId: accountId, idempotencyKey: `signup-grant:${accountId}` } },
         StoreProfile: {
           create: {
             displayName: body.businessName,

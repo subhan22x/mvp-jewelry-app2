@@ -23,7 +23,8 @@ Generated images, videos, prompts, and system behavior are owned/controlled by t
 - Prompt/model control: SaaS admin only. Store owners do not edit prompts.
 - Messaging: real email and/or SMS quote follow-up is in scope.
 - Plan names for v1 are `Basic`, `Value`, and `Bundle`; only `Basic` is purchasable in the first billing launch.
-- The free trial is 7 days and requires a card through Stripe Checkout before the trial starts.
+- New accounts receive five lifetime Generate clicks for owner image design, without a card. One click includes the normal image variants; entirely failed attempts return the credit. Video, 3D, Studio and public storefront access require subscription entitlement.
+- The free trial is an explicit opt-in on Manage billing: 7 days with a card through Stripe Checkout. Subscribe to Basic charges immediately without a trial.
 - Failed subscription payment gets a 2-day owner-dashboard grace period with a payment-failed banner.
 - Accounts without active entitlement should not expose the public storefront; public account routes show an access-denied page instead.
 - Existing active stores without Stripe subscription state retain their existing access. New accounts require subscription signup and never receive this legacy allowance.

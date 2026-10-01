@@ -121,4 +121,14 @@ describe("/api/requests/[id]/revisions", () => {
     expect(mocks.revisionCreate).not.toHaveBeenCalled();
   });
 
+  it("does not consume a credit when saving the generated revision fails", async () => {
+    mocks.revisionUpdate.mockRejectedValueOnce(new Error("Save failed"));
+    const { POST } = await import("../route");
+    await POST(new Request("http://test.local/api/requests/req-test/revisions", {
+      method: "POST", body: JSON.stringify({ sourceResultId: "result-1", prompt: "Make the crown larger" })
+    }), { params: Promise.resolve({ id: "req-test" }) });
+    await vi.waitFor(() => expect(mocks.revisionUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "failed" }) })));
+    expect(mocks.consumeUsage).not.toHaveBeenCalled();
+  });
+
 });

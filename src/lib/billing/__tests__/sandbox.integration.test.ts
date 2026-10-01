@@ -75,7 +75,7 @@ describe.skipIf(!enabled)("real Stripe sandbox with local Postgres", () => {
   }
 
   it("serializes concurrent checkout clicks, refuses unconfirmed access, and expires superseded sessions", async () => {
-    const start = () => startAccountCheckout({ stripe, accountId: fixture.accountId, email: null, plan: BILLING_PLANS[0], expectedPriceId: priceId, baseUrl: "http://localhost:3108" });
+    const start = () => startAccountCheckout({ stripe, accountId: fixture.accountId, email: null, plan: BILLING_PLANS[0], intent: "trial", expectedPriceId: priceId, baseUrl: "http://localhost:3108" });
     const urls = await Promise.all([start(), start()]);
     expect(urls[0]).toBe(urls[1]);
     const sessions = await stripe.checkout.sessions.list({ customer: customerId, status: "open" });

@@ -136,7 +136,7 @@ function UsageCard({ label, used, included }: { label: string; used: number; inc
 function PlanCard({ plan, isCurrent, canManage, hasUsedTrial, offer }: { plan: BillingPlan; isCurrent: boolean; canManage: boolean; hasUsedTrial: boolean; offer?: BillingOffer }) {
   const content = PLAN_CONTENT[plan.key];
   const isAvailable = plan.activeForV1 && (canManage || Boolean(offer));
-  const buttonLabel = isAvailable ? (canManage ? "Manage Basic" : hasUsedTrial ? "Subscribe to Basic" : "Start free trial") : plan.activeForV1 ? "Billing unavailable" : "Coming soon";
+  const buttonLabel = isAvailable ? (canManage ? "Manage Basic" : "Subscribe to Basic") : plan.activeForV1 ? "Billing unavailable" : "Coming soon";
 
   return (
     <article className={`${PLAN_CARD} transition ${isCurrent ? "border-[#D1B873] shadow-[0_0_0_1px_rgba(209,184,115,0.1)]" : "border-[#2D3340]"}`}>
@@ -157,8 +157,8 @@ function PlanCard({ plan, isCurrent, canManage, hasUsedTrial, offer }: { plan: B
         <FeatureList rows={content.features} />
       </div>
 
-      <BillingActionForm action={canManage ? "/api/billing/portal" : "/api/billing/checkout"} fields={{ planKey: plan.key, ...(offer ? { priceId: offer.priceId } : {}) }} className="mt-auto pt-7">
-        {isAvailable && !canManage && !hasUsedTrial && <p className="mb-3 text-xs leading-5 text-[#AEB8D8]">{TRIAL_DAYS} days free, then the price shown above. Card required.</p>}
+      <BillingActionForm action={canManage ? "/api/billing/portal" : "/api/billing/checkout"} fields={{ planKey: plan.key, intent: "subscribe", ...(offer ? { priceId: offer.priceId } : {}) }} className="mt-auto pt-7">
+        {isAvailable && !canManage && <p className="mb-3 text-xs leading-5 text-[#AEB8D8]">Subscribe now at the price shown above.</p>}
         <button
           className={`h-10 w-full rounded-md text-sm font-bold transition ${LANDING_FONT} ${isAvailable ? "bg-white text-[#101114] hover:bg-[#F4D38A]" : "cursor-not-allowed bg-[#2A2D35] text-[#858CA2]"}`}
           disabled={!isAvailable}
@@ -166,6 +166,10 @@ function PlanCard({ plan, isCurrent, canManage, hasUsedTrial, offer }: { plan: B
           {buttonLabel}
         </button>
       </BillingActionForm>
+      {isAvailable && !canManage && !hasUsedTrial && <BillingActionForm action="/api/billing/checkout" fields={{ planKey: plan.key, intent: "trial", ...(offer ? { priceId: offer.priceId } : {}) }} className="pt-3">
+        <button className="h-11 w-full rounded-md border border-[#60baff]/40 bg-[#19283e] text-sm font-semibold text-white hover:brightness-110">Start {TRIAL_DAYS} day trial</button>
+        <p className="mt-3 text-xs leading-5 text-[#AEB8D8]">Card required. {TRIAL_DAYS} days free, then {offer?.formattedPrice} {offer?.intervalLabel}. Cancel before the trial ends to avoid a charge.</p>
+      </BillingActionForm>}
     </article>
   );
 }
@@ -288,7 +292,7 @@ export default function AccountPageContent({
         </ScrollRail>
       </section>
 
-      <section className="mt-14">
+      <section id="subscription-plans" className="mt-14 scroll-mt-24">
         <SectionTitle>Plans</SectionTitle>
         <ScrollRail desktopGridClass={planGrid}>
           {showFreeTrialCard && <FreeTrialCard trialEndsAt={trialEndsAt} />}

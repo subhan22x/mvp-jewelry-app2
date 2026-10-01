@@ -102,6 +102,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Owner dashboard
 
+New accounts receive five lifetime owner image Generate clicks without a card. Credits cover all normal variants in one request and return when the entire attempt fails. Video, 3D, Studio, and public storefront access require subscription entitlement. The Manage billing page offers immediate Basic subscription or a separate opt-in seven-day card-required Stripe trial.
+
 The polished store-owner dashboard lives at `/owner`. It is request- and quote-centric, separate from the customer pendant builder and the raw internal generation review page.
 
 - Configure Supabase Auth variables in `.env.local` or Render.

@@ -10,13 +10,14 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   planKey: z.string().default("basic"),
   priceId: z.string().optional(),
+  intent: z.enum(["subscribe", "trial"]).default("subscribe"),
 });
 
 async function parseBody(req: Request) {
   const contentType = req.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) return Body.parse(await req.json());
   const form = await req.formData();
-  return Body.parse({ planKey: form.get("planKey") ?? "basic", priceId: form.get("priceId") ?? undefined });
+  return Body.parse({ planKey: form.get("planKey") ?? "basic", priceId: form.get("priceId") ?? undefined, intent: form.get("intent") ?? "subscribe" });
 }
 
 function appBaseUrl(req: Request) {
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
       email: owner.email,
       plan,
       expectedPriceId: body.priceId,
+      intent: body.intent,
       baseUrl: appBaseUrl(req),
     });
     return billingRedirect(req, url);

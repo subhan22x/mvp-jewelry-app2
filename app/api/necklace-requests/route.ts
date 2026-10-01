@@ -1,3 +1,4 @@
+import { withSignupGeneration, signupGenerationUserId, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -115,7 +116,7 @@ async function resolveNecklaceAccountId(accountSlug: string | undefined) {
   return ownerContext?.accountId ?? getDefaultAccountId();
 }
 
-export async function POST(req: Request) {
+export const POST = withSignupGeneration(async function POST(req: Request) {
   let tempDir: string | null = null;
 
   try {
@@ -170,7 +171,7 @@ export async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         accountId,
-        userId: body.userId,
+        userId: signupGenerationUserId(body.userId),
         productType: "necklace",
         pendantFinish: hasPendant ? "pendant_attached" : "chain_only",
         styleId: `necklace_${body.styleId}`,
@@ -234,6 +235,7 @@ export async function POST(req: Request) {
     const pendantPathForGeneration = pendantImagePath!;
     tempDir = null;
 
+    await bindSignupGeneration(request.id);
     scheduleBackgroundTask((async () => {
       const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
@@ -303,4 +305,4 @@ export async function POST(req: Request) {
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? "Invalid necklace request." : err instanceof Error ? err.message : "bad_request";
     return jsonError(message);
   }
-}
+});

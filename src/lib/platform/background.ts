@@ -1,7 +1,8 @@
+import { observeSignupGeneration } from "@/src/lib/billing/signup-credits";
 import { waitUntil } from "@vercel/functions";
 
 export function scheduleBackgroundTask(task: Promise<unknown>, label: string) {
-  const observedTask = task.catch(error => {
+  const observedTask = observeSignupGeneration(task).catch(error => {
     console.error(`[background:${label}] failed:`, error);
   });
 

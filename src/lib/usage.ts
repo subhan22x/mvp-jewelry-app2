@@ -1,3 +1,4 @@
+import { reserveSignupGeneration, isSignupGeneration, markSignupGenerationSucceeded, SIGNUP_GENERATIONS } from "@/src/lib/billing/signup-credits";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 import { assertAccountCanUsePaidFeatures, billingErrorResponse } from "@/src/lib/billing/entitlements";
@@ -95,7 +96,11 @@ export async function getMonthlyUsageSummary(accountId: string, kind: UsageKind)
 }
 
 export async function ensureUsageAvailable(accountId: string, kind: UsageKind, quantity = 1) {
-  await assertAccountCanUsePaidFeatures(accountId);
+  try { await assertAccountCanUsePaidFeatures(accountId); }
+  catch (error) {
+    if (kind !== "design_image_generated" || !billingErrorResponse(error) || !await reserveSignupGeneration(accountId)) throw error;
+  }
+  if (isSignupGeneration(accountId)) return { accountId, kind, included: SIGNUP_GENERATIONS, used: 0 };
 
   if (!("accountUsageBucket" in prisma)) {
     return { accountId, kind, included: DEFAULT_MONTHLY_LIMITS[kind], used: 0 };
@@ -130,6 +135,7 @@ export async function consumeUsageCredit({
   idempotencyKey?: string;
   metadata?: unknown;
 }) {
+  if (kind === "design_image_generated" && markSignupGenerationSucceeded(accountId)) return { id: sourceId, accountId, kind, quantity };
   const key = idempotencyKey ?? `${accountId}:${kind}:${sourceType}:${sourceId}`;
   if (!("usageEvent" in prisma) || !("accountUsageBucket" in prisma)) {
     return {

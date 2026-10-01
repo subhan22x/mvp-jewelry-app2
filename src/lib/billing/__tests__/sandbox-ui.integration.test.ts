@@ -102,12 +102,12 @@ describe.skipIf(process.env.BILLING_SANDBOX_UI !== "true")("rendered Stripe sand
 
   it("keeps price-change errors inline and completes card-required Checkout through real webhooks", async () => {
     await page.goto(`${base}/account-preview?state=new`, { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "Start free trial", exact: true }).click();
+    await page.getByRole("button", { name: "Start 7 day trial", exact: true }).click();
     await expect.poll(() => page.getByRole("alert").filter({ hasText: "plan price changed" }).count(), { timeout: 20_000 }).toBe(1);
     expect(page.url()).toContain("/account-preview");
     await page.screenshot({ path: `${evidence}/desktop-price-change.png`, fullPage: true });
     await page.goto(`${base}/account-preview?state=new&price_id=${priceId}`, { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "Start free trial", exact: true }).click();
+    await page.getByRole("button", { name: "Start 7 day trial", exact: true }).click();
     await page.waitForURL("https://checkout.stripe.com/**", { timeout: 40_000 });
     await page.getByRole("button", { name: "Start trial", exact: true }).waitFor();
     const card = await page.locator("#payment-method-label-card").boundingBox();

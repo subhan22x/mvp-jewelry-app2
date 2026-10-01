@@ -1,3 +1,5 @@
+import { getSignupCredits, isSignupCreditAccount } from "@/src/lib/billing/signup-credits";
+import { getAccountBillingSnapshot } from "@/src/lib/billing/entitlements";
 import Link from "next/link";
 import { prisma } from "@/server/db/client";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
@@ -250,6 +252,8 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
   const query = (params.q ?? "").trim().toLowerCase();
   const filter = (params.filter ?? "all").toLowerCase();
   const data = await getOwnerData(accountId);
+  const [signupCredits, billing] = await Promise.all([getSignupCredits(accountId), getAccountBillingSnapshot(accountId)]);
+  const hasSignupAllowance = signupCredits.granted > 0 && isSignupCreditAccount(billing);
   const visibleQuotes = data.quotes.filter(quote => quoteMatches(quote, query, filter));
   const currentQuery = params.q ? `&q=${encodeURIComponent(params.q)}` : "";
   const chipHref = (nextFilter: string) => `/owner?filter=${nextFilter}${currentQuery}`;
@@ -265,7 +269,7 @@ export default async function OwnerDashboardPage({ searchParams }: { searchParam
         <section className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-4">
           <MetricCard label="Sent Quotes" value={data.metrics.sentQuotes} />
           <MetricCard label="Pending Quotes" value={data.metrics.pendingQuotes} accent />
-          <MetricCard label="Designs on Plan" value={`${data.metrics.designUsage.used} / ${data.metrics.designUsage.included}`} suffix="used" />
+          <MetricCard label={hasSignupAllowance ? "Free Generates" : "Designs on Plan"} value={hasSignupAllowance ? `${signupCredits.granted - signupCredits.remaining} / ${signupCredits.granted}` : `${data.metrics.designUsage.used} / ${data.metrics.designUsage.included}`} suffix="used" />
           <MetricCard label="Potential Revenue" value={formatUsd(data.metrics.potentialRevenueCents)} />
         </section>
 

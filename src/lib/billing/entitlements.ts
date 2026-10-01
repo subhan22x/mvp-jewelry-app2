@@ -8,6 +8,8 @@ export type AccountBillingSnapshot = {
   id: string;
   status: string;
   subscriptionStatus: string | null;
+  hasUsedTrial?: boolean;
+  stripeSubscriptionId?: string | null;
   subscriptionPlanKey: string | null;
   trialEndsAt: Date | null;
   subscriptionCurrentPeriodEnd: Date | null;
@@ -146,6 +148,8 @@ export async function getAccountBillingSnapshot(accountId: string) {
       id: true,
       status: true,
       subscriptionStatus: true,
+      hasUsedTrial: true,
+      stripeSubscriptionId: true,
       subscriptionPlanKey: true,
       trialEndsAt: true,
       subscriptionCurrentPeriodEnd: true,

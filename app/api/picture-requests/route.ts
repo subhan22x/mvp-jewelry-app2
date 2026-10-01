@@ -1,3 +1,4 @@
+import { withSignupGeneration, signupGenerationUserId, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -58,7 +59,7 @@ async function removeTempDir(tempDir: string | null) {
   await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
 }
 
-export async function POST(req: Request) {
+export const POST = withSignupGeneration(async function POST(req: Request) {
   let tempDir: string | null = null;
 
   try {
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
     await fs.writeFile(tempImagePath, imageBuffer);
 
     const prepared = preparePictureComposite({
-      userId: parsed.userId,
+      userId: signupGenerationUserId(parsed.userId),
       styleId: parsed.styleId,
       primaryMetal: parsed.primaryMetal,
       uploadedImagePath: tempImagePath,
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         accountId,
-        userId: parsed.userId,
+        userId: signupGenerationUserId(parsed.userId),
         productType: 'picture',
         styleId: parsed.styleId,
         text: imageName || 'Picture pendant image',
@@ -140,6 +141,7 @@ export async function POST(req: Request) {
     const tempDirForGeneration = tempDir;
     tempDir = null;
 
+    await bindSignupGeneration(request.id);
     scheduleBackgroundTask((async () => {
       const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
@@ -197,4 +199,4 @@ export async function POST(req: Request) {
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? 'Invalid picture pendant request.' : err.message ?? 'bad_request';
     return jsonError(message);
   }
-}
+});

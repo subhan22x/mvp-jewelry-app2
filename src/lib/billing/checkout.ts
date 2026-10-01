@@ -12,13 +12,14 @@ export async function lockBillingAccount(tx: import("@prisma/client").Prisma.Tra
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`billing:${accountId}`}, 0))`;
 }
 
-export async function startAccountCheckout({ stripe, accountId, email, plan, expectedPriceId, baseUrl }: {
+export async function startAccountCheckout({ stripe, accountId, email, plan, expectedPriceId, baseUrl, intent = "subscribe" }: {
   stripe: Stripe;
   accountId: string;
   email: string | null;
   plan: BillingPlan;
   expectedPriceId?: string;
   baseUrl: string;
+  intent?: "subscribe" | "trial";
 }) {
   const offer = await getBillingOffer(stripe, plan);
   if (expectedPriceId && expectedPriceId !== offer.priceId) {
@@ -52,17 +53,20 @@ export async function startAccountCheckout({ stripe, accountId, email, plan, exp
       }
     }
 
+    if (intent === "trial" && hasUsedTrial) throw new BillingActionError("This account has already used its free trial.", 409);
+    const useTrial = intent === "trial" && !hasUsedTrial;
+
     // Reuse one session so multiple tabs cannot start independent subscriptions.
     for await (const session of stripe.checkout.sessions.list({ customer: customerId, status: "open", limit: 100 })) {
       if (session.mode !== "subscription" || session.metadata?.accountId !== accountId) continue;
-      if (session.metadata.priceId === priceId && session.metadata.trialEligible === String(!hasUsedTrial) && session.url) {
+      if (session.metadata.priceId === priceId && session.metadata.checkoutIntent === intent && session.metadata.trialEligible === String(useTrial) && session.url) {
         return session.url;
       }
       await stripe.checkout.sessions.expire(session.id);
     }
 
     const recent = await stripe.checkout.sessions.list({ customer: customerId, limit: 1 });
-    const retryKey = `billing-checkout:${accountId}:${priceId}:${hasUsedTrial}:${recent.data?.[0]?.id ?? "initial"}`;
+    const retryKey = `billing-checkout:${accountId}:${priceId}:${intent}:${hasUsedTrial}:${recent.data?.[0]?.id ?? "initial"}`;
     const suffix = [...createHash("sha256").update(retryKey).digest().subarray(0, 8)].map(byte => String.fromCharCode(97 + byte % 26)).join("");
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -74,9 +78,9 @@ export async function startAccountCheckout({ stripe, accountId, email, plan, exp
       cancel_url: `${baseUrl}/owner/account?billing=cancelled`,
       payment_method_collection: "always",
       allow_promotion_codes: true,
-      metadata: { accountId, planKey: plan.key, priceId, trialEligible: String(!hasUsedTrial) },
+      metadata: { accountId, planKey: plan.key, priceId, checkoutIntent: intent, trialEligible: String(useTrial) },
       subscription_data: {
-        ...(!hasUsedTrial ? { trial_period_days: TRIAL_DAYS } : {}),
+        ...(useTrial ? { trial_period_days: TRIAL_DAYS } : {}),
         metadata: { accountId, planKey: plan.key },
       },
     }, {

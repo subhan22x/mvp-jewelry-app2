@@ -1,3 +1,4 @@
+import { withSignupGeneration, signupGenerationUserId, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/server/db/client';
@@ -63,7 +64,7 @@ function getGenerationErrorMessage(err: unknown): string {
   }
 }
 
-export async function POST(req: Request) {
+export const POST = withSignupGeneration(async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const accountId = await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         accountId,
-        userId: body.userId,
+        userId: signupGenerationUserId(body.userId),
         productType: 'name',
         pendantFinish: body.pendantFinish,
         styleId: body.styleId,
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
       isPlain ? Promise.resolve(null) : loadStyleOverride(accountId, body.styleId)
     ]);
     const variants = buildVariants({
-      userId: body.userId,
+      userId: signupGenerationUserId(body.userId),
       styleId: body.styleId,
       text: body.text,
       pendantFinish: body.pendantFinish,
@@ -126,6 +127,7 @@ export async function POST(req: Request) {
       });
     }));
 
+    await bindSignupGeneration(request.id);
     scheduleBackgroundTask(Promise.all(variants.map(async (v, index) => {
       const attempt = attemptRows[index];
       const startedMs = attempt.startedAt?.getTime() ?? Date.now();
@@ -185,4 +187,4 @@ export async function POST(req: Request) {
     if (usage) return NextResponse.json(usage, { status: 402 });
     return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400 });
   }
-}
+});

@@ -1,3 +1,4 @@
+import { withSignupGeneration, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -75,7 +76,7 @@ async function sourceImageAttachment(imageUrl: string, requestUrl: string, revis
   return filePath;
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withSignupGeneration(async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = Body.parse(await req.json());
@@ -113,6 +114,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     });
 
+    await bindSignupGeneration(revision.id, "ResultRevision");
     scheduleBackgroundTask((async () => {
       let attachmentPath: string | null = null;
       try {
@@ -127,12 +129,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           variant: 100 + revisionNumber,
           modelVariant: 1
         });
-        await consumeUsageCredit({
-          accountId: request.accountId,
-          kind: "design_image_generated",
-          sourceType: "result_revision",
-          sourceId: revision.id,
-        });
+
         const completedAt = new Date();
         await prisma.resultRevision.update({
           where: { id: revision.id },
@@ -145,6 +142,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             completedAt,
             durationMs: Math.max(0, completedAt.getTime() - startedAt.getTime())
           }
+        });
+        await consumeUsageCredit({
+          accountId: request.accountId,
+          kind: "design_image_generated",
+          sourceType: "result_revision",
+          sourceId: revision.id,
         });
       } catch (error) {
         const completedAt = new Date();
@@ -176,4 +179,4 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const message = error instanceof Error ? error.message : "bad_request";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});
