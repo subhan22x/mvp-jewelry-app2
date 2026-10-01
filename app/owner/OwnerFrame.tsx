@@ -151,10 +151,27 @@ export default async function OwnerFrame({
       )}
 
       {entitlement && !entitlement.canUsePaidFeatures && !["Account", "Settings", "Profile"].includes(active) ? (
-        <div className="mx-auto w-full max-w-5xl px-4 py-12">
-          <h1 className="text-2xl font-bold">Subscription required</h1>
-          <p className="mt-3 text-[#c2c6d6]">{entitlement.message}</p>
-          <Link href="/owner/account" className="mt-6 inline-block rounded-md bg-[#f7bc5f] px-5 py-3 font-semibold text-[#101114]">Manage billing</Link>
+        <div className="relative isolate min-h-[calc(100dvh-5rem)]">
+          <div inert aria-hidden="true" className="pointer-events-none select-none opacity-60 blur-[1px]">
+            {children}
+          </div>
+          <div className="absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(16,17,20,0.08)_0%,rgba(16,17,20,0.38)_38%,rgba(16,17,20,0.82)_100%)]">
+            <div className="sticky top-24 flex justify-center px-5 pb-16 pt-[clamp(5rem,14vh,9rem)] sm:px-8">
+              <section aria-labelledby="subscription-required-title" className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-[#e8c992]/25 bg-[linear-gradient(145deg,rgba(53,45,33,0.94),rgba(24,25,29,0.97)_52%)] p-7 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-9">
+                <div aria-hidden="true" className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#f7d394]/70 to-transparent" />
+                <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-xl border border-[#edcc91]/20 bg-[#f7bc5f]/10 text-[#e8c992]">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
+                    <rect x="5" y="10" width="14" height="11" rx="3" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <h1 id="subscription-required-title" className="text-2xl font-semibold tracking-tight text-[#f5f0e7]">Subscription required</h1>
+                <p className="mt-3 text-sm leading-6 text-[#c3c0bb]">Your store is ready. Start or restore your subscription to use your dashboard.</p>
+                <Link href="/owner/account" className="mt-7 flex h-12 w-full items-center justify-center rounded-lg bg-[linear-gradient(135deg,#f7cd83,#efb254)] text-sm font-semibold text-[#21180b] shadow-[0_4px_18px_rgba(247,188,95,0.12)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f7cd83]">Manage billing</Link>
+                <p className="mt-4 text-center text-xs leading-5 text-[#96938e]">Your designs and quotes stay saved.</p>
+              </section>
+            </div>
+          </div>
         </div>
       ) : children}
     </main>
