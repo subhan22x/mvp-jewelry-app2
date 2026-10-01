@@ -15,7 +15,7 @@ Configured on September 30, 2026:
 - Webhook URL: `https://growjewelry.io/api/billing/webhook`
 - SDK/webhook API version: `2026-09-30.endive`
 
-The webhook was created disabled. Enable it only after deploying this implementation and verifying the server credentials and database schema. No customer subscriptions or charges were created during setup.
+The webhook is enabled after the implementation was deployed and verified on growjewelry.io. No real customer subscriptions or charges were created during setup or verification.
 
 ## Environment variables
 
@@ -94,7 +94,7 @@ Run `npm run billing:check` to verify the configured catalog with the app's own 
 
 Verified in this worktree: 282 regular tests, four opt-in sandbox lifecycle integration tests, and the opt-in browser integration test pass. Lifecycle tests use real Stripe sandbox APIs and a disposable local Postgres database: concurrent Checkout, trial, renewal, failed-payment grace, recovery, duplicate delivery, and cancellation. The browser test completes hosted Checkout with a test card, forwards real signed Stripe webhooks into the actual billing handler, checks persisted access and the confirmation refresh, opens the actual billing portal, and exercises mobile payment recovery. Owner authentication is replaced by a local fixture for this integration test; real production sign-in is not exercised by that harness.
 
-Production database billing columns, uniqueness constraints, and advisory locks were verified through the Supabase connector and an actual read-only Prisma transaction. The app's runtime key passed live customer, Checkout, subscription-read, and Portal permission checks using one temporary customer and an uncompleted Checkout; both were cleaned up. All four billing environment variables are saved to Vercel Production. No real subscription or charge was created during verification. The production webhook remains disabled pending deployment.
+Production database billing columns, uniqueness constraints, and advisory locks were verified through the Supabase connector and an actual read-only Prisma transaction. The app's runtime key passed live customer, Checkout, subscription-read, and Portal permission checks using one temporary customer and an uncompleted Checkout; both were cleaned up. All four billing environment variables are saved to Vercel Production. No real subscription or charge was created during verification. The production webhook is enabled. Deployment `dpl_JAAeNbbxpTjd5k2cuNFAq2VC4fYd` was promoted to growjewelry.io after staged owner-authentication/catalog and signature checks. The canonical endpoint rejects unsigned requests and accepts signed readiness requests without changing account state. Production browser login and desktop/mobile account rendering are checked separately from the sandbox harness. An actual live subscription payment and its Stripe-generated production webhook delivery have not been exercised.
 
 To repeat the opt-in tests, authorize a Stripe sandbox in the CLI and switch to it. Set `DATABASE_URL` and `DIRECT_URL` to a disposable local database named `billing_test`, and apply the Prisma schema there. The suites refuse nonlocal database URLs. Set `STRIPE_CLI_PATH` if the CLI is not on PATH. Run:
 

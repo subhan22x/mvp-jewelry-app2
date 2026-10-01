@@ -215,6 +215,10 @@ function ManageSubscription({
   stripeCustomerId,
 }: Pick<AccountPageContentProps, "entitlement" | "trialEndsAt" | "subscriptionCurrentPeriodEnd" | "stripeCustomerId">) {
   const disabled = !stripeCustomerId;
+  const billingDates = [
+    entitlement.isInTrial && trialEndsAt && `Trial ends: ${formatDate(trialEndsAt)}`,
+    subscriptionCurrentPeriodEnd && `${subscriptionCurrentPeriodEnd > new Date() ? "Billing period ends" : "Billing period ended"}: ${formatDate(subscriptionCurrentPeriodEnd)}`,
+  ].filter(Boolean).join(" · ");
 
   return (
     <section className="mt-14">
@@ -228,9 +232,7 @@ function ManageSubscription({
             </span>
           </div>
           <p className="mt-2 text-sm leading-6 text-[#AEB8D8]">{entitlement.message}</p>
-          {(trialEndsAt || subscriptionCurrentPeriodEnd) && <p className="mt-1 text-xs leading-5 text-[#858CA2]">
-            {[trialEndsAt && `Trial ends: ${formatDate(trialEndsAt)}`, subscriptionCurrentPeriodEnd && `Renews/ends: ${formatDate(subscriptionCurrentPeriodEnd)}`].filter(Boolean).join(" · ")}
-          </p>}
+          {billingDates && <p className="mt-1 text-xs leading-5 text-[#858CA2]">{billingDates}</p>}
         </div>
 
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row md:justify-end">
