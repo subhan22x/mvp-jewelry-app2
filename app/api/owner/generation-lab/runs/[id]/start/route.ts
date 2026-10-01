@@ -4,6 +4,8 @@ import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
 import { duplicateRunForRerun, runLabRun } from "@/src/lib/generation-lab/runner";
 
+import { assertAccountCanUsePaidFeatures, billingErrorResponse } from "@/src/lib/billing/entitlements";
+
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,13 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   });
   if (!run || run.accountId !== owner.accountId) {
     return NextResponse.json({ error: "Run not found." }, { status: 404 });
+  }
+  try {
+    await assertAccountCanUsePaidFeatures(owner.accountId);
+  } catch (error) {
+    const billing = billingErrorResponse(error);
+    if (billing) return NextResponse.json(billing, { status: 402 });
+    throw error;
   }
   if (run.status === "running") {
     return NextResponse.json({ error: "Run is already running." }, { status: 409 });
