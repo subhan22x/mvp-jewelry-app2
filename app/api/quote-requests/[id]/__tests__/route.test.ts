@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getOwnerContext: vi.fn(),
+  accountFindUnique: vi.fn(),
   quoteRequestFindFirst: vi.fn(),
   quoteRequestUpdate: vi.fn(),
   consumeUsageCredit: vi.fn(),
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/db/client", () => ({
   prisma: {
+    account: { findUnique: mocks.accountFindUnique },
     quoteRequest: {
       findFirst: mocks.quoteRequestFindFirst,
       update: mocks.quoteRequestUpdate
@@ -35,6 +37,7 @@ function authedRequest(body: unknown) {
 describe("/api/quote-requests/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.accountFindUnique.mockResolvedValue({ id: "demo-account", status: "active", subscriptionStatus: "active", subscriptionPlanKey: "basic", trialEndsAt: null, subscriptionCurrentPeriodEnd: null, cancelAtPeriodEnd: false, billingIssueStartedAt: null });
     mocks.getOwnerContext.mockResolvedValue({ accountId: "demo-account", userId: "demo", authUserId: "auth-demo", email: "demo@example.com" });
     mocks.quoteRequestFindFirst.mockResolvedValue({ id: "quote-test", status: "pending", publicToken: null });
     mocks.quoteRequestUpdate.mockResolvedValue({
@@ -157,4 +160,13 @@ describe("/api/quote-requests/[id]", () => {
       })
     });
   });
+  it("blocks quote mutations for a canceled subscription", async () => {
+    mocks.accountFindUnique.mockResolvedValue({ id: "demo-account", status: "active", subscriptionStatus: "canceled", subscriptionPlanKey: "basic", trialEndsAt: null, subscriptionCurrentPeriodEnd: null, cancelAtPeriodEnd: false, billingIssueStartedAt: null });
+    mocks.usageErrorResponse.mockReturnValue({ error: "Subscription required", code: "billing_required" });
+    const { PATCH } = await import("../route");
+    const response = await PATCH(authedRequest({ status: "sent" }), { params: Promise.resolve({ id: "quote-test" }) });
+    expect(response.status).toBe(402);
+    expect(mocks.quoteRequestUpdate).not.toHaveBeenCalled();
+  });
+
 });

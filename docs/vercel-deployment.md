@@ -109,4 +109,4 @@ The older pendant video-generation routes still use request-scoped background wo
 
 ## Dependency Audit Note
 
-Run `npm audit --omit=dev` before each production release. As of June 2, 2026, the remaining reported production advisories are moderate transitive findings in Next's bundled PostCSS and the Google auth `gaxios -> uuid` chain. `npm audit fix --force` proposes unsafe framework changes, so do not apply it blindly. Recheck after upstream package releases.
+Run `npm audit --omit=dev` before each production release. The September 30, 2026 billing release updates Next within 15.5, Sharp, and compatible transitive dependencies; production audit reports no vulnerabilities. The overrides pin Next's PostCSS to the patched root version and Prisma config's deepmerge-ts to 8.x. Prisma generation and the production build must pass when changing these overrides. Do not apply `npm audit fix --force` blindly.

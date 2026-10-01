@@ -145,11 +145,18 @@ export default async function OwnerFrame({
         <div className="mx-auto mb-5 w-full max-w-5xl px-4 md:px-6">
           <div className="border border-[#ef4444]/40 bg-[#3b1717] px-4 py-3 text-sm font-semibold text-[#fecaca]">
             Payment failed. Update your billing method within 2 days to keep account access and storefront visibility.
+            <Link href="/owner/account" className="ml-2 underline">Update payment</Link>
           </div>
         </div>
       )}
 
-      {children}
+      {entitlement && !entitlement.canUsePaidFeatures && !["Account", "Settings", "Profile"].includes(active) ? (
+        <div className="mx-auto w-full max-w-5xl px-4 py-12">
+          <h1 className="text-2xl font-bold">Subscription required</h1>
+          <p className="mt-3 text-[#c2c6d6]">{entitlement.message}</p>
+          <Link href="/owner/account" className="mt-6 inline-block rounded-md bg-[#f7bc5f] px-5 py-3 font-semibold text-[#101114]">Manage billing</Link>
+        </div>
+      ) : children}
     </main>
   );
 }

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import type { BillingOffer } from "@/src/lib/billing/catalog";
 import type { EntitlementState } from "@/src/lib/billing/entitlements";
 import { TRIAL_DAYS, type BillingPlan, type BillingPlanKey } from "@/src/lib/billing/plans";
+import BillingActionForm from "./BillingActionForm";
 
 type UsageSummary = {
   kind: string;
@@ -15,8 +17,11 @@ type AccountPageContentProps = {
   trialEndsAt?: Date | null;
   subscriptionCurrentPeriodEnd?: Date | null;
   stripeCustomerId?: string | null;
+  hasUsedTrial?: boolean;
+  canManageSubscription?: boolean;
   usage: [UsageSummary, UsageSummary];
   plans: BillingPlan[];
+  offers?: Partial<Record<BillingPlanKey, BillingOffer>>;
 };
 
 const CARD_BASE = "rounded-[18px] border bg-[#1C1E24]";
@@ -27,7 +32,7 @@ const PRIMARY_BUTTON = `h-10 w-full rounded-md bg-white text-sm font-bold text-[
 
 const PLAN_CONTENT: Record<BillingPlanKey, { price: string; features: string[] }> = {
   basic: {
-    price: "$--",
+    price: "Unavailable",
     features: ["Basic account access", "Customer quote dashboard", "Stripe billing portal"],
   },
   value: {
@@ -128,39 +133,39 @@ function UsageCard({ label, used, included }: { label: string; used: number; inc
   );
 }
 
-function PlanCard({ plan, isCurrent }: { plan: BillingPlan; isCurrent: boolean }) {
+function PlanCard({ plan, isCurrent, canManage, hasUsedTrial, offer }: { plan: BillingPlan; isCurrent: boolean; canManage: boolean; hasUsedTrial: boolean; offer?: BillingOffer }) {
   const content = PLAN_CONTENT[plan.key];
-  const isAvailable = plan.activeForV1;
-  const buttonLabel = isAvailable ? (isCurrent ? "Manage Basic" : "Get started") : "Coming soon";
+  const isAvailable = plan.activeForV1 && (canManage || Boolean(offer));
+  const buttonLabel = isAvailable ? (canManage ? "Manage Basic" : hasUsedTrial ? "Subscribe to Basic" : "Start free trial") : plan.activeForV1 ? "Billing unavailable" : "Coming soon";
 
   return (
     <article className={`${PLAN_CARD} transition ${isCurrent ? "border-[#D1B873] shadow-[0_0_0_1px_rgba(209,184,115,0.1)]" : "border-[#2D3340]"}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className={`text-lg font-bold tracking-tight text-white ${LANDING_FONT}`}>{plan.label}</h3>
-          <p className="mt-1 text-xs leading-5 text-[#AEB8D8]">{plan.description}</p>
+          <h3 className={`text-lg font-bold tracking-tight text-white ${LANDING_FONT}`}>{offer?.label ?? plan.label}</h3>
+          <p className="mt-1 text-xs leading-5 text-[#AEB8D8]">{offer?.description ?? plan.description}</p>
         </div>
         {isCurrent && <span className={`rounded-full border border-[#D1B873]/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#F4D38A] ${LANDING_FONT}`}>Current</span>}
       </div>
 
       <div className="mt-5">
-        <span className={`text-[34px] font-bold leading-none tracking-tight text-white ${LANDING_FONT}`}>{content.price}</span>
-        {plan.key !== "bundle" && <span className="ml-1 text-xs font-bold text-[#AEB8D8]">/month</span>}
+        <span className={`text-[34px] font-bold leading-none tracking-tight text-white ${LANDING_FONT}`}>{offer?.formattedPrice ?? content.price}</span>
+        {offer && <span className="ml-1 text-xs font-bold text-[#AEB8D8]">{offer.intervalLabel}</span>}
       </div>
 
       <div className="mt-6">
         <FeatureList rows={content.features} />
       </div>
 
-      <form action="/api/billing/checkout" method="post" className="mt-auto pt-7">
-        <input type="hidden" name="planKey" value={plan.key} />
+      <BillingActionForm action={canManage ? "/api/billing/portal" : "/api/billing/checkout"} fields={{ planKey: plan.key, ...(offer ? { priceId: offer.priceId } : {}) }} className="mt-auto pt-7">
+        {isAvailable && !canManage && !hasUsedTrial && <p className="mb-3 text-xs leading-5 text-[#AEB8D8]">{TRIAL_DAYS} days free, then the price shown above. Card required.</p>}
         <button
           className={`h-10 w-full rounded-md text-sm font-bold transition ${LANDING_FONT} ${isAvailable ? "bg-white text-[#101114] hover:bg-[#F4D38A]" : "cursor-not-allowed bg-[#2A2D35] text-[#858CA2]"}`}
           disabled={!isAvailable}
         >
           {buttonLabel}
         </button>
-      </form>
+      </BillingActionForm>
     </article>
   );
 }
@@ -194,12 +199,11 @@ function FreeTrialCard({ trialEndsAt }: { trialEndsAt?: Date | null }) {
         <FeatureList rows={features} tone="trial" />
       </div>
 
-      <form action="/api/billing/checkout" method="post" className="relative mt-auto pt-7">
-        <input type="hidden" name="planKey" value="basic" />
+      <BillingActionForm action="/api/billing/portal" className="relative mt-auto pt-7">
         <button className={PRIMARY_BUTTON}>
-          Start free trial
+          Manage trial
         </button>
-      </form>
+      </BillingActionForm>
     </article>
   );
 }
@@ -224,14 +228,14 @@ function ManageSubscription({
             </span>
           </div>
           <p className="mt-2 text-sm leading-6 text-[#AEB8D8]">{entitlement.message}</p>
-          <p className="mt-1 text-xs leading-5 text-[#858CA2]">
-            Trial ends: {formatDate(trialEndsAt)} · Renews/ends: {formatDate(subscriptionCurrentPeriodEnd)}
-          </p>
+          {(trialEndsAt || subscriptionCurrentPeriodEnd) && <p className="mt-1 text-xs leading-5 text-[#858CA2]">
+            {[trialEndsAt && `Trial ends: ${formatDate(trialEndsAt)}`, subscriptionCurrentPeriodEnd && `Renews/ends: ${formatDate(subscriptionCurrentPeriodEnd)}`].filter(Boolean).join(" · ")}
+          </p>}
         </div>
 
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row md:justify-end">
           {["Manage subscription", "Update payment"].map(label => (
-            <form key={label} action="/api/billing/portal" method="post" className="min-w-0">
+            <BillingActionForm key={label} action="/api/billing/portal" className="min-w-0">
               <button
                 className={`h-11 w-full min-w-0 rounded-md px-3 text-sm font-bold transition disabled:cursor-not-allowed sm:w-auto sm:px-5 ${LANDING_FONT} ${
                   label === "Manage subscription"
@@ -242,7 +246,7 @@ function ManageSubscription({
               >
                 {label}
               </button>
-            </form>
+            </BillingActionForm>
           ))}
         </div>
       </div>
@@ -259,6 +263,9 @@ export default function AccountPageContent({
   stripeCustomerId,
   usage,
   plans,
+  hasUsedTrial = false,
+  canManageSubscription,
+  offers = {},
 }: AccountPageContentProps) {
   const showFreeTrialCard = entitlement.isInTrial;
   const planGrid = showFreeTrialCard ? "xl:grid xl:grid-cols-4" : "xl:grid xl:grid-cols-3";
@@ -284,7 +291,7 @@ export default function AccountPageContent({
         <ScrollRail desktopGridClass={planGrid}>
           {showFreeTrialCard && <FreeTrialCard trialEndsAt={trialEndsAt} />}
           {plans.map(plan => (
-            <PlanCard key={plan.key} plan={plan} isCurrent={activePlanKey === plan.key} />
+            <PlanCard key={plan.key} plan={plan} isCurrent={activePlanKey === plan.key && !entitlement.isLegacyActive && Boolean(stripeCustomerId) && entitlement.canUsePaidFeatures} hasUsedTrial={hasUsedTrial} offer={offers[plan.key]} canManage={plan.activeForV1 && (canManageSubscription ?? Boolean(stripeCustomerId && entitlement.canUsePaidFeatures && !entitlement.isLegacyActive))} />
           ))}
         </ScrollRail>
       </section>

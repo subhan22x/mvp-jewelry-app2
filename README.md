@@ -20,7 +20,7 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 
 ## Prerequisites
 
-- Node 20 LTS or newer for the application
+- Node 22 or newer for the application; Vercel production uses Node 24 LTS
 - Node 22 or newer when running `npm run r2:migrate-generated`
 - A Gemini API key (`GEMINI_API_KEY`)
 
@@ -200,10 +200,14 @@ Generated files are served through `/generated/:file` during local development. 
 | `R2_PUBLIC_BASE_URL`   | (required for R2)                    | Public base URL or custom domain for R2 objects. |
 | `STRIPE_SECRET_KEY`    | (required for billing)               | Server-side Stripe secret key used for Checkout, Portal, and webhook processing. |
 | `STRIPE_WEBHOOK_SECRET` | (required for billing webhooks)     | Signing secret for `/api/billing/webhook`. |
-| `STRIPE_PRICE_BASIC`   | (required for v1 billing)            | Stripe Price ID for the Basic subscription. |
+| `STRIPE_PRODUCT_BASIC` | (required for v1 billing) | Basic Product ID; the app reads its current default Price. |
+| `STRIPE_PORTAL_CONFIGURATION` | Stripe default | Customer Portal configuration ID. |
+| `STRIPE_PRICE_BASIC` | legacy fallback | Older Price ID used to locate the Basic Product. |
 | `STRIPE_PRICE_VALUE`   | empty                                | Reserved Stripe Price ID for the future Value plan. |
 | `STRIPE_PRICE_BUNDLE`  | empty                                | Reserved Stripe Price ID for the future Bundle plan. |
 | `STRIPE_TRIAL_DAYS`    | `7`                                  | Free-trial length used when creating the first Stripe subscription through Checkout. |
+
+See [Stripe billing setup](docs/stripe-billing.md) for the Stripe-owned price catalog, runtime credentials, webhook lifecycle, and launch checklist.
 
 ## npm scripts
 

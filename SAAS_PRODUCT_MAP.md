@@ -26,6 +26,7 @@ Generated images, videos, prompts, and system behavior are owned/controlled by t
 - The free trial is 7 days and requires a card through Stripe Checkout before the trial starts.
 - Failed subscription payment gets a 2-day owner-dashboard grace period with a payment-failed banner.
 - Accounts without active entitlement should not expose the public storefront; public account routes show an access-denied page instead.
+- Existing active stores without Stripe subscription state retain their existing access. New accounts require subscription signup and never receive this legacy allowance.
 
 ## Target Product Surface
 

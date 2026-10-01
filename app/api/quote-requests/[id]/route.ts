@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
+import { assertAccountCanUsePaidFeatures } from "@/src/lib/billing/entitlements";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { consumeUsageCredit, usageErrorResponse } from "@/src/lib/usage";
 
@@ -85,6 +86,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const body = Body.parse(await req.json());
     const accountId = owner.accountId;
+    await assertAccountCanUsePaidFeatures(accountId);
     const existing = await prisma.quoteRequest.findFirst({
       where: { id, accountId },
       select: {

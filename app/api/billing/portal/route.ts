@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/client";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { getStripe } from "@/src/lib/billing/stripe";
+import { billingRedirect, billingUnauthorized, billingActionFailure, BillingActionError } from "@/src/lib/billing/http";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ function appBaseUrl(req: Request) {
 
 export async function POST(req: Request) {
   const owner = await getOwnerContext();
-  if (!owner) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!owner) return billingUnauthorized(req);
 
   try {
     const account = await prisma.account.findUnique({
@@ -19,19 +19,19 @@ export async function POST(req: Request) {
       select: { stripeCustomerId: true },
     });
     if (!account?.stripeCustomerId) {
-      return NextResponse.json({ error: "Start a subscription before opening the billing portal." }, { status: 400 });
+      throw new BillingActionError("Start a subscription before opening the billing portal.");
     }
 
     const stripe = getStripe();
     const baseUrl = appBaseUrl(req);
     const session = await stripe.billingPortal.sessions.create({
       customer: account.stripeCustomerId,
+      configuration: process.env.STRIPE_PORTAL_CONFIGURATION?.trim() || undefined,
       return_url: `${baseUrl}/owner/account`,
     });
 
-    return NextResponse.redirect(session.url, { status: 303 });
+    return billingRedirect(req, session.url);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to open billing portal.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return billingActionFailure(req, error);
   }
 }

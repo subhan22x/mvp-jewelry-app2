@@ -8,6 +8,8 @@ import { prisma } from "@/server/db/client";
 import { generateImage } from "@/lib/styles/connector";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
 
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
+
 export const maxDuration = 300;
 
 const Body = z.object({
@@ -96,6 +98,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "This design already has the maximum of 2 revisions." }, { status: 400 });
     }
 
+    await ensureUsageAvailable(request.accountId, "design_image_generated");
+
     const revisionNumber = request.ResultRevisions.length + 1;
     const startedAt = new Date();
     const revision = await prisma.resultRevision.create({
@@ -122,6 +126,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           requestId: request.id,
           variant: 100 + revisionNumber,
           modelVariant: 1
+        });
+        await consumeUsageCredit({
+          accountId: request.accountId,
+          kind: "design_image_generated",
+          sourceType: "result_revision",
+          sourceId: revision.id,
         });
         const completedAt = new Date();
         await prisma.resultRevision.update({
@@ -161,6 +171,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       durationSeconds: toSeconds(revision.durationMs)
     }, { status: 201 });
   } catch (error) {
+    const usage = usageErrorResponse(error);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     const message = error instanceof Error ? error.message : "bad_request";
     return NextResponse.json({ error: message }, { status: 400 });
   }

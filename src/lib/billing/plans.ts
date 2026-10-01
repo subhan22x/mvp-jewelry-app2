@@ -9,6 +9,7 @@ export type BillingPlan = {
   label: string;
   description: string;
   priceEnvVar: string;
+  productEnvVar: string;
   activeForV1: boolean;
   limits: Partial<Record<UsageKind, number>>;
 };
@@ -31,6 +32,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     label: "Basic",
     description: "V1 launch plan for store owners.",
     priceEnvVar: "STRIPE_PRICE_BASIC",
+    productEnvVar: "STRIPE_PRODUCT_BASIC",
     activeForV1: true,
     limits: BASIC_USAGE_LIMITS,
   },
@@ -39,6 +41,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     label: "Value",
     description: "Planned higher-volume plan.",
     priceEnvVar: "STRIPE_PRICE_VALUE",
+    productEnvVar: "STRIPE_PRODUCT_VALUE",
     activeForV1: false,
     limits: {},
   },
@@ -47,6 +50,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     label: "Bundle",
     description: "Planned bundle plan.",
     priceEnvVar: "STRIPE_PRICE_BUNDLE",
+    productEnvVar: "STRIPE_PRODUCT_BUNDLE",
     activeForV1: false,
     limits: {},
   },
@@ -72,4 +76,13 @@ export function planKeyForPriceId(priceId: string | null | undefined): BillingPl
   if (!priceId) return null;
   const match = BILLING_PLANS.find(plan => priceIdForPlan(plan) === priceId);
   return match?.key ?? null;
+}
+
+export function productIdForPlan(plan: BillingPlan) {
+  return process.env[plan.productEnvVar]?.trim() || null;
+}
+
+export function planKeyForProductId(productId: string | null | undefined): BillingPlanKey | null {
+  if (!productId) return null;
+  return BILLING_PLANS.find(plan => productIdForPlan(plan) === productId)?.key ?? null;
 }
