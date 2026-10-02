@@ -4,6 +4,8 @@ import type { ChangeEvent, CSSProperties, PointerEvent as ReactPointerEvent, Rea
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Caveat } from "next/font/google";
+import dynamic from "next/dynamic";
+import "react-international-phone/style.css";
 import { isAuthApiError } from "@supabase/auth-js";
 import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import {
@@ -17,6 +19,11 @@ import {
 } from "@/src/lib/onboarding/draft";
 import { createClient } from "@/src/lib/supabase/client";
 import { SMS_CONSENT_TEXT } from "@/src/lib/sms-consent";
+
+const PhoneInput = dynamic(
+  () => import("react-international-phone").then((module) => module.PhoneInput),
+  { ssr: false, loading: () => <div className="ob-input" aria-hidden="true" /> }
+);
 
 const handwriting = Caveat({ subsets: ["latin"], weight: ["500", "600"] });
 
@@ -587,6 +594,34 @@ function ScreenWelcome() {
   );
 }
 
+function PhoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  // The widget keeps the dial code (e.g. "+44") in an untouched field, so it owns its displayed
+  // value and the parent only receives a real number or "".
+  const [displayValue, setDisplayValue] = useState(value);
+
+  useEffect(() => {
+    if (value) setDisplayValue(value);
+  }, [value]);
+
+  return (
+    <div className="ob-label">
+      <span id="ob-phone-label">Phone number</span>
+      <PhoneInput
+        className="ob-phone-field"
+        defaultCountry="us"
+        preferredCountries={["us", "ca", "gb"]}
+        forceDialCode
+        value={displayValue}
+        onChange={(nextPhone, { country }) => {
+          setDisplayValue(nextPhone);
+          onChange(nextPhone.replace(/\D/g, "") === country.dialCode ? "" : nextPhone);
+        }}
+        inputProps={{ autoComplete: "tel", "aria-labelledby": "ob-phone-label" }}
+      />
+    </div>
+  );
+}
+
 function ScreenGetStarted({
   ownerName,
   phone,
@@ -614,7 +649,7 @@ function ScreenGetStarted({
         <FormHead white="Basic Info" sub="Add the essentials for your studio profile." />
         <div className="ob-form-stack">
           <FormField label="Your name" placeholder="Jordan Vance" value={ownerName} onChange={setOwnerName} autoComplete="name" />
-          <FormField label="Phone number" placeholder="(555) 123-4567" value={phone} onChange={setPhone} type="tel" autoComplete="tel" />
+          <PhoneField value={phone} onChange={setPhone} />
           <label className="ob-sms-consent">
             <input
               type="checkbox"
@@ -902,6 +937,11 @@ const onboardingStyles = `
   .ob-instagram-icon { display:flex; margin-right:8px; color:rgba(237,228,212,.42); }
   .ob-instagram-field.status-found .ob-instagram-icon { color:#e8b06a; }
   .ob-instagram-check { display:grid; place-items:center; flex:0 0 22px; height:22px; margin-right:12px; border-radius:50%; background:${GOLD}; color:#1a0e04; font-size:12px; font-weight:900; }
+  .ob-phone-field { --react-international-phone-height:50px; --react-international-phone-background-color:rgba(237,228,212,.05); --react-international-phone-border-color:rgba(237,228,212,.12); --react-international-phone-border-radius:14px; --react-international-phone-text-color:#fff; --react-international-phone-font-size:15.5px; --react-international-phone-country-selector-background-color-hover:rgba(237,228,212,.1); --react-international-phone-country-selector-arrow-color:rgba(237,228,212,.5); --react-international-phone-flag-width:22px; --react-international-phone-flag-height:16px; --react-international-phone-dropdown-item-background-color:#1b120b; --react-international-phone-dropdown-item-text-color:${CREAM}; --react-international-phone-dropdown-item-dial-code-color:rgba(237,228,212,.5); --react-international-phone-selected-dropdown-item-background-color:rgba(232,176,106,.16); --react-international-phone-selected-dropdown-item-text-color:${GOLD}; --react-international-phone-dropdown-preferred-list-divider-color:rgba(237,228,212,.12); --react-international-phone-dropdown-shadow:0 18px 40px rgba(0,0,0,.55); width:100%; }
+  .ob-phone-field .react-international-phone-country-selector-button { padding:0 8px 0 12px; transition:.2s; }
+  .ob-phone-field .react-international-phone-input { flex:1; min-width:0; font-weight:500; padding:0 16px 0 12px; outline:none; transition:.2s; }
+  .ob-phone-field:focus-within .react-international-phone-country-selector-button, .ob-phone-field .react-international-phone-input:focus { border-color:rgba(232,176,106,.7); background:rgba(237,228,212,.08); }
+  .ob-phone-field .react-international-phone-country-selector-dropdown { width:min(320px, calc(100vw - 52px)); max-height:240px; outline:none; border:1px solid rgba(237,228,212,.12); border-radius:14px; padding:6px 0; z-index:20; user-select:none; }
   .ob-input-bare { background:none; border:0; height:48px; padding:0 14px 0 2px; border-radius:0; }
   .ob-input-bare:focus { background:none; }
   .ob-sms-consent { display:flex; align-items:flex-start; gap:10px; margin-top:-4px; color:rgba(237,228,212,.64); font:400 11px/1.45 var(--font-figtree),sans-serif; cursor:pointer; }
