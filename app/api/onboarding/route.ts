@@ -6,14 +6,24 @@ import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { slugify } from "@/src/lib/slug";
 import { createClient } from "@/src/lib/supabase/server";
+import { SMS_CONSENT_SOURCE, smsConsentRecord } from "@/src/lib/sms-consent";
 
 export const dynamic = "force-dynamic";
 
 const onboardingSchema = z.object({
   businessName: z.string().trim().min(2),
   ownerName: z.string().trim().optional(),
-  phone: z.string().trim().optional(),
+  phone: z.string().trim().max(30).optional(),
+  smsConsent: z.boolean().default(false),
   instagramHandle: z.string().trim().optional()
+}).superRefine((value, context) => {
+  if (value.smsConsent && !value.phone) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["phone"],
+      message: "Enter a phone number to enable text notifications."
+    });
+  }
 });
 
 function jsonError(message: string, status = 400) {
@@ -61,12 +71,31 @@ export async function POST(req: Request) {
   const body = parsed.data;
   const authEmail = data.user.email?.toLowerCase() ?? null;
   const [existingUser, existingEmailUser] = await Promise.all([
-    prisma.user.findUnique({ where: { authUserId: data.user.id }, select: { id: true } }),
+    prisma.user.findUnique({
+      where: { authUserId: data.user.id },
+      select: {
+        id: true,
+        Memberships: {
+          where: { status: "active", account: { status: "active" } },
+          select: { accountId: true },
+          orderBy: { createdAt: "asc" },
+          take: 1
+        }
+      }
+    }),
     authEmail
       ? prisma.user.findUnique({ where: { email: authEmail }, select: { id: true, authUserId: true } })
       : Promise.resolve(null)
   ]);
-  if (existingUser) return jsonError("This login already has a store profile.");
+  const existingMembership = existingUser?.Memberships[0];
+  if (existingMembership) {
+    return NextResponse.json({
+      accountId: existingMembership.accountId,
+      ownerUrl: "/owner",
+      alreadyCreated: true
+    });
+  }
+  if (existingUser) return jsonError("This login has a store profile without an active account. Contact support before retrying.", 409);
   if (existingEmailUser && existingEmailUser.authUserId !== data.user.id) {
     return jsonError("An account with this email already exists.");
   }
@@ -98,6 +127,8 @@ export async function POST(req: Request) {
             displayName: body.businessName,
             profileImageUrl: logoUrl,
             phone: body.phone || null,
+            smsNotificationPhone: body.smsConsent ? body.phone : null,
+            ...(body.smsConsent ? smsConsentRecord(SMS_CONSENT_SOURCE.onboarding) : {}),
             instagramHandle: cleanHandle(body.instagramHandle),
             isPublished: false
           }

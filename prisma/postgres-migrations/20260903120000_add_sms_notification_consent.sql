@@ -1,0 +1,7 @@
+ALTER TABLE "StoreProfile"
+  ADD COLUMN IF NOT EXISTS "smsNotificationPhone" TEXT,
+  ADD COLUMN IF NOT EXISTS "smsNotificationsEnabled" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "smsConsentAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "smsConsentSource" TEXT,
+  ADD COLUMN IF NOT EXISTS "smsConsentVersion" TEXT,
+  ADD COLUMN IF NOT EXISTS "smsOptedOutAt" TIMESTAMP(3);
