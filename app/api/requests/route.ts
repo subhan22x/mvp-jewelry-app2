@@ -10,6 +10,7 @@ import { loadStyleOverride } from '@/src/lib/styles/style-overrides';
 import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
 import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
+import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from '@/src/lib/qr-kits/service';
 
 export const maxDuration = 300;
 
@@ -67,12 +68,14 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const accountId = await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
+    const qrKitAttribution = await resolveQrKitAttributionFromRequest(req, body.accountSlug);
     const isPlain = body.pendantFinish === 'plain';
     await ensureUsageAvailable(accountId, 'design_image_generated', isPlain ? 2 : 2);
 
     const request = await prisma.request.create({
       data: {
         accountId,
+        qrKitId: qrKitAttribution.qrKitId,
         userId: body.userId,
         productType: 'name',
         pendantFinish: body.pendantFinish,
@@ -181,6 +184,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
+    if (err instanceof QrKitAttributionError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const usage = usageErrorResponse(err);
     if (usage) return NextResponse.json(usage, { status: 402 });
     return NextResponse.json({ error: err.message ?? 'bad_request' }, { status: 400 });

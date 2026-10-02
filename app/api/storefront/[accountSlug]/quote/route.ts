@@ -4,6 +4,7 @@ import { prisma } from "@/server/db/client";
 import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
 import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
 import { resolvePublicTenantAccess } from "@/src/lib/tenant";
+import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from "@/src/lib/qr-kits/service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
   const access = await resolvePublicTenantAccess(accountSlug);
   if (access.status === "access_denied") return jsonError("Storefront access is denied.", 403);
   if (access.status !== "ok") return jsonError("Store profile not found.", 404);
+  let qrKitId: string | null = null;
+  try {
+    ({ qrKitId } = await resolveQrKitAttributionFromRequest(req, accountSlug));
+  } catch (error) {
+    if (error instanceof QrKitAttributionError) return jsonError(error.message, error.status);
+    throw error;
+  }
 
   const account = await prisma.account.findUnique({
     where: { id: access.tenant.accountId },
@@ -54,6 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
   const lead = await prisma.lead.create({
     data: {
       accountId: account.id,
+      qrKitId,
       name: parsed.data.name,
       phone: parsed.data.phone,
       email: parsed.data.email || ""
@@ -63,6 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
   const quote = await prisma.quoteRequest.create({
     data: {
       accountId: account.id,
+      qrKitId,
       productType: "general_quote",
       designedImageUrl: imageUrls[0] ?? null,
       referenceImageUrlsJson: JSON.stringify(imageUrls),

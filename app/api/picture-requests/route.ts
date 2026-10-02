@@ -13,6 +13,7 @@ import { directUploadReferenceSchema, readDirectUpload } from '@/src/lib/storage
 import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
 import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
+import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from '@/src/lib/qr-kits/service';
 
 export const maxDuration = 300;
 
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
       primaryMetal: form!.get('primaryMetal')
     });
     const accountId = await resolveAccountIdFromSlug(parsed.accountSlug) ?? getDefaultAccountId();
+    const qrKitAttribution = await resolveQrKitAttributionFromRequest(req, parsed.accountSlug);
     await ensureUsageAvailable(accountId, 'design_image_generated');
 
     const imageValue = form?.get('image');
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         accountId,
+        qrKitId: qrKitAttribution.qrKitId,
         userId: parsed.userId,
         productType: 'picture',
         styleId: parsed.styleId,
@@ -192,6 +195,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
     await removeTempDir(tempDir);
+    if (err instanceof QrKitAttributionError) return jsonError(err.message, err.status);
     const usage = usageErrorResponse(err);
     if (usage) return jsonError(usage.error, 402);
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? 'Invalid picture pendant request.' : err.message ?? 'bad_request';

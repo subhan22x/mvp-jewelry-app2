@@ -23,6 +23,7 @@ import {
   necklaceReferenceUrl
 } from "@/src/lib/necklaces/config";
 import { buildNecklacePrompt } from "@/src/lib/necklaces/prompt";
+import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from "@/src/lib/qr-kits/service";
 
 export const maxDuration = 300;
 
@@ -94,12 +95,13 @@ function parseBody(isJson: boolean, json: any, form: FormData | null) {
   });
 }
 
-async function createLeadIfPresent(input: z.infer<typeof Body>, accountId: string, requestId: string) {
+async function createLeadIfPresent(input: z.infer<typeof Body>, accountId: string, requestId: string, qrKitId: string | null) {
   if (!input.customerName || !input.customerPhone || !input.customerEmail) return;
   await prisma.lead.create({
     data: {
       accountId,
       requestId,
+      qrKitId,
       name: input.customerName,
       phone: input.customerPhone,
       email: input.customerEmail
@@ -133,6 +135,7 @@ export async function POST(req: Request) {
     if (!referenceUrl || !referencePath) return jsonError("Necklace reference image is not configured.");
 
     const accountId = await resolveNecklaceAccountId(body.accountSlug);
+    const qrKitAttribution = await resolveQrKitAttributionFromRequest(req, body.accountSlug);
     const formPendant = form?.get("pendantImage");
     const hasFormPendant = formPendant instanceof File && formPendant.size > 0;
     const hasPendant = Boolean(body.pendantUpload || hasFormPendant);
@@ -170,6 +173,7 @@ export async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         accountId,
+        qrKitId: qrKitAttribution.qrKitId,
         userId: body.userId,
         productType: "necklace",
         pendantFinish: hasPendant ? "pendant_attached" : "chain_only",
@@ -189,7 +193,7 @@ export async function POST(req: Request) {
       }
     });
 
-    await createLeadIfPresent(body, accountId, request.id);
+    await createLeadIfPresent(body, accountId, request.id, qrKitAttribution.qrKitId);
 
     if (!hasPendant) {
       const completedAt = new Date();
@@ -298,6 +302,7 @@ export async function POST(req: Request) {
     }, { status: 201 });
   } catch (err: unknown) {
     await removeTempDir(tempDir);
+    if (err instanceof QrKitAttributionError) return jsonError(err.message, err.status);
     const usage = usageErrorResponse(err);
     if (usage) return jsonError(usage.error, 402);
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? "Invalid necklace request." : err instanceof Error ? err.message : "bad_request";

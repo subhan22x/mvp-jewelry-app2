@@ -15,6 +15,7 @@
     "prisma:migrate": "npm run supabase:push",
     "supabase:push": "node scripts/push-supabase-schema.mjs",
     "supabase:migrate-quote-flow": "node scripts/apply-quote-consolidation.mjs",
+    "supabase:migrate-qr-kits": "node scripts/apply-qr-kit-attribution.mjs",
     "supabase:migrate-metadata": "node scripts/migrate-sqlite-to-supabase.mjs",
     "supabase:audit": "node scripts/audit-databases.mjs",
     "supabase:audit-rls": "node scripts/audit-supabase-rls.mjs",

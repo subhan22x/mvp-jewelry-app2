@@ -51,6 +51,7 @@ export async function ensureDraftQuoteForRequest(requestId: string): Promise<Ens
     const created = await prisma.quoteRequest.create({
       data: {
         accountId: request.accountId,
+        qrKitId: request.qrKitId,
         requestId: request.id,
         resultId: preferred.id,
         designedImageUrl: preferred.imageUrl ?? null,
