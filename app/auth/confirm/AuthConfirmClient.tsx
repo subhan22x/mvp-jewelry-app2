@@ -43,6 +43,13 @@ export default function AuthConfirmClient() {
       hashParams.forEach((value, key) => queryAndHash.set(key, value));
 
       if (queryAndHash.get("error") || queryAndHash.get("error_code")) {
+        // A link opened after the emailed code was already used fails, but this browser may already be signed in.
+        const { data: existing } = await createClient().auth.getSession();
+        if (cancelled) return;
+        if (existing.session) {
+          window.location.replace(nextPath);
+          return;
+        }
         if (!cancelled) {
           setError(friendlyAuthError(queryAndHash));
           setMessage("Confirmation link problem");
