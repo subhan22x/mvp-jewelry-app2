@@ -5,15 +5,18 @@ import MobileOwnerNav from "./MobileOwnerNav";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { evaluateAccountEntitlement, getAccountBillingSnapshot } from "@/src/lib/billing/entitlements";
 
-type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings" | "account";
+type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings" | "account" | "access";
 
-const ownerNav = [
+function ownerNav(isSaasAdmin: boolean) {
+  return [
   { label: "Quotes", href: "/owner", icon: "quotes" },
   { label: "Design", href: "/owner/design", icon: "design" },
   { label: "Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Account", href: "/owner/account", icon: "account" },
-  { label: "Settings", href: "/owner/settings", icon: "settings" }
+  { label: "Settings", href: "/owner/settings", icon: "settings" },
+  ...(isSaasAdmin ? [{ label: "Access", href: "/owner/access-exceptions", icon: "access" as const }] : []),
 ] satisfies Array<{ label: string; href: string; icon: OwnerNavIcon }>;
+}
 
 function NavIcon({ icon }: { icon: OwnerNavIcon }) {
   const common = {
@@ -75,6 +78,13 @@ function NavIcon({ icon }: { icon: OwnerNavIcon }) {
           <path {...common} d="M16.5 9.5h.01" />
         </>
       )}
+      {icon === "access" && (
+        <>
+          <rect {...common} x="4" y="5" width="16" height="15" rx="2" />
+          <path {...common} d="M8 11h8M8 15h5" />
+          <path {...common} d="m16.5 3 .8 1.7L19 5.5l-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7Z" />
+        </>
+      )}
     </svg>
   );
 }
@@ -100,7 +110,7 @@ export default async function OwnerFrame({
       {!hideHeader && (
         <header className="fixed left-0 top-0 z-40 flex h-16 w-full max-w-full items-center justify-between gap-3 overflow-hidden border-b border-white/10 bg-[#101114] px-4 shadow-sm sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <MobileOwnerNav active={active} />
+            <MobileOwnerNav active={active} isSaasAdmin={owner?.role === "saas_admin"} />
             <Link href="/owner" className="flex h-10 min-w-0 items-center">
               <Image src="/new-landing/growjewelry-logo.png" alt="Grow Jewelry" width={200} height={56} className="h-11 w-auto object-contain" style={{ mixBlendMode: "screen", verticalAlign: "middle" }} priority />
             </Link>
@@ -118,7 +128,7 @@ export default async function OwnerFrame({
           <span className="mt-3 inline-block rounded border border-[#dec47e]/20 bg-[#56450a]/50 px-2 py-1 text-[11px] text-[#dec47e]">{accountBadge}</span>
         </div>
         <nav className="flex flex-col gap-2">
-          {ownerNav.map(item => {
+          {ownerNav(owner?.role === "saas_admin").map(item => {
             const isActive = item.label === active;
             return (
               <Link

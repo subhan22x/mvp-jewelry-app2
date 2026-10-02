@@ -13,6 +13,11 @@ export type AccountBillingSnapshot = {
   subscriptionCurrentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
   billingIssueStartedAt: Date | null;
+  AccessExceptions?: Array<{
+    id: string;
+    expiresAt: Date | null;
+    revokedAt: Date | null;
+  }>;
 };
 
 export type EntitlementState = {
@@ -21,6 +26,7 @@ export type EntitlementState = {
   isLegacyActive: boolean;
   isInTrial: boolean;
   isInPaymentGrace: boolean;
+  hasComplimentaryAccess: boolean;
   statusLabel: string;
   planLabel: string;
   message: string;
@@ -59,6 +65,11 @@ export function evaluateAccountEntitlement(
     issueGraceEndsAt &&
     issueGraceEndsAt > now
   );
+  const hasComplimentaryAccess = Boolean(
+    account.AccessExceptions?.some(exception =>
+      !exception.revokedAt && (!exception.expiresAt || exception.expiresAt > now)
+    )
+  );
 
   if (account.status !== "active") {
     return {
@@ -67,9 +78,24 @@ export function evaluateAccountEntitlement(
       isLegacyActive: false,
       isInTrial: false,
       isInPaymentGrace: false,
+      hasComplimentaryAccess: false,
       statusLabel: "Access denied",
       planLabel,
       message: "This account is not active.",
+    };
+  }
+
+  if (hasComplimentaryAccess) {
+    return {
+      canUsePaidFeatures: true,
+      canPublishStorefront: true,
+      isLegacyActive: false,
+      isInTrial: false,
+      isInPaymentGrace: false,
+      hasComplimentaryAccess: true,
+      statusLabel: "Complimentary access",
+      planLabel: "Complimentary",
+      message: "This account has administrator-granted complimentary access.",
     };
   }
 
@@ -80,6 +106,7 @@ export function evaluateAccountEntitlement(
       isLegacyActive: true,
       isInTrial: false,
       isInPaymentGrace: false,
+      hasComplimentaryAccess: false,
       statusLabel: "Legacy active",
       planLabel: "Legacy",
       message: "This account is active.",
@@ -93,6 +120,7 @@ export function evaluateAccountEntitlement(
       isLegacyActive: false,
       isInTrial: true,
       isInPaymentGrace: false,
+      hasComplimentaryAccess: false,
       statusLabel: "Free Trial",
       planLabel,
       message: "Your free trial is active.",
@@ -106,6 +134,7 @@ export function evaluateAccountEntitlement(
       isLegacyActive: false,
       isInTrial: false,
       isInPaymentGrace: false,
+      hasComplimentaryAccess: false,
       statusLabel: account.cancelAtPeriodEnd ? "Cancels at period end" : "Active",
       planLabel,
       message: account.cancelAtPeriodEnd
@@ -121,6 +150,7 @@ export function evaluateAccountEntitlement(
       isLegacyActive: false,
       isInTrial: false,
       isInPaymentGrace: true,
+      hasComplimentaryAccess: false,
       statusLabel: "Payment failed",
       planLabel,
       message: "Payment failed. Update your billing method within 2 days to keep access.",
@@ -133,6 +163,7 @@ export function evaluateAccountEntitlement(
     isLegacyActive: false,
     isInTrial: false,
     isInPaymentGrace: false,
+    hasComplimentaryAccess: false,
     statusLabel: subscriptionStatus === "canceled" ? "Canceled" : "Billing required",
     planLabel,
     message: "Start or restore a subscription to continue.",
@@ -151,6 +182,14 @@ export async function getAccountBillingSnapshot(accountId: string) {
       subscriptionCurrentPeriodEnd: true,
       cancelAtPeriodEnd: true,
       billingIssueStartedAt: true,
+      AccessExceptions: {
+        where: {
+          revokedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { id: true, expiresAt: true, revokedAt: true },
+        take: 1,
+      },
     },
   });
 }
@@ -164,6 +203,7 @@ export async function assertAccountCanUsePaidFeatures(accountId: string) {
       isLegacyActive: false,
       isInTrial: false,
       isInPaymentGrace: false,
+      hasComplimentaryAccess: false,
       statusLabel: "Access denied",
       planLabel: "No plan",
       message: "Account not found.",
