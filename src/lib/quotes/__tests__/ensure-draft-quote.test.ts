@@ -147,6 +147,14 @@ describe("ensureDraftQuoteForRequest", () => {
     expect(data.designedImageUrl).toBe("/generated/one.png");
   });
 
+  it("preserves the Request's Account and QR kit attribution on the draft quote", async () => {
+    mocks.requestFindUnique.mockResolvedValue({ ...ELIGIBLE_REQUEST, qrKitId: "qr-kit-1" });
+    await ensureDraftQuoteForRequest("req-1");
+    expect(mocks.quoteRequestCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      accountId: "acct-1", qrKitId: "qr-kit-1", requestId: "req-1"
+    }) });
+  });
+
   it("returns the existing quote idempotently without creating", async () => {
     mocks.quoteRequestFindFirst.mockResolvedValue({ id: "quote-existing" });
 

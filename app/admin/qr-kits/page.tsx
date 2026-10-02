@@ -1,9 +1,11 @@
 import { prisma } from "@/server/db/client";
 import QrKitDashboard from "./QrKitDashboard";
+import { requirePlatformAdmin } from "@/src/lib/auth/platform-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function QrKitsPage() {
+  await requirePlatformAdmin();
   const [kits, counts] = await Promise.all([
     prisma.qrKit.findMany({
       select: {

@@ -74,7 +74,10 @@ export async function assignQrKit(input: { qrKitId: string; accountId: string; a
       data: { qrKitId: input.qrKitId, accountId: account.id, actorUserId: input.actorUserId, type: "assigned" }
     });
 
-    return tx.qrKit.findUniqueOrThrow({ where: { id: input.qrKitId } });
+    return tx.qrKit.findUniqueOrThrow({
+      where: { id: input.qrKitId },
+      include: { account: { select: { id: true, name: true, slug: true } } }
+    });
   });
 }
 

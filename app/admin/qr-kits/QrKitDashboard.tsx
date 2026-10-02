@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import QRCode from "qrcode";
+import AccountAssignmentDialog, { type AssignableAccount } from "./AccountAssignmentDialog";
 
 type Kit = {
   id: string;
@@ -14,8 +15,6 @@ type Kit = {
   batch: { code: string; label: string; printTemplateVersion: string };
   account: { id: string; name: string; slug: string } | null;
 };
-
-type Account = { id: string; name: string; slug: string };
 
 function messageFromResponse(payload: unknown, fallback: string) {
   return typeof payload === "object" && payload && "error" in payload && typeof payload.error === "string"
@@ -32,22 +31,7 @@ export default function QrKitDashboard({ initialKits, counts }: { initialKits: K
   const [statusCounts, setStatusCounts] = useState(counts);
   const [notice, setNotice] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [search, setSearch] = useState("");
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (search.trim().length < 2) {
-      setAccounts([]);
-      return;
-    }
-    const timeout = window.setTimeout(async () => {
-      const response = await fetch(`/api/admin/accounts?q=${encodeURIComponent(search)}`);
-      const payload = await response.json().catch(() => ({ items: [] }));
-      if (response.ok) setAccounts(Array.isArray(payload.items) ? payload.items : []);
-    }, 180);
-    return () => window.clearTimeout(timeout);
-  }, [search]);
+  const [assigningKit, setAssigningKit] = useState<Kit | null>(null);
 
   const summary = useMemo(() => ["available", "assigned", "suspended", "lost", "retired"].map(status => ({ status, count: statusCounts[status] ?? 0 })), [statusCounts]);
 
@@ -81,18 +65,21 @@ export default function QrKitDashboard({ initialKits, counts }: { initialKits: K
     }
   }
 
-  async function assign(kitId: string) {
-    const accountId = selectedAccount[kitId];
-    if (!accountId) return setNotice("Search for and select an Account before assignment.");
-    const response = await fetch(`/api/admin/qr-kits/${kitId}/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accountId })
-    });
+  async function assign(kitId: string, account: AssignableAccount) {
+    let response: Response;
+    try {
+      response = await fetch(`/api/admin/qr-kits/${kitId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: account.id })
+      });
+    } catch {
+      throw new Error("Connection interrupted. Refresh the inventory to check whether assignment completed before retrying.");
+    }
     const payload = await response.json().catch(() => null);
-    if (!response.ok) return setNotice(messageFromResponse(payload, "Unable to assign QR kit."));
-    const account = accounts.find(item => item.id === accountId) ?? null;
-    setKits(current => current.map(kit => kit.id === kitId ? { ...kit, ...payload.kit, account } : kit));
+    if (!response.ok) throw new Error(messageFromResponse(payload, "Unable to assign QR kit."));
+    if (!payload?.kit?.account) throw new Error("Unable to confirm assignment. Refresh the inventory to check its status.");
+    setKits(current => current.map(kit => kit.id === kitId ? { ...kit, ...payload.kit } : kit));
     setStatusCounts(current => ({
       ...current,
       available: Math.max(0, (current.available ?? 0) - 1),
@@ -149,13 +136,15 @@ export default function QrKitDashboard({ initialKits, counts }: { initialKits: K
             <article key={kit.id} className="grid gap-4 px-5 py-5 lg:grid-cols-[1.1fr_1fr_1fr_auto] lg:items-center">
               <div><p className="font-mono text-base font-bold text-[#f7bc5f]">{kit.displayCode}</p><p className="mt-1 text-xs text-[#8c909f]">{kit.batch.label} · {kit.batch.printTemplateVersion}</p></div>
               <div><p className="text-sm font-semibold capitalize">{kit.status}</p><p className="mt-1 text-xs text-[#8c909f]">{kit.account ? `${kit.account.name} · /s/${kit.account.slug}` : "Not assigned"}</p></div>
-              {kit.status === "available" ? <div><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Find Account" className="w-full rounded-lg border border-white/10 bg-[#101114] px-3 py-2 text-sm" />{accounts.length > 0 && <select value={selectedAccount[kit.id] ?? ""} onChange={event => setSelectedAccount(current => ({ ...current, [kit.id]: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-[#101114] px-3 py-2 text-sm"><option value="">Select Account</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} · {account.slug}</option>)}</select>}</div> : <div className="text-xs text-[#8c909f]">Assigned {kit.assignedAt ? new Date(kit.assignedAt).toLocaleDateString() : ""}</div>}
-              <div className="flex gap-2"><button type="button" onClick={() => downloadQr(kit)} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-bold">PNG</button>{kit.status === "available" && <button type="button" onClick={() => assign(kit.id)} className="rounded-lg bg-[#f7bc5f] px-3 py-2 text-xs font-bold text-[#101114]">Assign</button>}</div>
+              <div className="text-xs text-[#8c909f]">{kit.status === "available" ? "Choose the store receiving this display." : `Assigned ${kit.assignedAt ? new Date(kit.assignedAt).toLocaleDateString() : ""}`}</div>
+              <div className="flex gap-2"><button type="button" onClick={() => downloadQr(kit)} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-bold">PNG</button>{kit.status === "available" && <button type="button" onClick={() => setAssigningKit(kit)} className="rounded-lg bg-[#f7bc5f] px-3 py-2 text-xs font-bold text-[#101114]">Choose Account</button>}</div>
             </article>
           ))}
           {kits.length === 0 && <p className="px-5 py-10 text-sm text-[#8c909f]">No kits yet. Create a numbered batch before printing any displays.</p>}
         </div>
       </section>
+      {assigningKit && <AccountAssignmentDialog key={assigningKit.id} kit={assigningKit}
+        onClose={() => setAssigningKit(null)} onAssign={account => assign(assigningKit.id, account)} />}
     </div>
   );
 }

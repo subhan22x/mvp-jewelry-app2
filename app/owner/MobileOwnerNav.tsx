@@ -12,7 +12,10 @@ function ownerNav(isSaasAdmin: boolean) {
   { label: "Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Account", href: "/owner/account", icon: "account" },
   { label: "Settings", href: "/owner/settings", icon: "settings" },
-  ...(isSaasAdmin ? [{ label: "Access", href: "/owner/access-exceptions", icon: "access" as const }] : []),
+  ...(isSaasAdmin ? [
+    { label: "QR Attribution", href: "/admin/qr-kits", icon: "collections" as const },
+    { label: "Access", href: "/owner/access-exceptions", icon: "access" as const }
+  ] : []),
 ] satisfies Array<{ label: string; href: string; icon: OwnerNavIcon }>;
 }
 
