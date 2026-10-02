@@ -3,6 +3,7 @@
 import type { ChangeEvent, CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Caveat } from "next/font/google";
 import { isAuthApiError } from "@supabase/auth-js";
 import { uploadFileDirectly } from "@/src/lib/uploads/direct-r2";
 import {
@@ -16,6 +17,8 @@ import {
 } from "@/src/lib/onboarding/draft";
 import { createClient } from "@/src/lib/supabase/client";
 import { SMS_CONSENT_TEXT } from "@/src/lib/sms-consent";
+
+const handwriting = Caveat({ subsets: ["latin"], weight: ["500", "600"] });
 
 const GOLD = "#e8b06a";
 const CREAM = "#ede4d4";
@@ -502,7 +505,7 @@ export default function OnboardingPage() {
             setSmsConsent={setSmsConsent}
             setInstagramHandle={setInstagramHandle}
           />
-          <ScreenProblem />
+          <ScreenProblem active={screen === 2} />
           <ScreenSolution />
           <ScreenAccount
             businessName={businessName}
@@ -632,59 +635,94 @@ function ScreenGetStarted({
   );
 }
 
-function FrictionRoadmap() {
+const FRICTION_JOURNEY = "M64 300V120A58 58 0 0 1 180 120V200A58 58 0 0 0 296 200V60";
+
+function FrictionRoadmap({ active }: { active: boolean }) {
   return (
     <div className="ob-problem-visual">
       <svg
-        className="ob-roadmap"
-        viewBox="0 0 360 300"
+        className={`ob-roadmap${active ? " is-active" : ""}`}
+        viewBox="0 -40 360 400"
         role="img"
         aria-labelledby="friction-roadmap-title friction-roadmap-description"
       >
         <title id="friction-roadmap-title">Three points of friction in a custom jewelry sale</title>
-        <desc id="friction-roadmap-description">A winding path connects design, pricing, and communication, with a broken handoff before pricing.</desc>
+        <desc id="friction-roadmap-description">A path connects design, pricing, and communication. CAD takes a week before pricing, and replies are missed before communication.</desc>
         <defs>
           <radialGradient id="ob-roadmap-glow" cx="50%" cy="48%" r="56%">
             <stop offset="0%" stopColor="#b36b38" stopOpacity=".2" />
             <stop offset="100%" stopColor="#b36b38" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id="ob-journey-stroke" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stopColor={GOLD} stopOpacity=".12" />
+            <stop offset="50%" stopColor={GOLD} stopOpacity=".5" />
+            <stop offset="100%" stopColor={GOLD} stopOpacity=".2" />
+          </linearGradient>
+          <filter id="ob-comet-blur" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" />
+          </filter>
+          <mask id="ob-roadmap-line-mask">
+            <rect x="-20" y="-60" width="400" height="440" fill="#fff" />
+            <circle cx="166.4" cy="82.7" r="9" fill="#000" />
+            <circle cx="64" cy="186" r="44" fill="#000" />
+            <circle cx="180" cy="160" r="45" fill="#000" />
+            <circle cx="296" cy="96" r="44" fill="#000" />
+            <rect x="32" y="230" width="64" height="18" fill="#000" />
+            <rect x="146" y="205" width="68" height="18" fill="#000" />
+            <rect x="248" y="139" width="96" height="18" fill="#000" />
+          </mask>
         </defs>
 
         <ellipse cx="180" cy="145" rx="166" ry="134" fill="url(#ob-roadmap-glow)" />
-        <path className="ob-journey-line" d="M32 292V225c0-26 7-48 18-62" />
-        <path className="ob-journey-line" d="M67 100c0-45 53-49 86-22 28 23 43 57 40 90" />
-        <path className="ob-journey-line" d="M211 244c32 34 71 15 86-22 16-40 5-85-21-112" />
-        <path className="ob-journey-break" d="M193 177l-8 9m18-3-5 11" />
+        <g mask="url(#ob-roadmap-line-mask)">
+          <path className="ob-journey-line" d={FRICTION_JOURNEY} />
+          <path className="ob-comet ob-comet-glow" d={FRICTION_JOURNEY} pathLength={1} filter="url(#ob-comet-blur)" />
+          <path className="ob-comet ob-comet-tail" d={FRICTION_JOURNEY} pathLength={1} />
+          <path className="ob-comet ob-comet-head" d={FRICTION_JOURNEY} pathLength={1} />
+        </g>
+        <path className="ob-journey-break" d="M167.9 73.6L157.2 82.6M175.6 82.8L164.9 91.8" />
 
-        <g className="ob-friction-node">
-          <circle className="ob-node-ring" cx="67" cy="136" r="43" />
-          <circle className="ob-node-core" cx="67" cy="136" r="35" />
-          <path className="ob-node-icon" d="M56 147l3-10 13-13 7 7-13 13-10 3zm4-11 7 7" />
-          <text x="67" y="187">DESIGN</text>
+        <g className="ob-friction-node ob-node-design">
+          <circle className="ob-node-ring" cx="64" cy="186" r="43" />
+          <circle className="ob-node-core" cx="64" cy="186" r="35" />
+          <path className="ob-node-icon" d="M53 197l3-10 13-13 7 7-13 13-10 3zm4-11 7 7" />
+          <text x="64" y="243">DESIGN</text>
         </g>
 
-        <g className="ob-friction-node">
-          <circle className="ob-node-ring" cx="185" cy="220" r="44" />
-          <circle className="ob-node-core" cx="185" cy="220" r="36" />
-          <path className="ob-node-icon" d="M174 211h13l10 10-12 12-11-11v-11zm6 5h.1" />
-          <text x="185" y="274">PRICING</text>
+        <g className="ob-friction-node ob-node-pricing">
+          <circle className="ob-node-ring" cx="180" cy="160" r="44" />
+          <circle className="ob-node-core" cx="180" cy="160" r="36" />
+          <path className="ob-node-icon" d="M169 151h13l10 10-12 12-11-11v-11zm6 5h.1" />
+          <text x="180" y="218">PRICING</text>
         </g>
 
-        <g className="ob-friction-node">
-          <circle className="ob-node-ring" cx="292" cy="76" r="43" />
-          <circle className="ob-node-core" cx="292" cy="76" r="35" />
-          <path className="ob-node-icon" d="M278 75a14 12 0 1 1 5 9l-7 2 2-7a12 12 0 0 1 0-4z" />
-          <text x="292" y="127">COMMUNICATION</text>
+        <g className="ob-friction-node ob-node-communication">
+          <circle className="ob-node-ring" cx="296" cy="96" r="43" />
+          <circle className="ob-node-core" cx="296" cy="96" r="35" />
+          <path className="ob-node-icon" d="M282 95a14 12 0 1 1 5 9l-7 2 2-7a12 12 0 0 1 0-4z" />
+          <text x="296" y="152">COMMUNICATION</text>
+        </g>
+
+        <g className={`ob-note ob-note-cad ${handwriting.className}`}>
+          <text x="242" y="-20" transform="rotate(-5 242 -20)">CAD takes 1 week</text>
+          <path className="ob-note-arrow" pathLength={1} d="M178 4C164 8 154 13 150 21C147 30 144 38 142 48" />
+          <path className="ob-note-arrow ob-note-head" pathLength={1} d="M148.5 41.7L142 48L139.8 39.3" />
+        </g>
+
+        <g className={`ob-note ob-note-reply ${handwriting.className}`}>
+          <path className="ob-note-arrow" pathLength={1} d="M276 330C282 314 280 298 268 290C262 285 254 280 248 273" />
+          <path className="ob-note-arrow ob-note-head" pathLength={1} d="M251 281.5L248 273L256.9 274.6" />
+          <text x="262" y="352" transform="rotate(-4 262 352)">forgot to reply on time</text>
         </g>
       </svg>
     </div>
   );
 }
 
-function ScreenProblem() {
+function ScreenProblem({ active }: { active: boolean }) {
   return (
     <section className="ob-screen">
-      <FrictionRoadmap />
+      <FrictionRoadmap active={active} />
       <div className="ob-body ob-story-body ob-problem-body">
         <Eyebrow>The Problem</Eyebrow>
         <div className="ob-gap-16" />
@@ -872,8 +910,42 @@ const onboardingStyles = `
   .ob-problem-body .ob-eyebrow { gap:10px; font-size:14px; letter-spacing:.18em; }
   .ob-problem-body .ob-eyebrow span { width:25px; height:2px; }
   .ob-problem-visual { position:absolute; top:7%; left:16px; right:16px; height:48%; z-index:4; display:flex; align-items:center; justify-content:center; }
-  .ob-roadmap { width:100%; max-width:380px; overflow:visible; font-family:var(--font-figtree),sans-serif; filter:drop-shadow(0 22px 36px rgba(0,0,0,.34)); }
-  .ob-journey-line { fill:none; stroke:rgba(237,228,212,.52); stroke-width:3.4; stroke-linecap:round; stroke-dasharray:1 10; }
+  .ob-roadmap { width:100%; max-width:380px; max-height:100%; overflow:visible; font-family:var(--font-figtree),sans-serif; filter:drop-shadow(0 22px 36px rgba(0,0,0,.34)); }
+  .ob-journey-line { fill:none; stroke:url(#ob-journey-stroke); stroke-width:1.4; stroke-linecap:round; }
+  .ob-comet { fill:none; stroke-linecap:round; opacity:0; }
+  .ob-comet-glow { stroke:${GOLD}; stroke-width:7; stroke-dasharray:.05 1.2; }
+  .ob-comet-tail { stroke:${GOLD}; stroke-width:1.8; stroke-dasharray:.16 1.2; }
+  .ob-comet-head { stroke:#fff6e6; stroke-width:2.6; stroke-dasharray:.018 1.2; }
+  .ob-note text { fill:#a8977d; font-size:21px; font-weight:600; text-anchor:middle; letter-spacing:.01em; }
+  .ob-note-arrow { fill:none; stroke:${GOLD}; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1; stroke-dashoffset:0; }
+  .ob-friction-node .ob-node-core { transition:stroke .3s; }
+  @media (prefers-reduced-motion:no-preference) {
+    .ob-comet { opacity:1; animation:obCometTravel 5.2s linear infinite; }
+    .ob-comet-glow { animation-name:obCometGlow; }
+    .ob-comet-head { animation-name:obCometHead; }
+    .ob-node-design .ob-node-core { animation:obNodeDesign 5.2s linear infinite; }
+    .ob-node-pricing .ob-node-core { animation:obNodePricing 5.2s linear infinite; }
+    .ob-node-communication .ob-node-core { animation:obNodeCommunication 5.2s linear infinite; }
+    .ob-note text { opacity:0; transform-box:fill-box; }
+    .ob-note-arrow { stroke-dashoffset:1; }
+    .ob-roadmap.is-active .ob-note-arrow { animation:obDrawArrow .7s cubic-bezier(.6,0,.3,1) forwards; }
+    .ob-roadmap.is-active .ob-note-head { animation-duration:.25s; }
+    .ob-roadmap.is-active .ob-note text { animation:obNoteIn .6s ease-out forwards; }
+    .ob-roadmap.is-active .ob-note-cad .ob-note-arrow { animation-delay:.55s; }
+    .ob-roadmap.is-active .ob-note-cad .ob-note-head { animation-delay:1.2s; }
+    .ob-roadmap.is-active .ob-note-cad text { animation-delay:.3s; }
+    .ob-roadmap.is-active .ob-note-reply .ob-note-arrow { animation-delay:1.35s; }
+    .ob-roadmap.is-active .ob-note-reply .ob-note-head { animation-delay:2s; }
+    .ob-roadmap.is-active .ob-note-reply text { animation-delay:1.1s; }
+  }
+  @keyframes obCometTravel { from { stroke-dashoffset:.16; } to { stroke-dashoffset:-1; } }
+  @keyframes obCometHead { from { stroke-dashoffset:.018; } to { stroke-dashoffset:-1.142; } }
+  @keyframes obCometGlow { from { stroke-dashoffset:.05; } to { stroke-dashoffset:-1.11; } }
+  @keyframes obNodeDesign { 0%,7%,24%,100% { stroke:rgba(232,176,106,.78); filter:none; } 13% { stroke:#fff1d6; filter:drop-shadow(0 0 10px rgba(232,176,106,.75)); } }
+  @keyframes obNodePricing { 0%,39%,56%,100% { stroke:rgba(232,176,106,.78); filter:none; } 45% { stroke:#fff1d6; filter:drop-shadow(0 0 10px rgba(232,176,106,.75)); } }
+  @keyframes obNodeCommunication { 0%,76%,93%,100% { stroke:rgba(232,176,106,.78); filter:none; } 82% { stroke:#fff1d6; filter:drop-shadow(0 0 10px rgba(232,176,106,.75)); } }
+  @keyframes obDrawArrow { to { stroke-dashoffset:0; } }
+  @keyframes obNoteIn { from { opacity:0; } to { opacity:1; } }
   .ob-journey-break { fill:none; stroke:#dc845e; stroke-width:3.4; stroke-linecap:round; }
   .ob-node-ring { fill:none; stroke:rgba(232,176,106,.16); stroke-width:1; }
   .ob-node-core { fill:rgba(24,14,8,.94); stroke:rgba(232,176,106,.78); stroke-width:1.7; }
