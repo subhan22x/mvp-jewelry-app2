@@ -57,6 +57,26 @@ describe("CheckEmailClient", () => {
     expect(screen.getByRole("button", { name: "Verify and create studio" })).toBeDisabled();
   });
 
+  it.each([
+    ["1 2 3 4 5 6", "123456"],
+    ["123-456-7890", "1234567890"],
+    [" 0123456789 ", "0123456789"]
+  ])("preserves every digit when pasting %s", async (pasted, token) => {
+    verifyOtp.mockResolvedValue({ data: { session: { access_token: "token" } }, error: null });
+    const user = userEvent.setup();
+
+    render(<CheckEmailClient email="owner@example.com" />);
+    const input = screen.getByLabelText("Email verification code");
+    // jsdom does not reproduce native clipboard truncation at maxLength.
+    expect(input).not.toHaveAttribute("maxlength");
+    await user.click(input);
+    await user.paste(pasted);
+    await user.click(screen.getByRole("button", { name: "Verify and create studio" }));
+
+    expect(input).toHaveValue(token);
+    expect(verifyOtp).toHaveBeenCalledWith(expect.objectContaining({ token }));
+  });
+
   it("caps input at ten digits and ignores non-digits", async () => {
     const user = userEvent.setup();
 

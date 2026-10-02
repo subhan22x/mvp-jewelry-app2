@@ -97,7 +97,6 @@ export default function CheckEmailClient({ email }: { email: string }) {
           inputMode="numeric"
           autoComplete="one-time-code"
           pattern="[0-9]*"
-          maxLength={MAX_CODE_LENGTH}
           value={code}
           onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, MAX_CODE_LENGTH))}
           placeholder="Enter code"
