@@ -119,7 +119,7 @@ export default function CustomerResultsScreen({
 
   return (
     <div className="space-y-8">
-      <div className="rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] px-6 py-6">
+      <div className="rounded-3xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface-muted)] px-3 py-6 sm:px-6">
         <h2 className="text-center text-lg font-semibold sm:text-left">
           {isGenerating ? generatingTitle : title}
         </h2>
@@ -137,13 +137,13 @@ export default function CustomerResultsScreen({
           </div>
         ))}
 
-        <div className={cx("mt-6 grid grid-cols-1 gap-6", expectedCount > 1 ? "sm:grid-cols-2" : "mx-auto max-w-md")}>
+        <div className={cx("mt-6 grid gap-2 sm:gap-6", expectedCount > 1 ? "grid-cols-2" : "mx-auto max-w-md grid-cols-1")}>
           {results.map(result => {
             const isSelected = selectedResultId === result.id;
             const isPending = result.status === "pending";
             const isFailed = result.status === "failed";
             return (
-              <div key={result.id} className="relative">
+              <div key={result.id} className="relative min-w-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -189,7 +189,7 @@ export default function CustomerResultsScreen({
                   <button
                     type="button"
                     onClick={() => onEdit(result)}
-                    className={`absolute left-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85 ${result.badgeLabel ? "top-12" : "top-3"}`}
+                    className={`absolute left-2 z-10 rounded-full bg-black/65 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85 sm:left-3 sm:px-3 sm:text-xs ${result.badgeLabel ? "top-12" : "top-2 sm:top-3"}`}
                     aria-label={`Edit ${result.label}`}
                   >
                     edit
@@ -199,7 +199,7 @@ export default function CustomerResultsScreen({
                   <button
                     type="button"
                     onClick={() => onPreview(result)}
-                    className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85"
+                    className="absolute right-2 top-2 z-10 rounded-full bg-black/65 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-black/85 sm:right-3 sm:top-3 sm:px-3 sm:text-xs"
                     aria-label={`Preview ${result.label}`}
                   >
                     view

@@ -20,6 +20,7 @@ import {
   GRILLZ_TEETH
 } from "@/src/lib/grillz/config";
 import { buildGrillzPrompt } from "@/src/lib/grillz/prompt";
+import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from "@/src/lib/qr-kits/service";
 
 export const maxDuration = 300;
 
@@ -101,6 +102,7 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
       inspiration: form!.get("inspiration") || undefined
     });
     const accountId = await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
+    const qrKitAttribution = await resolveQrKitAttributionFromRequest(req, body.accountSlug);
     await ensureUsageAvailable(accountId, "design_image_generated", 1);
 
     let inspirationImagePath: string | null = null;
@@ -142,6 +144,7 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
     const request = await prisma.request.create({
       data: {
         accountId,
+        qrKitId: qrKitAttribution.qrKitId,
         userId: signupGenerationUserId(body.userId),
         productType: "grillz",
         pendantFinish: "grillz",
@@ -231,6 +234,9 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: unknown) {
     await removeTempDir(tempDir);
+    if (err instanceof QrKitAttributionError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const usage = usageErrorResponse(err);
     if (usage) return NextResponse.json(usage, { status: 402 });
     const message = err instanceof z.ZodError ? err.issues[0]?.message ?? "Invalid Grillz request." : err instanceof Error ? err.message : "bad_request";

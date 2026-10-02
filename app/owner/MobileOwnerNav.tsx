@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useState } from "react";
 
-type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings" | "account";
+type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings" | "account" | "access";
 
-const ownerNav = [
+function ownerNav(isSaasAdmin: boolean) {
+  return [
   { label: "Quotes", href: "/owner", icon: "quotes" },
   { label: "Design", href: "/owner/design", icon: "design" },
   { label: "Studio", href: "/owner/vvs-studio", icon: "vvs" },
   { label: "Account", href: "/owner/account", icon: "account" },
-  { label: "Settings", href: "/owner/settings", icon: "settings" }
+  { label: "Settings", href: "/owner/settings", icon: "settings" },
+  ...(isSaasAdmin ? [{ label: "Access", href: "/owner/access-exceptions", icon: "access" as const }] : []),
 ] satisfies Array<{ label: string; href: string; icon: OwnerNavIcon }>;
+}
 
 function NavIcon({ icon }: { icon: OwnerNavIcon }) {
   const common = {
@@ -61,11 +64,18 @@ function NavIcon({ icon }: { icon: OwnerNavIcon }) {
           <path {...common} d="M16.5 9.5h.01" />
         </>
       )}
+      {icon === "access" && (
+        <>
+          <rect {...common} x="4" y="5" width="16" height="15" rx="2" />
+          <path {...common} d="M8 11h8M8 15h5" />
+          <path {...common} d="m16.5 3 .8 1.7L19 5.5l-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7Z" />
+        </>
+      )}
     </svg>
   );
 }
 
-export default function MobileOwnerNav({ active }: { active: string }) {
+export default function MobileOwnerNav({ active, isSaasAdmin = false }: { active: string; isSaasAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -98,7 +108,7 @@ export default function MobileOwnerNav({ active }: { active: string }) {
             aria-label="Owner navigation"
             className="fixed left-3 right-3 top-20 z-50 rounded-2xl border border-white/10 bg-[#101114] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
           >
-            {ownerNav.map(item => {
+            {ownerNav(isSaasAdmin).map(item => {
               const isActive = item.label === active;
               return (
                 <Link

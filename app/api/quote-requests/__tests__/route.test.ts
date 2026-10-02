@@ -29,6 +29,8 @@ vi.mock("@/server/db/client", () => ({
 
 const baseRequest = {
   id: "req-test",
+  accountId: "account-test",
+  qrKitId: "kit-test",
   createdAt: new Date("2026-05-05T12:00:00.000Z"),
   productType: "name",
   pendantFinish: "icedout",
@@ -103,6 +105,16 @@ describe("/api/quote-requests", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ quoteRequestId: "quote-test" });
     expect(mocks.ensureDraftQuote).toHaveBeenCalledWith("req-test");
+    expect(mocks.leadCreate).toHaveBeenCalledWith({
+      data: {
+        accountId: "account-test",
+        requestId: "req-test",
+        qrKitId: "kit-test",
+        name: "Rox",
+        phone: "+15555551212",
+        email: "rox@example.com"
+      }
+    });
     expect(mocks.quoteRequestUpdateMany).toHaveBeenCalledWith({
       where: { id: "quote-test", status: "pending" },
       data: {
