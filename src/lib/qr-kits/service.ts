@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/server/db/client";
 import { evaluateAccountEntitlement } from "@/src/lib/billing/entitlements";
 import { createQrKitPublicToken, normalizeBatchCode, qrKitDisplayCode } from "./codes";
@@ -30,18 +31,29 @@ export async function createQrKitBatch(input: {
       data: { code, label, printTemplateVersion, createdByUserId: input.actorUserId }
     });
 
-    const kits = [];
-    for (let ordinal = 1; ordinal <= input.quantity; ordinal += 1) {
-      const kit = await tx.qrKit.create({
-        data: {
-          batchId: batch.id,
-          displayCode: qrKitDisplayCode(code, ordinal),
-          publicToken: createQrKitPublicToken(),
-          events: { create: { type: "created", actorUserId: input.actorUserId } }
-        }
-      });
-      kits.push(kit);
-    }
+    // A maximum-size batch must fit the transaction budget even over a remote
+    // database connection. Insert kits and audit events in two bulk writes.
+    const now = new Date();
+    const kits = Array.from({ length: input.quantity }, (_, index) => ({
+      id: randomUUID(),
+      batchId: batch.id,
+      displayCode: qrKitDisplayCode(code, index + 1),
+      publicToken: createQrKitPublicToken(),
+      status: "available",
+      accountId: null,
+      assignedAt: null,
+      deployedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await tx.qrKit.createMany({ data: kits });
+    await tx.qrKitEvent.createMany({
+      data: kits.map(kit => ({
+        qrKitId: kit.id,
+        type: "created",
+        actorUserId: input.actorUserId,
+      })),
+    });
 
     return { batch, kits };
   });
