@@ -198,3 +198,7 @@ The Postgres runtime switch is complete, but production hardening is not:
 4. Establish normal Postgres migrations before onboarding paid production accounts. The current `supabase:push` workflow is for early development only.
 5. Complete password reset and replace `DEFAULT_ACCOUNT_ID` with storefront-aware customer-generation links.
 6. Add a persistent generation queue before higher-volume paid usage.
+
+## Complimentary access migration
+
+Before deploying the complimentary Account access feature, run `prisma/postgres-migrations/20261002050000_add_account_access_exceptions.sql` against the production Postgres database. It is additive and idempotent, preserves audit history, and enables RLS with no public client policies. Do not use the archived SQLite migration history for this deployment.
