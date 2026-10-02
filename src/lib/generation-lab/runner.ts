@@ -1,3 +1,4 @@
+import { assertAccountCanUsePaidFeatures } from "@/src/lib/billing/entitlements";
 import path from "node:path";
 import { prisma } from "@/server/db/client";
 import { buildVariants } from "@/lib/styles/builder";
@@ -463,6 +464,8 @@ export async function runLabRun(args: { runId: string; accountId: string; userId
 
   try {
     for (const labCase of run.Cases) {
+      // Recheck at execution time in case access expired after scheduling.
+      await assertAccountCanUsePaidFeatures(accountId);
       // Re-fetch in case config was edited after the run started.
       await runLabCase({ caseId: labCase.id, accountId, userId });
     }

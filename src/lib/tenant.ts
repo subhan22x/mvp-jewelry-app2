@@ -1,3 +1,4 @@
+import { isSupabaseAuthConfigured } from "@/src/lib/supabase/env";
 import { prisma } from "@/server/db/client";
 import { evaluateAccountEntitlement } from "@/src/lib/billing/entitlements";
 
@@ -68,7 +69,14 @@ export async function resolvePublicTenant(accountSlug: string): Promise<PublicTe
 
 export async function resolveAccountIdFromSlug(accountSlug: string | null | undefined) {
   const slug = accountSlug?.trim();
-  if (!slug) return null;
+  const owner = isSupabaseAuthConfigured()
+    ? await (await import("@/src/lib/auth/owner-context")).getOwnerContext()
+    : null;
+  if (!slug) return owner?.accountId ?? null;
+  if (owner) {
+    const ownedAccount = await prisma.account.findUnique({ where: { id: owner.accountId }, select: { slug: true } });
+    if (ownedAccount?.slug === slug) return owner.accountId;
+  }
   const access = await resolvePublicTenantAccess(slug);
   if (access.status === "ok") return access.tenant.accountId;
   throw new PublicTenantAccessError(access.status);

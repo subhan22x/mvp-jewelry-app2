@@ -1,100 +1,69 @@
 import type Stripe from "stripe";
-import { prisma } from "@/server/db/client";
-import { getBillingPlan, planKeyForPriceId } from "@/src/lib/billing/plans";
+import type { Prisma } from "@prisma/client";
+import { getBillingPlan, planKeyForPriceId, planKeyForProductId } from "./plans";
 
 const PAYMENT_PROBLEM_STATUSES = new Set(["past_due", "unpaid"]);
 const ACCESS_STATUSES = new Set(["active", "trialing"]);
+const TERMINAL_STATUSES = new Set(["canceled", "incomplete_expired"]);
 
-function secondsToDate(value: unknown) {
-  return typeof value === "number" ? new Date(value * 1000) : null;
-}
-
-function stripeId(value: unknown) {
+export function stripeId(value: unknown): string | null {
   if (typeof value === "string") return value;
   if (value && typeof value === "object" && "id" in value && typeof value.id === "string") return value.id;
   return null;
 }
 
-function firstSubscriptionPrice(subscription: Stripe.Subscription) {
-  const raw = subscription as unknown as {
-    items?: { data?: Array<{ price?: { id?: string; product?: unknown } }> };
-  };
-  return raw.items?.data?.[0]?.price ?? null;
-}
-
+// Caller holds the account lock and records the event in this same transaction.
 export async function syncStripeSubscription(
+  tx: Prisma.TransactionClient,
   subscription: Stripe.Subscription,
-  fallbackAccountId?: string | null
+  accountId: string,
 ) {
-  const subscriptionId = subscription.id;
+  const account = await tx.account.findUnique({ where: { id: accountId } });
+  if (!account) throw new Error("Stripe subscription account not found.");
   const customerId = stripeId(subscription.customer);
-  const metadata = subscription.metadata ?? {};
-  const price = firstSubscriptionPrice(subscription);
-  const priceId = price?.id ?? null;
-  const productId = stripeId(price?.product);
-  const planKey = planKeyForPriceId(priceId) ?? metadata.planKey ?? null;
-  const accountIdFromMetadata = metadata.accountId || fallbackAccountId || null;
-
-  const account = accountIdFromMetadata
-    ? await prisma.account.findUnique({ where: { id: accountIdFromMetadata } })
-    : customerId
-      ? await prisma.account.findFirst({
-          where: {
-            OR: [
-              { stripeCustomerId: customerId },
-              { stripeSubscriptionId: subscriptionId },
-            ],
-          },
-        })
-      : null;
-
-  if (!account) return null;
-
-  const status = subscription.status;
-  const now = new Date();
-  const billingIssueStartedAt = PAYMENT_PROBLEM_STATUSES.has(status)
-    ? account.billingIssueStartedAt ?? now
-    : null;
-  const trialEndsAt = secondsToDate(subscription.trial_end);
-  const currentPeriodEnd = secondsToDate(
-    (subscription as unknown as { current_period_end?: number }).current_period_end
-  );
-  const plan = getBillingPlan(planKey);
-
-  await prisma.$transaction(async tx => {
-    await tx.account.update({
-      where: { id: account.id },
-      data: {
-        stripeCustomerId: customerId ?? account.stripeCustomerId,
-        stripeSubscriptionId: subscriptionId,
-        subscriptionStatus: status,
-        subscriptionPlanKey: plan?.key ?? planKey ?? account.subscriptionPlanKey,
-        stripePriceId: priceId,
-        stripeProductId: productId,
-        subscriptionCurrentPeriodEnd: currentPeriodEnd,
-        trialEndsAt,
-        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-        billingIssueStartedAt,
-        billingUpdatedAt: now,
-        hasUsedTrial: account.hasUsedTrial || Boolean(trialEndsAt),
-      },
-    });
-
-    if (plan && ACCESS_STATUSES.has(status)) {
-      await tx.usagePlan.updateMany({
-        where: { accountId: account.id, endsAt: null },
-        data: { endsAt: now },
-      });
-      await tx.usagePlan.create({
-        data: {
-          accountId: account.id,
-          planKey: plan.key,
-          limitsJson: JSON.stringify(plan.limits),
-          startsAt: now,
-        },
-      });
+  if (account.stripeCustomerId && account.stripeCustomerId !== customerId) {
+    throw new Error("Stripe customer does not match this account.");
+  }
+  if (account.stripeSubscriptionId && account.stripeSubscriptionId !== subscription.id) {
+    // A delayed cancellation for the previous subscription must not revoke the new one.
+    if (TERMINAL_STATUSES.has(subscription.status)) return account.id;
+    if (account.subscriptionStatus && !TERMINAL_STATUSES.has(account.subscriptionStatus)) {
+      throw new Error("Account already has a different subscription.");
     }
+  }
+
+  const item = subscription.items.data[0];
+  const price = item?.price;
+  const plan = getBillingPlan(planKeyForProductId(stripeId(price?.product)) ?? planKeyForPriceId(price?.id));
+  if (!plan && ACCESS_STATUSES.has(subscription.status)) {
+    throw new Error("Subscription uses an unrecognized Stripe Price.");
+  }
+  const now = new Date();
+  await tx.account.update({
+    where: { id: account.id },
+    data: {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      subscriptionStatus: subscription.status,
+      subscriptionPlanKey: plan?.key ?? account.subscriptionPlanKey,
+      stripePriceId: price?.id ?? null,
+      stripeProductId: stripeId(price?.product),
+      subscriptionCurrentPeriodEnd: item?.current_period_end ? new Date(item.current_period_end * 1000) : null,
+      trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      billingIssueStartedAt: PAYMENT_PROBLEM_STATUSES.has(subscription.status) ? account.billingIssueStartedAt ?? now : null,
+      billingUpdatedAt: now,
+      hasUsedTrial: account.hasUsedTrial || Boolean(subscription.trial_start || subscription.trial_end),
+    },
   });
 
+  if (plan && ACCESS_STATUSES.has(subscription.status)) {
+    const limitsJson = JSON.stringify(plan.limits);
+    const currentPlan = await tx.usagePlan.findFirst({ where: { accountId, endsAt: null }, orderBy: { startsAt: "desc" } });
+    if (currentPlan?.planKey !== plan.key || currentPlan.limitsJson !== limitsJson) {
+      await tx.usagePlan.updateMany({ where: { accountId, endsAt: null }, data: { endsAt: now } });
+      await tx.usagePlan.create({ data: { accountId, planKey: plan.key, limitsJson, startsAt: now } });
+    }
+  }
   return account.id;
 }

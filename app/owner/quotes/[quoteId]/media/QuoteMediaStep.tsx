@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type MediaType = "image" | "model3d" | "video";
@@ -13,6 +13,7 @@ const MEDIA_OPTIONS: Array<{ type: MediaType; title: string; description: string
 ];
 
 export default function QuoteMediaStep({
+  canUsePaidFeatures,
   quoteId,
   title,
   imageUrl,
@@ -22,6 +23,7 @@ export default function QuoteMediaStep({
   initialModelJob,
   initialVideoJob
 }: {
+  canUsePaidFeatures: boolean;
   quoteId: string;
   title: string;
   imageUrl: string | null;
@@ -36,6 +38,7 @@ export default function QuoteMediaStep({
   const [job, setJob] = useState<Job>(initialMediaType === "model3d" ? initialModelJob : initialMediaType === "video" ? initialVideoJob : null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoPublishAttempt = useRef<string | null>(null);
 
   async function publishQuote(previewMediaType: MediaType) {
     const response = await fetch(`/api/quote-requests/${quoteId}`, {
@@ -49,7 +52,7 @@ export default function QuoteMediaStep({
   }
 
   useEffect(() => {
-    if (!job || (job.status !== "pending" && job.status !== "processing")) return;
+    if (!canUsePaidFeatures || !job || (job.status !== "pending" && job.status !== "processing")) return;
     const endpoint = selection === "model3d" ? `/api/owner/model-jobs/${job.id}` : `/api/owner/video-jobs/${job.id}`;
     let cancelled = false;
     let timeout: number | null = null;
@@ -78,23 +81,27 @@ export default function QuoteMediaStep({
       controller.abort();
       if (timeout) window.clearTimeout(timeout);
     };
-  }, [job, selection]);
+  }, [job, selection, canUsePaidFeatures]);
 
   useEffect(() => {
-    if (job?.status !== "succeeded" || submitting || (selection !== "model3d" && selection !== "video")) return;
+    if (!canUsePaidFeatures || job?.status !== "succeeded" || submitting || (selection !== "model3d" && selection !== "video")) return;
+    const attempt = `${quoteId}:${job.id}:${selection}`;
+    if (autoPublishAttempt.current === attempt) return;
+    autoPublishAttempt.current = attempt;
     setSubmitting(true);
     publishQuote(selection).catch(cause => {
       setError(cause instanceof Error ? cause.message : "Unable to finish this quote.");
       setSubmitting(false);
     });
-  }, [job?.status, selection, submitting]);
+  }, [job?.status, job?.id, quoteId, selection, submitting, canUsePaidFeatures]);
 
   async function continueFlow() {
+    if (!canUsePaidFeatures || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
-      if (selection === "image") {
-        await publishQuote("image");
+      if (selection === "image" || job?.status === "succeeded") {
+        await publishQuote(selection);
         return;
       }
       const endpoint = selection === "model3d" ? "/api/owner/model-jobs" : "/api/owner/video-jobs";
@@ -136,7 +143,7 @@ export default function QuoteMediaStep({
           {MEDIA_OPTIONS.map(option => {
             const disabled = (option.type === "model3d" && !canGenerate3d) || (option.type === "video" && !canGenerateVideo);
             return (
-              <button key={option.type} type="button" disabled={disabled || Boolean(jobInProgress)} onClick={() => { setSelection(option.type); setJob(option.type === "model3d" ? initialModelJob : option.type === "video" ? initialVideoJob : null); setError(null); }} className={`min-h-[126px] rounded-2xl border p-3 text-center transition sm:min-h-[150px] sm:p-4 ${selection === option.type ? "border-[#D1B873] bg-[#D1B873]/10" : "border-white/10 bg-black/20 hover:border-white/25"} disabled:cursor-not-allowed disabled:opacity-45`}>
+              <button key={option.type} type="button" disabled={!canUsePaidFeatures || disabled || Boolean(jobInProgress)} onClick={() => { setSelection(option.type); setJob(option.type === "model3d" ? initialModelJob : option.type === "video" ? initialVideoJob : null); setError(null); }} className={`min-h-[126px] rounded-2xl border p-3 text-center transition sm:min-h-[150px] sm:p-4 ${selection === option.type ? "border-[#D1B873] bg-[#D1B873]/10" : "border-white/10 bg-black/20 hover:border-white/25"} disabled:cursor-not-allowed disabled:opacity-45`}>
                 <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[#D1B873]">
                   <MediaOptionIcon type={option.type} />
                 </span>
@@ -150,13 +157,13 @@ export default function QuoteMediaStep({
 
         {job ? (
           <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${job.status === "failed" ? "border-red-400/30 bg-red-500/10 text-red-100" : "border-[#D1B873]/25 bg-[#D1B873]/10 text-[#f3d98f]"}`}>
-            {job.status === "succeeded" ? "Asset ready. Opening the quote preview..." : job.status === "failed" ? job.error ?? "Generation failed. Choose another option or retry." : "Generating the preview asset. Keep this page open; it updates automatically."}
+            {job.status === "succeeded" ? "Asset ready. Open your quote preview." : job.status === "failed" ? job.error ?? "Generation failed. Choose another option or retry." : "Generating the preview asset. Keep this page open; it updates automatically."}
           </div>
         ) : null}
         {error ? <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div> : null}
 
-        <button type="button" onClick={continueFlow} disabled={submitting || selectedUnsupported || Boolean(jobInProgress)} className="mt-6 h-14 w-full rounded-2xl bg-[#3B82F6] px-5 text-base font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-55">
-          {submitting ? "Working..." : selection === "image" ? "Continue with Image Only" : job?.status === "failed" ? "Retry Generation" : `Generate ${selection === "model3d" ? "3D" : "Video"}`}
+        <button type="button" onClick={continueFlow} disabled={!canUsePaidFeatures || submitting || selectedUnsupported || Boolean(jobInProgress)} className="mt-6 h-14 w-full rounded-2xl bg-[#3B82F6] px-5 text-base font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-55">
+          {submitting ? "Working..." : selection === "image" ? "Continue with Image Only" : job?.status === "succeeded" ? "Open quote preview" : job?.status === "failed" ? "Retry Generation" : `Generate ${selection === "model3d" ? "3D" : "Video"}`}
         </button>
       </div>
     </section>

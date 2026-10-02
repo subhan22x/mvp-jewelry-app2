@@ -4,7 +4,9 @@ const mocks = vi.hoisted(() => ({
   requestFindUnique: vi.fn(),
   revisionCreate: vi.fn(),
   revisionUpdate: vi.fn(),
-  generateImage: vi.fn()
+  generateImage: vi.fn(),
+  ensureUsage: vi.fn(),
+  consumeUsage: vi.fn()
 }));
 
 vi.mock("@/server/db/client", () => ({
@@ -19,6 +21,12 @@ vi.mock("@/server/db/client", () => ({
   }
 }));
 
+vi.mock("@/src/lib/usage", () => ({
+  ensureUsageAvailable: mocks.ensureUsage,
+  consumeUsageCredit: mocks.consumeUsage,
+  usageErrorResponse: (e: unknown) => e instanceof Error && e.message === "billing required" ? { error: e.message } : null,
+}));
+
 vi.mock("@/lib/styles/connector", () => ({
   generateImage: mocks.generateImage
 }));
@@ -26,6 +34,8 @@ vi.mock("@/lib/styles/connector", () => ({
 describe("/api/requests/[id]/revisions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.ensureUsage.mockResolvedValue({});
+    mocks.consumeUsage.mockResolvedValue({});
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
       new Response(Buffer.from("source image"), {
@@ -102,4 +112,23 @@ describe("/api/requests/[id]/revisions", () => {
       })
     });
   });
+  it("blocks image revisions before calling the provider when billing is inactive", async () => {
+    mocks.ensureUsage.mockRejectedValue(new Error("billing required"));
+    const { POST } = await import("../route");
+    const response = await POST(new Request("http://test.local/api/requests/req-test/revisions", { method: "POST", body: JSON.stringify({ sourceResultId: "result-1", prompt: "Change crown" }) }), { params: Promise.resolve({ id: "req-test" }) });
+    expect(response.status).toBe(402);
+    expect(mocks.generateImage).not.toHaveBeenCalled();
+    expect(mocks.revisionCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not consume a credit when saving the generated revision fails", async () => {
+    mocks.revisionUpdate.mockRejectedValueOnce(new Error("Save failed"));
+    const { POST } = await import("../route");
+    await POST(new Request("http://test.local/api/requests/req-test/revisions", {
+      method: "POST", body: JSON.stringify({ sourceResultId: "result-1", prompt: "Make the crown larger" })
+    }), { params: Promise.resolve({ id: "req-test" }) });
+    await vi.waitFor(() => expect(mocks.revisionUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "failed" }) })));
+    expect(mocks.consumeUsage).not.toHaveBeenCalled();
+  });
+
 });

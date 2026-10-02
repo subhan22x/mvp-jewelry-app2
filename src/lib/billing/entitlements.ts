@@ -1,13 +1,15 @@
 import { prisma } from "@/server/db/client";
 import { PAYMENT_FAILURE_GRACE_DAYS, getBillingPlan } from "@/src/lib/billing/plans";
 
-const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
+const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active"]);
 const PAYMENT_PROBLEM_STATUSES = new Set(["past_due", "unpaid"]);
 
 export type AccountBillingSnapshot = {
   id: string;
   status: string;
   subscriptionStatus: string | null;
+  hasUsedTrial?: boolean;
+  stripeSubscriptionId?: string | null;
   subscriptionPlanKey: string | null;
   trialEndsAt: Date | null;
   subscriptionCurrentPeriodEnd: Date | null;
@@ -56,7 +58,7 @@ export function evaluateAccountEntitlement(
   const subscriptionStatus = account.subscriptionStatus;
   const isLegacyActive = account.status === "active" && !subscriptionStatus;
   const trialEndsAt = account.trialEndsAt;
-  const isInTrial = subscriptionStatus === "trialing" && (!trialEndsAt || trialEndsAt > now);
+  const isInTrial = subscriptionStatus === "trialing" && Boolean(trialEndsAt && trialEndsAt > now);
   const isActiveSubscription = subscriptionStatus ? ACTIVE_SUBSCRIPTION_STATUSES.has(subscriptionStatus) : false;
   const issueGraceEndsAt = account.billingIssueStartedAt ? addDays(account.billingIssueStartedAt, PAYMENT_FAILURE_GRACE_DAYS) : null;
   const isInPaymentGrace = Boolean(
@@ -177,6 +179,8 @@ export async function getAccountBillingSnapshot(accountId: string) {
       id: true,
       status: true,
       subscriptionStatus: true,
+      hasUsedTrial: true,
+      stripeSubscriptionId: true,
       subscriptionPlanKey: true,
       trialEndsAt: true,
       subscriptionCurrentPeriodEnd: true,

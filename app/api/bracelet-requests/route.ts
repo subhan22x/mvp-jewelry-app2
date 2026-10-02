@@ -1,3 +1,4 @@
+import { withSignupGeneration, signupGenerationUserId, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -91,7 +92,7 @@ function getGenerationErrorMessage(err: unknown) {
   return err.message || "Image generation failed.";
 }
 
-export async function POST(req: Request) {
+export const POST = withSignupGeneration(async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const accountId = await resolveAccountIdFromSlug(body.accountSlug) ?? getDefaultAccountId();
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
       data: {
         accountId,
         qrKitId: qrKitAttribution.qrKitId,
-        userId: body.userId,
+        userId: signupGenerationUserId(body.userId),
         productType: "bracelet",
         pendantFinish: isWomens ? "womens" : "icedout",
         styleId: `bracelet_${body.styleId}`,
@@ -137,6 +138,7 @@ export async function POST(req: Request) {
       }
     });
 
+    await bindSignupGeneration(request.id);
     scheduleBackgroundTask((async () => {
       const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
@@ -198,4 +200,4 @@ export async function POST(req: Request) {
     if (usage) return NextResponse.json(usage, { status: 402 });
     return NextResponse.json({ error: err instanceof Error ? err.message : "bad_request" }, { status: 400 });
   }
-}
+});

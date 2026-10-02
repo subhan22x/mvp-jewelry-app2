@@ -5,8 +5,10 @@ export function getStripe() {
   if (!secretKey) throw new Error("STRIPE_SECRET_KEY is not configured.");
 
   return new Stripe(secretKey, {
-    apiVersion: "2026-06-24.dahlia",
+    apiVersion: "2026-09-30.endive",
     typescript: true,
+    maxNetworkRetries: 1,
+    timeout: 10_000,
   });
 }
 

@@ -1,3 +1,4 @@
+import { withSignupGeneration, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -7,6 +8,8 @@ import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { generateImage } from "@/lib/styles/connector";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
+
+import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
 
 export const maxDuration = 300;
 
@@ -73,7 +76,7 @@ async function sourceImageAttachment(imageUrl: string, requestUrl: string, revis
   return filePath;
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withSignupGeneration(async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = Body.parse(await req.json());
@@ -96,6 +99,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "This design already has the maximum of 2 revisions." }, { status: 400 });
     }
 
+    await ensureUsageAvailable(request.accountId, "design_image_generated");
+
     const revisionNumber = request.ResultRevisions.length + 1;
     const startedAt = new Date();
     const revision = await prisma.resultRevision.create({
@@ -109,6 +114,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     });
 
+    await bindSignupGeneration(revision.id, "ResultRevision");
     scheduleBackgroundTask((async () => {
       let attachmentPath: string | null = null;
       try {
@@ -123,6 +129,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           variant: 100 + revisionNumber,
           modelVariant: 1
         });
+
         const completedAt = new Date();
         await prisma.resultRevision.update({
           where: { id: revision.id },
@@ -135,6 +142,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             completedAt,
             durationMs: Math.max(0, completedAt.getTime() - startedAt.getTime())
           }
+        });
+        await consumeUsageCredit({
+          accountId: request.accountId,
+          kind: "design_image_generated",
+          sourceType: "result_revision",
+          sourceId: revision.id,
         });
       } catch (error) {
         const completedAt = new Date();
@@ -161,7 +174,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       durationSeconds: toSeconds(revision.durationMs)
     }, { status: 201 });
   } catch (error) {
+    const usage = usageErrorResponse(error);
+    if (usage) return NextResponse.json(usage, { status: 402 });
     const message = error instanceof Error ? error.message : "bad_request";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

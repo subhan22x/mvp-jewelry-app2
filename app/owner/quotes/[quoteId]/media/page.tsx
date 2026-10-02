@@ -3,12 +3,15 @@ import { prisma } from "@/server/db/client";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import OwnerFrame from "../../../OwnerFrame";
 import QuoteMediaStep from "./QuoteMediaStep";
+import { evaluateAccountEntitlement, getAccountBillingSnapshot } from "@/src/lib/billing/entitlements";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuoteMediaPage({ params }: { params: Promise<{ quoteId: string }> }) {
   const { quoteId } = await params;
   const { accountId } = await requireOwnerContext();
+  const billing = await getAccountBillingSnapshot(accountId);
+  const canUsePaidFeatures = Boolean(billing && evaluateAccountEntitlement(billing).canUsePaidFeatures);
   const quote = await prisma.quoteRequest.findFirst({
     where: { id: quoteId, accountId },
     include: {
@@ -27,6 +30,7 @@ export default async function QuoteMediaPage({ params }: { params: Promise<{ quo
     <OwnerFrame active="Quotes">
       <div className="mx-auto w-full max-w-4xl px-4 md:px-6">
         <QuoteMediaStep
+          canUsePaidFeatures={canUsePaidFeatures}
           quoteId={quote.id}
           title={quote.text ?? quote.request?.text ?? "Custom jewelry"}
           imageUrl={quote.designedImageUrl}
