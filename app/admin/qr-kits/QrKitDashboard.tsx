@@ -53,7 +53,8 @@ export default function QrKitDashboard({ initialKits, counts }: { initialKits: K
 
   async function createBatch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setCreating(true);
     setNotice(null);
     try {
@@ -71,7 +72,7 @@ export default function QrKitDashboard({ initialKits, counts }: { initialKits: K
       if (!response.ok) throw new Error(messageFromResponse(payload, "Unable to create QR kit batch."));
       setKits(current => [...payload.kits.map((kit: Kit) => ({ ...kit, account: null, batch: payload.batch, assignedAt: null, deployedAt: null, createdAt: kit.createdAt })), ...current]);
       setStatusCounts(current => ({ ...current, available: (current.available ?? 0) + payload.kits.length }));
-      event.currentTarget.reset();
+      formElement.reset();
       setNotice(`Created ${payload.kits.length} QR kits. Every code is currently unassigned.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to create QR kit batch.");

@@ -71,8 +71,29 @@ model Account {
   GenerationLabCases        GenerationLabCase[]
   GenerationLabReviews      GenerationLabResultReview[]
   GenerationLabPromptOverrides GenerationLabPromptOverride[]
+  AccessExceptions             AccountAccessException[]
   QrKits                   QrKit[]
   QrKitEvents              QrKitEvent[]
+}
+
+// A manual, revocable access decision. It deliberately does not mirror or
+// alter Stripe state; entitlement checks evaluate active rows at read time.
+model AccountAccessException {
+  id              String   @id @default(cuid())
+  accountId       String
+  account         Account  @relation(fields: [accountId], references: [id])
+  // Equals accountId while unrevoked, then becomes null. This gives Prisma
+  // and `db push` a durable one-active-grant-per-account constraint.
+  activeAccountId String?  @unique
+  reason          String
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  revokedByUserId String?
+
+  @@index([accountId, createdAt])
+  @@index([accountId, revokedAt, expiresAt])
 }
 
 model QrKitBatch {

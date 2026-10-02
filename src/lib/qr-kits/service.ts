@@ -111,6 +111,14 @@ export async function resolveQrKitAttribution(accountSlug: string, publicToken: 
           subscriptionCurrentPeriodEnd: true,
           cancelAtPeriodEnd: true,
           billingIssueStartedAt: true,
+          AccessExceptions: {
+            where: {
+              revokedAt: null,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+            select: { id: true, expiresAt: true, revokedAt: true },
+            take: 1,
+          },
           StoreProfile: { select: { isPublished: true } }
         }
       }
