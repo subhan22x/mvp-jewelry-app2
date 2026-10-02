@@ -33,6 +33,14 @@ export async function resolvePublicTenantAccess(accountSlug: string): Promise<Pu
       subscriptionCurrentPeriodEnd: true,
       cancelAtPeriodEnd: true,
       billingIssueStartedAt: true,
+      AccessExceptions: {
+        where: {
+          revokedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { id: true, expiresAt: true, revokedAt: true },
+        take: 1,
+      },
       StoreProfile: { select: { displayName: true, isPublished: true } }
     }
   });

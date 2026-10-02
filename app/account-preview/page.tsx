@@ -17,6 +17,7 @@ export default async function AccountPreviewPage() {
           isLegacyActive: false,
           isInTrial: true,
           isInPaymentGrace: false,
+          hasComplimentaryAccess: false,
           statusLabel: "Free Trial",
           planLabel: "Basic",
           message: "Your free trial is active.",
