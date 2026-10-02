@@ -3,7 +3,9 @@ import { z } from "zod";
 import { getPlatformAdminContext } from "@/src/lib/auth/platform-admin";
 import { assignQrKit } from "@/src/lib/qr-kits/service";
 
-const Body = z.object({ accountId: z.string().cuid() });
+// Account IDs include UUIDs and legacy IDs as well as Prisma-generated CUIDs.
+// The transaction checks the actual Account and its status before any write.
+const Body = z.object({ accountId: z.string().trim().min(1).max(128) });
 
 export async function POST(req: Request, { params }: { params: Promise<{ qrKitId: string }> }) {
   const admin = await getPlatformAdminContext();
