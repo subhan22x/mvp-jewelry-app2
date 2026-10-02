@@ -129,7 +129,7 @@ SUPABASE_SECRET_KEY="sb_secret_..."
 
 ### Signup email verification
 
-The onboarding flow accepts either the six-digit Supabase email OTP or the confirmation link. Configure the **Confirm signup** template under **Authentication > Email Templates** to include both values:
+The onboarding flow accepts either the Supabase email OTP (any configured length, 6–10 digits) or the confirmation link. Configure the **Confirm signup** template under **Authentication > Email Templates** to include both values:
 
 ```html
 <h2>Verify your email</h2>

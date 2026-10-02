@@ -5,14 +5,19 @@ import { useState } from "react";
 import { isAuthApiError } from "@supabase/auth-js";
 import { createClient } from "@/src/lib/supabase/client";
 
+// Supabase lets the project choose an email OTP length between 6 and 10 digits.
+const MIN_CODE_LENGTH = 6;
+const MAX_CODE_LENGTH = 10;
+
 function verificationErrorMessage(error: unknown) {
   if (isAuthApiError(error)) {
     const message = error.message.toLowerCase();
     if (error.status === 429 || message.includes("rate limit")) {
       return "Too many attempts. Wait a minute, then try again.";
     }
+    // Supabase reports wrong, used and expired codes all as otp_expired.
     if (error.code === "otp_expired" || message.includes("expired")) {
-      return "That code has expired. Request a new email and try again.";
+      return "That code is incorrect, expired, or already used. Check you entered every digit, or open the link in the same email.";
     }
     if (message.includes("invalid") || message.includes("token")) {
       return "That code is incorrect or has already been used.";
@@ -31,8 +36,8 @@ export default function CheckEmailClient({ email }: { email: string }) {
   async function verifyCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const token = code.replace(/\D/g, "");
-    if (!email || token.length !== 6) {
-      setError("Enter the six-digit code from your email.");
+    if (!email || token.length < MIN_CODE_LENGTH) {
+      setError("Enter the full verification code from your email.");
       return;
     }
 
@@ -81,29 +86,29 @@ export default function CheckEmailClient({ email }: { email: string }) {
       <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#ebb467]">Verify your email</p>
       <h1 className="mt-4 text-3xl font-bold text-white">Enter your code</h1>
       <p className="mt-3 text-sm leading-6 text-[#a99f94]">
-        We sent a six-digit code and a secure confirmation link{email ? <> to <strong className="text-[#ede4d4]">{email}</strong></> : " to your email"}.
+        We sent a verification code and a secure confirmation link{email ? <> to <strong className="text-[#ede4d4]">{email}</strong></> : " to your email"}.
       </p>
 
       <form className="mt-6" onSubmit={verifyCode}>
-        <label htmlFor="email-code" className="sr-only">Six-digit email verification code</label>
+        <label htmlFor="email-code" className="sr-only">Email verification code</label>
         <input
           id="email-code"
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
           pattern="[0-9]*"
-          maxLength={6}
+          maxLength={MAX_CODE_LENGTH}
           value={code}
-          onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-          placeholder="000000"
+          onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, MAX_CODE_LENGTH))}
+          placeholder="Enter code"
           autoFocus
-          className="h-16 w-full rounded-xl border border-[rgba(237,228,212,.15)] bg-[#090706] px-4 text-center font-mono text-3xl font-bold tracking-[0.34em] text-white outline-none transition placeholder:text-[#4f4841] focus:border-[#ebb467] focus:ring-2 focus:ring-[#ebb467]/20"
+          className="h-16 w-full rounded-xl border border-[rgba(237,228,212,.15)] bg-[#090706] px-4 text-center font-mono text-2xl font-bold tracking-[0.2em] text-white outline-none transition placeholder:font-sans placeholder:text-lg placeholder:font-medium placeholder:tracking-normal placeholder:text-[#4f4841] sm:text-3xl focus:border-[#ebb467] focus:ring-2 focus:ring-[#ebb467]/20"
         />
         {error ? <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
         {notice ? <p role="status" className="mt-4 rounded-xl border border-[#ebb467]/25 bg-[#ebb467]/10 px-4 py-3 text-sm text-[#f4d39f]">{notice}</p> : null}
         <button
           type="submit"
-          disabled={verifying || code.length !== 6 || !email}
+          disabled={verifying || code.length < MIN_CODE_LENGTH || !email}
           className="mt-5 w-full rounded-xl bg-[linear-gradient(165deg,#ebb467,#d4924a)] px-4 py-3 font-bold text-[#1b1006] shadow-[0_10px_24px_-12px_rgba(212,146,74,.8)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {verifying ? "Verifying…" : "Verify and create studio"}

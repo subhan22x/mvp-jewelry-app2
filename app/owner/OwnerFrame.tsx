@@ -7,6 +7,12 @@ import MobileOwnerNav from "./MobileOwnerNav";
 import { TRIAL_DAYS } from "@/src/lib/billing/plans";
 import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { evaluateAccountEntitlement, getAccountBillingSnapshot } from "@/src/lib/billing/entitlements";
+import { prisma } from "@/server/db/client";
+
+function initialsFor(name: string | null | undefined, fallback: string | null | undefined) {
+  const words = (name || fallback || "").trim().split(/[\s@._-]+/).filter(Boolean);
+  return (words.length > 1 ? words[0][0] + words[1][0] : words[0]?.slice(0, 2) ?? "").toUpperCase() || "?";
+}
 
 type OwnerNavIcon = "quotes" | "design" | "vvs" | "reviews" | "collections" | "profile" | "settings" | "account" | "access";
 
@@ -104,6 +110,12 @@ export default async function OwnerFrame({
   flushContent?: boolean;
 }) {
   const owner = await getOwnerContext();
+  const [ownerUser, ownerAccount] = owner
+    ? await Promise.all([
+      prisma.user.findUnique({ where: { id: owner.userId }, select: { name: true } }),
+      prisma.account.findUnique({ where: { id: owner.accountId }, select: { name: true } }),
+    ])
+    : [null, null];
   const billingSnapshot = owner ? await getAccountBillingSnapshot(owner.accountId) : null;
   const entitlement = billingSnapshot ? evaluateAccountEntitlement(billingSnapshot) : null;
   const canStartTrial = Boolean(billingSnapshot && !billingSnapshot.hasUsedTrial && !billingSnapshot.stripeSubscriptionId);
@@ -125,15 +137,15 @@ export default async function OwnerFrame({
             </Link>
           </div>
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-[#17191F] text-xs font-bold text-[#D1B873]">
-            JS
+            {initialsFor(ownerUser?.name, owner?.email)}
           </div>
         </header>
       )}
 
       <aside className={`fixed left-0 top-0 z-30 hidden h-full w-72 flex-col border-r border-white/5 bg-[#17191F] px-2 py-6 shadow-2xl lg:flex ${hideHeader ? "pt-6" : "pt-20"}`}>
         <div className="mb-8 px-4">
-          <h2 className="text-xl font-bold text-[#f7bc5f]">Luxe Jewelry Admin</h2>
-          <p className="mt-1 text-sm text-[#c2c6d6]">Global Manager</p>
+          <h2 className="truncate text-xl font-bold text-[#f7bc5f]">{ownerAccount?.name ?? "Your studio"}</h2>
+          <p className="mt-1 truncate text-sm text-[#c2c6d6]">{ownerUser?.name ?? owner?.email ?? "Owner"}</p>
           <span className="mt-3 inline-block rounded border border-[#dec47e]/20 bg-[#56450a]/50 px-2 py-1 text-[11px] text-[#dec47e]">{accountBadge}</span>
         </div>
         <nav className="flex flex-col gap-2">
