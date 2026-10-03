@@ -24,7 +24,10 @@
     "r2:migrate-generated": "node --experimental-strip-types scripts/migrate-generated-media-to-r2.mjs",
     "r2:download-account": "node --experimental-strip-types scripts/download-account-generations.mjs",
     "db:seed": "node scripts/seed-demo-user.mjs",
-    "billing:check": "node scripts/check-stripe-billing.mjs"
+    "billing:check": "node scripts/check-stripe-billing.mjs",
+    "test:notification-scheduler": "npm --prefix workers/owner-notification-scheduler test",
+    "check:notification-scheduler": "npm --prefix workers/owner-notification-scheduler run typecheck",
+    "test:notification-recovery": "tsx scripts/test-notification-recovery.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",

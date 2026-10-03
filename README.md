@@ -130,6 +130,10 @@ The polished store-owner dashboard lives at `/owner`. It is request- and quote-c
 - `/owner/account` also shows account status, the current subscription plan, free-trial state, Stripe Checkout for the Basic plan, and the Stripe billing portal when a customer is linked.
 - `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
+## Owner notification recovery
+
+Owner customer-activity email alerts use Resend and a persistent Postgres delivery queue. Cloudflare wakes the protected Vercel notification worker every five minutes to recover missed/retry deliveries; immediate background sending remains active. See [owner notifications](docs/owner-notifications.md), the [scheduler runbook](workers/owner-notification-scheduler/README.md), and [capacity evidence](docs/notification-capacity.md).
+
 ## Vercel deployment
 
 The app is prepared for Vercel with Supabase Postgres and Cloudflare R2. Production durable writes fail closed when R2 is missing, large browser uploads use signed direct-to-R2 `PUT` URLs, and async generation routes use Vercel `waitUntil()` with a five-minute function duration.

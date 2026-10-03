@@ -7,6 +7,8 @@ import { getNotificationPreferences, ownerNotificationRecipient } from "./prefer
 export const RETRY_WINDOW_MS = 23 * 60 * 60_000;
 const LEASE_MS = 2 * 60_000;
 const MAX_ATTEMPTS = 6;
+const PROVIDER_TIMEOUT_MS = 20_000;
+const DELIVERY_TIME_RESERVE_MS = 30_000;
 export function notificationWorkerAuthorized(req: Request) {
   const secret = process.env.NOTIFICATION_WORKER_SECRET || process.env.CRON_SECRET;
   if (!secret) return false;
@@ -66,7 +68,8 @@ export async function reconcileNotificationWebhooks() {
   }
 }
 
-export async function processOwnerNotifications(limit = 20) {
+export async function processOwnerNotifications(limit = 20, timeBudgetMs = 150_000) {
+  const deadline = Date.now() + timeBudgetMs;
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const sender = process.env.NOTIFICATION_EMAIL_FROM?.trim();
   if (!apiKey || !sender) {
@@ -89,6 +92,8 @@ export async function processOwnerNotifications(limit = 20) {
   await reconcileNotificationWebhooks();
   let processed = 0;
   for (let index = 0; index < Math.min(Math.max(limit, 1), 20); index++) {
+    // Leave time for a bounded provider call and persistence before the route expires.
+    if (Date.now() + DELIVERY_TIME_RESERVE_MS >= deadline) break;
     const now = new Date();
     const candidate = await prisma.ownerNotification.findFirst({
       where: { channel: 'email', OR: [{ status: 'queued', nextAttemptAt: { lte: now } }, { status: 'processing', leaseUntil: { lt: now } }] },
@@ -141,7 +146,7 @@ export async function processOwnerNotifications(limit = 20) {
       if (!current.enabled || currentRecipient !== recipient) { await finish({ status: 'skipped', lastError: 'preference_changed_before_send' }); continue; }
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Idempotency-Key': candidate.id },
-        body: JSON.stringify(payload), signal: AbortSignal.timeout(20_000)
+        body: JSON.stringify(payload), signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS)
       });
       if (!response.ok) {
         const retryable = response.status === 429 || response.status >= 500 || response.status === 408 || response.status === 409;

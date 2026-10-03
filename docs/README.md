@@ -18,7 +18,9 @@ These documents should match the running application:
 
 ## Architecture Notes
 
-- [`owner-notifications.md`](owner-notifications.md): approved owner notification behavior, Settings layout, Resend email formats, durable delivery architecture and exception rules; implementation is pending provider setup.
+- [`owner-notifications.md`](owner-notifications.md): owner notification behavior, Settings, Resend delivery and activation status.
+- [`../workers/owner-notification-scheduler/README.md`](../workers/owner-notification-scheduler/README.md): Cloudflare scheduler deployment, tests and recovery operations.
+- [`notification-capacity.md`](notification-capacity.md): inspected quotas, concurrency test evidence and capacity limits.
 - [`../CLAUDE.md`](../CLAUDE.md): implementation conventions and prompt-generation architecture.
 - [`../styles.md`](../styles.md): pendant style registry, prompt templates, and generation details.
 - [`prompting-architecture.md`](prompting-architecture.md): current style prompt flow, typography reference attachments, and font-to-style mapping.

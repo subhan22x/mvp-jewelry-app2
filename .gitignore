@@ -28,3 +28,5 @@ temp_check.py
 .style-editor-backups/
 # Local-only review artifact built from historic customer quote data.
 docs/owner-notification-historical-preview.html
+.wrangler/
+.dev.vars*

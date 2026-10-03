@@ -7,7 +7,7 @@ import { canRetryDelivery, notificationWorkerAuthorized, processOwnerNotificatio
 
 const candidate = { id: "event-1", accountId: "account-1", quoteRequestId: "quote-1", status: "queued", leaseToken: null, updatedAt: new Date(), kind: "generated_design", firstAttemptAt: null, attemptCount: 0, payloadJson: null, recipient: null };
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   vi.stubEnv("RESEND_API_KEY", "test-key"); vi.stubEnv("NOTIFICATION_EMAIL_FROM", "Grow Jewelry <alerts@example.com>"); vi.stubEnv("APP_BASE_URL", "https://growjewelry.io");
   mock.events.mockResolvedValue([]); mock.find.mockResolvedValueOnce(candidate).mockResolvedValue(null); mock.update.mockResolvedValue({ count: 1 });
   mock.preferences.mockResolvedValue({ enabled: true, emailOverride: null }); mock.recipient.mockResolvedValue("owner@example.com");
@@ -15,9 +15,29 @@ beforeEach(() => {
   mock.unique.mockResolvedValue({ ...candidate, firstAttemptAt: new Date(), attemptCount: 1 });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "provider-1" }) }));
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("notification worker safety", () => {
+  it("leaves due rows untouched when insufficient batch time remains", async () => {
+    expect(await processOwnerNotifications(5, 30_000)).toEqual({ processed: 0, configured: true });
+    expect(mock.find).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("stops claiming after a slow delivery consumes the batch time budget", async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    const now = vi.spyOn(Date, "now").mockReturnValue(start);
+    vi.mocked(fetch).mockImplementation(async () => {
+      now.mockReturnValue(start + 125_000);
+      return { ok: true, json: async () => ({ id: "provider-1" }) } as Response;
+    });
+    const task = processOwnerNotifications(5);
+    await vi.runAllTimersAsync();
+    expect(await task).toEqual({ processed: 1, configured: true });
+    // One due-row search, one Account suppression search; no second due-row claim.
+    expect(mock.find).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("records provider acceptance and uses a persisted unique idempotency key", async () => {
     expect(await processOwnerNotifications(1)).toEqual({ processed: 1, configured: true });
     expect(fetch).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({ headers: expect.objectContaining({ "Idempotency-Key": "event-1" }) }));
