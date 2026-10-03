@@ -19,6 +19,8 @@ The 80/day allocation is a planning assumption, not an enforced per-Account allo
 
 The Cloudflare scheduler makes 288 calls/day, roughly 8,640 in a 30-day month. Five claims per call yields 1,440 theoretical recovery claim slots/day, including retries/skips/contention. Immediate nudges provide additional processing. This is not a 1,440-email/day promise; the current Resend quota is lower. Cloudflare's published Workers Free allowance is 100,000 requests/day; free CPU limits still apply. The scheduler performs a small HTTP call rather than model inference or database work.
 
+A real production cron run processed the queued test alert in approximately 8.5 seconds of wall time using 1 ms CPU, then a signed Resend webhook confirmed delivery in one attempt. This is one observed run, not a sustained-load benchmark.
+
 Vercel inspection confirmed Hobby, Node 24, and 300-second function timeouts. Scheduled wake-ups consume Vercel function resources and database queries too. Choosing Cloudflare for scheduling does not remove those quotas or Vercel Hobby's restriction to personal non-commercial use.
 
 ## Concurrency evidence

@@ -41,6 +41,10 @@ HTTP errors, invalid JSON/counts and `configured:false` are invocation failures.
 npx wrangler tail grow-jewelry-notification-scheduler-production --format json
 ```
 
+## Verified deployment
+
+Production Worker `grow-jewelry-notification-scheduler-production` has a five-minute cron, no public HTTP URL, persistent logs, and the required secret binding. An actual scheduled invocation on October 3, 2026 processed one queued fictional test alert (HTTP 200, 8.5s wall time, 1ms CPU). Resend accepted one message and signed sent/delivered webhooks reconciled successfully. The test quote was marked closed; delivery history remains available.
+
 ## Operations and rollback
 
 Check failed invocations, queued rows older than 15 minutes, expired processing leases, and `needs_review` deliveries. Provider quota failures can be permanent even when the scheduler invocation succeeds. These checks are a manual runbook; no external alerting service is provisioned.
