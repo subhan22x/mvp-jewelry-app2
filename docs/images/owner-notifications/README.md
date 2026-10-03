@@ -1,0 +1,3 @@
+# Owner notification review screenshots
+
+These screenshots document the Notifications card and email designs included in PR #17. The settings view was captured from the owner dashboard with `owner@example.com`; both email examples use fictional customer, store, phone and request details. Email examples are rendered by `src/lib/notifications/email.ts` and include the Account timezone setting (`America/Chicago`) to demonstrate local timestamp formatting. The Lexy preview and chain reference image are existing style images used as illustration; they are not images from these fictional requests. These are browser layout previews, not captures from Gmail, Outlook or Apple Mail.
