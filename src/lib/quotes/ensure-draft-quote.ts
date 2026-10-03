@@ -1,3 +1,4 @@
+import { enqueueOwnerNotification, nudgeOwnerNotifications } from "@/src/lib/notifications/events";
 import { Prisma, type Result } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 
@@ -48,7 +49,8 @@ export async function ensureDraftQuoteForRequest(requestId: string): Promise<Ens
   const preferred = pickPreferredResult(succeeded);
 
   try {
-    const created = await prisma.quoteRequest.create({
+    const created = await prisma.$transaction(async tx => {
+      const quote = await tx.quoteRequest.create({
       data: {
         accountId: request.accountId,
         qrKitId: request.qrKitId,
@@ -80,7 +82,13 @@ export async function ensureDraftQuoteForRequest(requestId: string): Promise<Ens
         previewMediaType: "image",
         status: "pending"
       }
+      });
+      if (request.notificationAudience === "customer") {
+        await enqueueOwnerNotification(tx, { accountId: request.accountId, quoteRequestId: quote.id, kind: "generated_design" });
+      }
+      return quote;
     });
+    if (request.notificationAudience === "customer") nudgeOwnerNotifications();
     return { ok: true, quoteRequestId: created.id, created: true };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

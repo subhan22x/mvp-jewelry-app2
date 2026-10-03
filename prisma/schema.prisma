@@ -72,6 +72,7 @@ model Account {
   GenerationLabReviews      GenerationLabResultReview[]
   GenerationLabPromptOverrides GenerationLabPromptOverride[]
   AccessExceptions             AccountAccessException[]
+  OwnerNotifications       OwnerNotification[]
   QrKits                   QrKit[]
   QrKitEvents              QrKitEvent[]
 }
@@ -177,6 +178,7 @@ model AccountMembership {
 }
 
 model Request {
+  notificationAudience String @default("legacy") // customer | owner | legacy (historical, no alerts)
   id             String   @id @default(cuid())
   createdAt      DateTime @default(now())
   accountId      String   @default("demo-account")
@@ -853,4 +855,44 @@ model GenerationLabPromptOverride {
   @@index([runId, status])
   @@index([caseId, status])
   @@index([accountId, styleId, status])
+}
+
+// One durable event/delivery per quote and channel. Payload is frozen before
+// the first provider call so retries use an identical idempotent request.
+model OwnerNotification {
+  id                 String   @id @default(cuid())
+  accountId          String
+  account            Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  quoteRequestId     String
+  channel            String   @default("email")
+  kind               String   // generated_design | submitted_quote
+  deduplicationKey   String   @unique
+  status             String   @default("queued") // queued | processing | sent | delivered | skipped | failed | bounced | complained | needs_review
+  payloadJson        String?
+  recipient          String?
+  providerMessageId  String?  @unique
+  attemptCount       Int      @default(0)
+  firstAttemptAt     DateTime?
+  nextAttemptAt      DateTime @default(now())
+  leaseToken         String?
+  leaseUntil         DateTime?
+  lastError          String?
+  sentAt             DateTime?
+  deliveredAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([accountId, createdAt])
+}
+
+model NotificationWebhookEvent {
+  id                String   @id // Resend/Svix event ID
+  providerMessageId String
+  type              String
+  occurredAt        DateTime
+  processedAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([providerMessageId, processedAt])
 }

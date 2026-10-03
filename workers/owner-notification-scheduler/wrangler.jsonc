@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "grow-jewelry-notification-scheduler",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "vars": { "NOTIFICATION_PROCESS_URL": "https://growjewelry.io/api/internal/notifications/process", "NOTIFICATION_PROCESS_ORIGIN": "https://growjewelry.io" },
+  "triggers": { "crons": [] },
+  "env": {
+    "production": {
+      "secrets": { "required": ["NOTIFICATION_WORKER_SECRET"] },
+      "vars": { "NOTIFICATION_PROCESS_URL": "https://growjewelry.io/api/internal/notifications/process", "NOTIFICATION_PROCESS_ORIGIN": "https://growjewelry.io" },
+      "triggers": { "crons": ["*/5 * * * *"] }
+    }
+  }
+}

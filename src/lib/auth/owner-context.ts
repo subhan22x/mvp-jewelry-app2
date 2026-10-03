@@ -11,6 +11,7 @@ export type OwnerContext = {
   accountId: string;
   email: string | null;
   role: string;
+  accountIds: string[];
 };
 
 function isTransientPrismaInitError(error: unknown) {
@@ -38,8 +39,7 @@ export const getOwnerContext = cache(async function getOwnerContext(): Promise<O
         Memberships: {
           where: { status: "active", account: { status: "active" } },
           select: { accountId: true },
-          orderBy: { createdAt: "asc" },
-          take: 1
+          orderBy: { createdAt: "asc" }
         }
       }
     });
@@ -62,7 +62,8 @@ export const getOwnerContext = cache(async function getOwnerContext(): Promise<O
     userId: user.id,
     accountId: membership.accountId,
     email: user.email,
-    role: user.role
+    role: user.role,
+    accountIds: user.Memberships.map(membership => membership.accountId)
   };
 });
 

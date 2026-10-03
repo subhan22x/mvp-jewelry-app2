@@ -5,10 +5,13 @@ const mocks = vi.hoisted(() => ({
   leadFindFirst: vi.fn(),
   quoteRequestFindFirst: vi.fn(),
   quoteRequestCreate: vi.fn(),
+  setting: vi.fn(),
+  notificationCreate: vi.fn(),
 }));
 
 vi.mock("@/server/db/client", () => ({
   prisma: {
+    $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn({ quoteRequest: { create: mocks.quoteRequestCreate }, appSetting: { findUnique: mocks.setting }, ownerNotification: { create: mocks.notificationCreate } }),
     request: { findUnique: mocks.requestFindUnique },
     lead: { findFirst: mocks.leadFindFirst },
     quoteRequest: {
@@ -66,6 +69,7 @@ describe("ensureDraftQuoteForRequest", () => {
     mocks.leadFindFirst.mockResolvedValue(ELIGIBLE_LEAD);
     mocks.quoteRequestFindFirst.mockResolvedValue(null);
     mocks.quoteRequestCreate.mockResolvedValue({ id: "quote-1" });
+    mocks.setting.mockResolvedValue(null);
   });
 
   it("returns request_not_found when the request is missing", async () => {
@@ -162,5 +166,41 @@ describe("ensureDraftQuoteForRequest", () => {
 
     expect(result).toEqual({ ok: true, quoteRequestId: "quote-existing", created: false });
     expect(mocks.quoteRequestCreate).not.toHaveBeenCalled();
+  });
+
+  it("enqueues exactly one alert at first customer eligibility without a chosen favorite", async () => {
+    mocks.requestFindUnique.mockResolvedValue({ ...ELIGIBLE_REQUEST, notificationAudience: "customer" });
+    await ensureDraftQuoteForRequest("req-1");
+    expect(mocks.notificationCreate).toHaveBeenCalledOnce();
+    expect(mocks.notificationCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ accountId: "acct-1", quoteRequestId: "quote-1", kind: "generated_design", status: "queued" }) });
+    mocks.quoteRequestFindFirst.mockResolvedValue({ id: "quote-1" });
+    await ensureDraftQuoteForRequest("req-1");
+    expect(mocks.notificationCreate).toHaveBeenCalledOnce();
+  });
+
+  it("waits for contact when an image succeeds first, then enqueues once", async () => {
+    mocks.requestFindUnique.mockResolvedValue({ ...ELIGIBLE_REQUEST, notificationAudience: "customer" });
+    mocks.leadFindFirst.mockResolvedValueOnce(null).mockResolvedValue(ELIGIBLE_LEAD);
+    expect(await ensureDraftQuoteForRequest("req-1")).toEqual({ ok: false, reason: "not_eligible" });
+    expect(mocks.notificationCreate).not.toHaveBeenCalled();
+    await ensureDraftQuoteForRequest("req-1");
+    expect(mocks.notificationCreate).toHaveBeenCalledOnce();
+  });
+
+  it("waits for the first successful image when contact is captured first", async () => {
+    mocks.requestFindUnique.mockResolvedValueOnce({ ...ELIGIBLE_REQUEST, notificationAudience: "customer", Results: [{ ...SUCCEEDED_RESULT, status: "pending" }] })
+      .mockResolvedValue({ ...ELIGIBLE_REQUEST, notificationAudience: "customer", Results: [SUCCEEDED_RESULT, { ...SUCCEEDED_RESULT, id: "pending-2", variant: 2, status: "pending" }] });
+    expect(await ensureDraftQuoteForRequest("req-1")).toEqual({ ok: false, reason: "not_eligible" });
+    expect(mocks.notificationCreate).not.toHaveBeenCalled();
+    await ensureDraftQuoteForRequest("req-1");
+    expect(mocks.notificationCreate).toHaveBeenCalledOnce();
+  });
+
+  it("creates the quote without owner alerts for owner and historical designs", async () => {
+    for (const notificationAudience of ["owner", "legacy"]) {
+      mocks.requestFindUnique.mockResolvedValue({ ...ELIGIBLE_REQUEST, notificationAudience });
+      await ensureDraftQuoteForRequest("req-1");
+    }
+    expect(mocks.notificationCreate).not.toHaveBeenCalled();
   });
 });

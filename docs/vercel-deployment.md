@@ -110,3 +110,7 @@ The older pendant video-generation routes still use request-scoped background wo
 ## Dependency Audit Note
 
 Run `npm audit --omit=dev` before each production release. The September 30, 2026 billing release updates Next within 15.5, Sharp, and compatible transitive dependencies; production audit reports no vulnerabilities. The overrides pin Next's PostCSS to the patched root version and Prisma config's deepmerge-ts to 8.x. Prisma generation and the production build must pass when changing these overrides. Do not apply `npm audit fix --force` blindly.
+
+## Owner notification activation
+
+Follow [the activation runbook](owner-notifications.md#activation-runbook) before deploying the new notification routes. Apply the additive Postgres migration first, configure the verified Resend sender and signed webhook, and connect the protected notification worker to a frequent scheduler. Vercel Hobby's daily cron is insufficient for prompt recovery within the 23-hour idempotency safety window. No notification scheduler is installed by the current `vercel.json`; normal delivery is nudged after each quote transaction. Do not consider local tests proof of live delivery.

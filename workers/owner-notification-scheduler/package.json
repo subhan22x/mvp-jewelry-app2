@@ -1,0 +1,19 @@
+{
+  "name": "owner-notification-scheduler",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy --env production",
+    "dry-run": "wrangler deploy --env production --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.3.6",
+    "@cloudflare/workers-types": "5.20261003.1",
+    "typescript": "5.6.3",
+    "vitest": "4.1.11",
+    "wrangler": "4.147.0"
+  }
+}

@@ -6,7 +6,8 @@ import DesignWizardBrandingCard from "./DesignWizardBrandingCard";
 import StorefrontShareCard from "./StorefrontShareCard";
 import ThemeSettingsForm from "./ThemeSettingsForm";
 import VvsPipelineSettingsForm from "./VvsPipelineSettingsForm";
-import SmsNotificationSettingsForm from "./SmsNotificationSettingsForm";
+import NotificationSettingsForm from "./NotificationSettingsForm";
+import { getNotificationPreferences } from "@/src/lib/notifications/preferences";
 import { requireOwnerContext } from "@/src/lib/auth/owner-context";
 import { canManageVvsPipelineSettings } from "@/src/lib/vvs-studio/pipeline-settings";
 
@@ -14,8 +15,9 @@ export const dynamic = "force-dynamic";
 
 export default async function OwnerSettingsPage() {
   const owner = await requireOwnerContext();
-  const [promptMode, account] = await Promise.all([
+  const [promptMode, preferences, account] = await Promise.all([
     getNamePromptMode(owner.accountId),
+    getNotificationPreferences(owner.accountId),
     prisma.account.findUnique({
       where: { id: owner.accountId },
       select: {
@@ -27,10 +29,7 @@ export default async function OwnerSettingsPage() {
           select: {
             isPublished: true,
             displayName: true,
-            profileImageUrl: true,
-            smsNotificationPhone: true,
-            smsNotificationsEnabled: true,
-            smsConsentAt: true
+            profileImageUrl: true
           }
         }
       }
@@ -59,10 +58,11 @@ export default async function OwnerSettingsPage() {
         )}
         <ThemeSettingsForm />
         {account && (
-          <SmsNotificationSettingsForm
-            initialPhone={account.StoreProfile?.smsNotificationPhone ?? ""}
-            initialEnabled={account.StoreProfile?.smsNotificationsEnabled ?? false}
-            initialConsentAt={account.StoreProfile?.smsConsentAt?.toISOString() ?? null}
+          <NotificationSettingsForm
+            initialTimeZone={preferences.timeZone}
+            initialEnabled={preferences.enabled}
+            initialEmailOverride={preferences.emailOverride}
+            loginEmail={owner.email}
           />
         )}
         <VvsPipelineSettingsForm enabled={canManageVvsPipelineSettings(owner.email)} />
