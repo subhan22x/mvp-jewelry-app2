@@ -22,8 +22,9 @@ Replace the visible `SmsNotificationSettingsForm` with one Notifications card in
 3. Master toggle: **Customer activity notifications**, on by default.
 4. Channel rows: **Email** selected; **SMS** disabled, gray, with a **Coming soon** badge. The channel controls are also disabled when the master toggle is off.
 5. Recipient field: **Notification email**. Show the effective address. Helper: “Defaults to your login email. Changing this won't change your login.” Provide **Use login email** to remove an override.
-6. Helper explaining the trigger: “You'll receive one email once a design and customer contact details are available, even if the customer hasn't chosen a favorite.”
-7. **Save notification settings** with pending, saved, and accessible error states. Display saved server state only after a successful response.
+6. **Notification time zone**: suggest the browser timezone when none is saved; allow any supported named timezone plus UTC. Save it in the Account preference. New emails use that zone and daylight saving rules; legacy Accounts and already frozen delivery payloads keep their previous behavior.
+7. Helper explaining the trigger: “You'll receive one email once a design and customer contact details are available, even if the customer hasn't chosen a favorite.”
+8. **Save notification settings** with pending, saved, and accessible error states. Display saved server state only after a successful response.
 
 The Settings API derives `accountId` from `getOwnerContext()`. It does not accept an Account ID or a customer-controlled recipient. Validate the address on the server with Zod and bound its length. Reject attempts to enable SMS. Preserve all existing SMS opt-in timestamps and disclosure versions.
 
@@ -61,7 +62,7 @@ Implemented storage:
 
 | Model | Purpose and principal fields |
 | --- | --- |
-| `AppSetting` | Existing Account-scoped JSON preference, keyed by `{accountId}:owner_notifications_v1`: enabled, email override and SMS disabled. Missing settings default to on; malformed settings fail closed. |
+| `AppSetting` | Existing Account-scoped JSON preference, keyed by `{accountId}:owner_notifications_v1`: enabled, email override, optional IANA time zone and SMS disabled. Missing settings default to on; malformed settings fail closed. |
 | `OwnerNotification` | Combined event and email delivery: Account foreign key, scoped quote ID, kind, permanent unique `new_customer_request:{quoteId}:email` key, immutable payload/recipient, provider ID, status, attempts, next attempt, first attempt, lease token/expiry and delivery timestamps. |
 | `NotificationWebhookEvent` | Unique Svix event ID, provider email ID, event type/time and processed timestamp. Handles duplicates and events arriving before the send response is persisted. |
 
@@ -113,7 +114,7 @@ For a generated design, use `New {product category} Design: Quote Request` as th
 - Design/name text when applicable.
 - Separate design, customer and request sections. Include stored style, finish, metal colors, material/karat, stones, diamond quality, size, emblem, color and chain when available. Omit absent optional specifications. Budget and price are intentionally excluded because a quote request does not yet have a price.
 - Customer name, phone and email.
-- Request reference, submission timestamp explicitly labelled UTC, status and notes when provided.
+- Request reference, submission timestamp labelled with the saved timezone’s abbreviation (UTC when unset), status and notes when provided.
 - Generated preview image, with meaningful alt text and no dependence on the image loading.
 - **Preference:** “Customer preference has not been recorded. This is a generated preview; all available designs are in your dashboard.”
 - Primary button **Review request**, linking to the authenticated `/owner/quotes/{quoteId}/prepare` page.

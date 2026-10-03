@@ -59,6 +59,7 @@ export default async function OwnerSettingsPage() {
         <ThemeSettingsForm />
         {account && (
           <NotificationSettingsForm
+            initialTimeZone={preferences.timeZone}
             initialEnabled={preferences.enabled}
             initialEmailOverride={preferences.emailOverride}
             loginEmail={owner.email}

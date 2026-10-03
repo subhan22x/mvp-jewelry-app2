@@ -26,6 +26,12 @@ describe("notification preferences and event creation", () => {
     await saveNotificationPreferences("a", defaultPreferences);
     expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ create: { key: "a:owner_notifications_v1", accountId: "a", value: JSON.stringify(defaultPreferences) } }));
   });
+  it("reads legacy preferences without a zone and validates named zones", async () => {
+    mocks.setting.mockResolvedValue({ value: JSON.stringify({ enabled: true, emailOverride: null, smsEnabled: false }) });
+    expect(await getNotificationPreferences("a")).toEqual(defaultPreferences);
+    for (const timeZone of ["America/Chicago", "Asia/Karachi", "UTC"]) expect(preferenceSchema.safeParse({ ...defaultPreferences, timeZone }).success).toBe(true);
+    for (const timeZone of ["Invalid/Zone", "+05:00", "CST", ""]) expect(preferenceSchema.safeParse({ ...defaultPreferences, timeZone }).success).toBe(false);
+  });
   it("normalizes a cleared email override to the login-email default", () => {
     expect(preferenceSchema.parse({ ...defaultPreferences, emailOverride: "   " }).emailOverride).toBeNull();
   });
@@ -68,6 +74,19 @@ describe("email contents", () => {
     }
     expect(email.html).toContain("Call after 5 &lt;script&gt;");
     expect(email.html).not.toContain("<script>");
+  });
+  it.each([
+    ["2026-10-03T07:38:00Z", "America/Chicago", "2:38 AM", "CDT"],
+    ["2026-01-03T07:38:00Z", "America/Chicago", "1:38 AM", "CST"],
+    ["2026-10-03T07:38:00Z", "Asia/Karachi", "12:38 PM", "GMT+5"],
+    ["2026-10-03T07:38:00Z", "Invalid/Zone", "7:38 AM", "UTC"],
+  ])("formats %s in %s with the correct daylight saving offset", (date, timeZone, time, abbreviation) => {
+    const email = buildOwnerNotificationEmail({ ...emailInput, createdAt: new Date(date), timeZone });
+    for (const part of [email.html, email.text]) {
+      expect(part).toContain(time);
+      expect(part).toContain(`Submitted (${abbreviation})`);
+    }
+    expect(email.html).toContain(`${time} ${abbreviation}`);
   });
   it("omits absent specifications and never shows a budget or price", () => {
     // No price exists when a quote is requested, so stored budgets stay out of the alert.

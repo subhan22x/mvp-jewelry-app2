@@ -2,16 +2,19 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db/client";
 
+import { isValidTimeZone } from "./time-zone";
+
 export const preferenceSchema = z.object({
   enabled: z.boolean(),
   // The settings form posts an empty value when an override is cleared.
   // Normalize it here so disabling notifications never requires a syntactically
   // valid address that will not be used.
   emailOverride: z.preprocess(value => typeof value === "string" && !value.trim() ? null : value, z.string().trim().max(254).email().nullable()),
-  smsEnabled: z.literal(false).default(false)
+  smsEnabled: z.literal(false).default(false),
+  timeZone: z.string().max(100).refine(isValidTimeZone, "Choose a valid time zone.").nullable().default(null)
 }).strict();
 export type NotificationPreferences = z.infer<typeof preferenceSchema>;
-export const defaultPreferences: NotificationPreferences = { enabled: true, emailOverride: null, smsEnabled: false };
+export const defaultPreferences: NotificationPreferences = { enabled: true, emailOverride: null, smsEnabled: false, timeZone: null };
 export const preferenceKey = (accountId: string) => `${accountId}:owner_notifications_v1`;
 
 export async function getNotificationPreferences(accountId: string, db: Pick<Prisma.TransactionClient, "appSetting"> = prisma) {

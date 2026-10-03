@@ -38,6 +38,16 @@ describe("notification worker safety", () => {
     expect(mock.find).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+  it("uses the Account timezone in the payload sent to Resend", async () => {
+    mock.preferences.mockResolvedValue({ enabled: true, emailOverride: null, timeZone: "America/Chicago" });
+    const quote = await mock.quote();
+    mock.quote.mockResolvedValue({ ...quote, createdAt: new Date("2026-10-03T07:38:00Z") });
+    await processOwnerNotifications(1);
+    const payload = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(payload.html).toContain("2:38 AM CDT");
+    expect(payload.text).toContain("Submitted (CDT)");
+    expect(mock.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ payloadJson: JSON.stringify(payload) }) }));
+  });
   it("records provider acceptance and uses a persisted unique idempotency key", async () => {
     expect(await processOwnerNotifications(1)).toEqual({ processed: 1, configured: true });
     expect(fetch).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({ headers: expect.objectContaining({ "Idempotency-Key": "event-1" }) }));

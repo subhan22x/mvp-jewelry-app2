@@ -1,3 +1,4 @@
+import { isValidTimeZone } from "./time-zone";
 import { z } from "zod";
 
 export const emailPayloadSchema = z.object({
@@ -30,7 +31,7 @@ type QuoteDetails = {
   plainColor?: string | null; diamondQuality?: string | null;
   // Accepted from callers but intentionally not shown: no price is known when a quote is requested.
   budgetMinCents?: number | null; budgetMaxCents?: number | null;
-  createdAt?: Date | null; status?: string | null;
+  timeZone?: string | null; createdAt?: Date | null; status?: string | null;
 };
 const displayValue = (value: string) => value.replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 
@@ -90,12 +91,14 @@ export function buildOwnerNotificationEmail(input: QuoteDetails & {
   add('Emblem', input.emblem);
   add('Color', input.plainColor);
   add('Chain', input.plainChain);
-  const submittedAt = input.createdAt ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(input.createdAt) : null;
+  const timeZone = input.timeZone && isValidTimeZone(input.timeZone) ? input.timeZone : 'UTC';
+  const zoneLabel = input.createdAt ? new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' }).formatToParts(input.createdAt).find(part => part.type === 'timeZoneName')?.value ?? timeZone : timeZone;
+  const submittedAt = input.createdAt ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(input.createdAt) : null;
   const tel = input.customerPhone.replace(/[^\d+]/g, '');
   const mail = /^[^\s@<>"']+@[^\s@<>"']+$/.test(input.customerEmail) ? input.customerEmail : '';
   type Row = [label: string, value: string, href?: string];
   const customerRows: Row[] = [['Customer', input.customerName], ['Phone', input.customerPhone, tel ? `tel:${tel}` : undefined], ...(input.customerEmail ? [['Email', input.customerEmail, mail ? `mailto:${mail}` : undefined] as Row] : [])];
-  const requestRows: Row[] = [['Request reference', input.quoteId], ...(submittedAt ? [['Submitted (UTC)', submittedAt] as Row] : []), ...(input.status ? [['Status', displayValue(input.status)] as Row] : []), ...(input.notes ? [['Notes', input.notes] as Row] : [])];
+  const requestRows: Row[] = [['Request reference', input.quoteId], ...(submittedAt ? [[`Submitted (${zoneLabel})`, submittedAt] as Row] : []), ...(input.status ? [['Status', displayValue(input.status)] as Row] : []), ...(input.notes ? [['Notes', input.notes] as Row] : [])];
   const sections = [['Design specifications', designRows as Row[]], ['Customer details', customerRows], ['Request details', requestRows]] as const;
   // Generated concepts and reference-only quote submissions need different
   // wording: a reference upload is a quote request, but not a "design" yet.
@@ -123,7 +126,7 @@ export function buildOwnerNotificationEmail(input: QuoteDetails & {
   const column = (heading: string, rows: readonly Row[]) => `${eyebrow(heading)}<div style="height:6px;line-height:6px;font-size:0">&nbsp;</div>${list(rows)}`;
   const accentName = `<span style="font-family:${SERIF};font-style:italic;font-weight:normal;color:${C.gold}">${escape(input.customerName)}</span>`;
   const headline = submitted ? `${accentName} sent reference images` : `${accentName} designed a ${escape(category.toLowerCase())}`;
-  const subline = `${submitted ? `Quote request to ${input.storeName}` : `Via ${input.storeName}'s jewelry designer`}${submittedAt ? ` · ${submittedAt} UTC` : ''}`;
+  const subline = `${submitted ? `Quote request to ${input.storeName}` : `Via ${input.storeName}'s jewelry designer`}${submittedAt ? ` · ${submittedAt} ${zoneLabel}` : ''}`;
   const mediaLabel = `${submitted ? 'CUSTOMER REFERENCE IMAGE' : 'GENERATED PREVIEW'}${images.length > 1 ? `S · ${images.length}` : ''}`;
   const mediaExtra = [hiddenImages ? `+${hiddenImages} more in your dashboard` : '', pendingImages ? `${pendingImages} more ${pendingImages === 1 ? 'design is' : 'designs are'} still generating` : ''].filter(Boolean).join(' · ');
   const altFor = (index: number) => submitted ? `Customer reference image ${index + 1}` : `Generated ${category.toLowerCase()} design preview ${index + 1}`;

@@ -133,7 +133,7 @@ export async function processOwnerNotifications(limit = 20, timeBudgetMs = 150_0
           plainMetal: quote.plainMetal, plainKarat: quote.plainKarat, plainChain: quote.plainChain,
           plainColor: quote.plainColor, diamondQuality: quote.diamondQuality,
           budgetMinCents: quote.budgetMinCents, budgetMaxCents: quote.budgetMaxCents,
-          createdAt: quote.createdAt, status: quote.status });
+          timeZone: preferences.timeZone, createdAt: quote.createdAt, status: quote.status });
       }
       // Freeze all fields before sending. A worker crash safely reuses this body.
       const firstAttemptAt = candidate.firstAttemptAt ?? now;

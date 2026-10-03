@@ -19,6 +19,13 @@ describe("owner notification preference API", () => {
     for (const body of [{ enabled: true, emailOverride: "bad" }, { enabled: true, emailOverride: null, smsEnabled: true }, { enabled: true, emailOverride: null, accountId: "victim" }]) expect((await POST(request(body))).status).toBe(400);
     expect(mocks.save).not.toHaveBeenCalled();
   });
+  it("validates and persists the Account timezone", async () => {
+    expect((await POST(request({ enabled: true, emailOverride: null, timeZone: "Bad/Zone" }))).status).toBe(400);
+    expect(mocks.save).not.toHaveBeenCalled();
+    const response = await POST(request({ enabled: true, emailOverride: null, timeZone: "America/Chicago" }));
+    expect(await response.json()).toMatchObject({ timeZone: "America/Chicago" });
+    expect(JSON.parse(mocks.save.mock.calls[0][0].create.value).timeZone).toBe("America/Chicago");
+  });
   it("persists an override only for the authenticated Account", async () => {
     const response = await POST(request({ enabled: true, emailOverride: "alerts@example.com", smsEnabled: false }));
     expect(await response.json()).toMatchObject({ email: "alerts@example.com", loginEmail: "owner@example.com" });

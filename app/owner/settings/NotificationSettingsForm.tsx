@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function NotificationSettingsForm({ initialEnabled, initialEmailOverride, loginEmail }: {
-  initialEnabled: boolean; initialEmailOverride: string | null; loginEmail: string | null;
+export default function NotificationSettingsForm({ initialEnabled, initialEmailOverride, loginEmail, initialTimeZone = null }: {
+  initialTimeZone?: string | null; initialEnabled: boolean; initialEmailOverride: string | null; loginEmail: string | null;
 }) {
+  const [timeZone, setTimeZone] = useState(initialTimeZone ?? "UTC");
+  const [timeZones, setTimeZones] = useState<string[]>([initialTimeZone ?? "UTC"]);
+  useEffect(() => {
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const selected = initialTimeZone ?? detected;
+    setTimeZone(selected);
+    setTimeZones([...new Set(["UTC", selected, ...(typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : ["America/Chicago", "America/New_York", "America/Los_Angeles", "Europe/London", "Asia/Karachi"])])].sort());
+  }, [initialTimeZone]);
   const [enabled, setEnabled] = useState(initialEnabled);
   const [email, setEmail] = useState(initialEmailOverride ?? loginEmail ?? "");
   const [useLoginEmail, setUseLoginEmail] = useState(initialEmailOverride === null);
@@ -15,10 +23,10 @@ export default function NotificationSettingsForm({ initialEnabled, initialEmailO
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError(null); setMessage(null);
     try {
-      const response = await fetch("/api/owner/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled, emailOverride: useLoginEmail ? null : email.trim(), smsEnabled: false }) });
+      const response = await fetch("/api/owner/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled, emailOverride: useLoginEmail ? null : email.trim(), smsEnabled: false, timeZone }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to save notification settings.");
-      setEnabled(data.enabled); setEmail(data.email ?? ""); setUseLoginEmail(data.emailOverride === null);
+      setTimeZone(data.timeZone ?? timeZone); setEnabled(data.enabled); setEmail(data.email ?? ""); setUseLoginEmail(data.emailOverride === null);
       setMessage("Notification settings saved.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save notification settings."); }
     finally { setSaving(false); }
@@ -43,6 +51,13 @@ export default function NotificationSettingsForm({ initialEnabled, initialEmailO
         <input id="notification-email" type="email" maxLength={254} required={enabled} value={email} disabled={saving} onChange={e => { setEmail(e.target.value); setUseLoginEmail(false); setMessage(null); }} autoComplete="email" className="mt-2 h-12 w-full rounded-xl border border-white/10 bg-[#101114] px-4 text-sm text-[#e1e2ec] outline-none focus:border-[#f7bc5f]/70" />
         <p className="mt-2 text-xs leading-5 text-[#8c909f]">Defaults to your login email. Changing this won't change your login.</p>
         {loginEmail && !useLoginEmail && <button type="button" disabled={saving} onClick={() => { setEmail(loginEmail); setUseLoginEmail(true); setMessage(null); }} className="mt-2 text-xs font-semibold text-[#f7bc5f] underline underline-offset-4">Use login email</button>}
+      </div>
+      <div>
+        <label htmlFor="notification-time-zone" className="block text-sm font-semibold text-[#e1e2ec]">Notification time zone</label>
+        <select id="notification-time-zone" value={timeZone} disabled={saving} onChange={e => { setTimeZone(e.target.value); setMessage(null); }} className="mt-2 h-12 w-full rounded-xl border border-white/10 bg-[#101114] px-4 text-sm text-[#e1e2ec] outline-none focus:border-[#f7bc5f]/70">
+          {timeZones.map(zone => <option key={zone} value={zone}>{zone.replace(/_/g, " ")}</option>)}
+        </select>
+        <p className="mt-2 text-xs leading-5 text-[#8c909f]">Times in new notification emails use this time zone, including daylight saving changes. We suggest your browser's time zone until you save a preference.</p>
       </div>
       <p className="text-xs leading-5 text-[#8c909f]">You'll receive one email once a design and customer contact details are available, even if the customer hasn't chosen a favorite.</p>
       {error && <p role="alert" className="rounded-xl border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm text-red-100">{error}</p>}
