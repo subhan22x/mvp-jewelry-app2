@@ -1,10 +1,12 @@
+import { enqueueOwnerNotification, nudgeOwnerNotifications } from "@/src/lib/notifications/events";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/server/db/client";
 import { savePublicUpload, useDirectPublicUpload } from "@/src/lib/storage/public-media";
-import { parseDirectUploadReference } from "@/src/lib/storage/direct-upload";
+import { parseDirectUploadReference, readDirectUpload } from "@/src/lib/storage/direct-upload";
 import { resolvePublicTenantAccess } from "@/src/lib/tenant";
 import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from "@/src/lib/qr-kits/service";
+import { requestNotificationAudience } from "@/src/lib/notifications/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
     include: { StoreProfile: true }
   });
   if (!account?.StoreProfile) return jsonError("Store profile not found.", 404);
+  const notificationAudience = await requestNotificationAudience(account.id);
 
   const form = await req.formData();
   const parsed = quoteSchema.safeParse({
@@ -53,13 +56,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
   const directImages = form.getAll("imageUploads").map(value => parseDirectUploadReference(value, "storefront-quote")).filter(value => value !== null).slice(0, 6);
   if (images.length === 0 && directImages.length === 0) return jsonError("Upload at least one reference image.");
 
+  // Direct uploads arrive by key from the browser. Confirm that each object
+  // still exists and is an image before preserving a public URL for the quote.
+  try {
+    await Promise.all(directImages.map(async image => {
+      const uploaded = await readDirectUpload(image);
+      if (!uploaded.buffer.length || !uploaded.contentType.startsWith("image/")) throw new Error("invalid_direct_upload");
+    }));
+  } catch {
+    return jsonError("One or more uploaded reference images could not be verified.");
+  }
+
   const imageUrls = directImages.map(useDirectPublicUpload);
   for (const [index, image] of images.entries()) {
     const imageUrl = await savePublicUpload(image, `accounts/${account.id}/quote-requests`, `${Date.now()}-${index + 1}`);
     imageUrls.push(imageUrl);
   }
 
-  const lead = await prisma.lead.create({
+  const { lead, quote } = await prisma.$transaction(async tx => {
+  const lead = await tx.lead.create({
     data: {
       accountId: account.id,
       qrKitId,
@@ -69,7 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
     }
   });
 
-  const quote = await prisma.quoteRequest.create({
+  const quote = await tx.quoteRequest.create({
     data: {
       accountId: account.id,
       qrKitId,
@@ -83,6 +98,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ account
       status: "pending"
     }
   });
+
+    if (notificationAudience === "customer") {
+      await enqueueOwnerNotification(tx, { accountId: account.id, quoteRequestId: quote.id, kind: "submitted_quote" });
+    }
+    return { lead, quote };
+  });
+  if (notificationAudience === "customer") nudgeOwnerNotifications();
 
   return NextResponse.json({
     quoteRequestId: quote.id,

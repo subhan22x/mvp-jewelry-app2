@@ -1,3 +1,4 @@
+import { requestNotificationAudience } from "@/src/lib/notifications/origin";
 import { withSignupGeneration, signupGenerationUserId, bindSignupGeneration } from "@/src/lib/billing/signup-credits";
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -115,6 +116,7 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
 
     const request = await prisma.request.create({
       data: {
+        notificationAudience: await requestNotificationAudience(accountId),
         accountId,
         qrKitId: qrKitAttribution.qrKitId,
         userId: signupGenerationUserId(parsed.userId),

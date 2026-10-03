@@ -18,6 +18,7 @@ These documents should match the running application:
 
 ## Architecture Notes
 
+- [`owner-notifications.md`](owner-notifications.md): approved owner notification behavior, Settings layout, Resend email formats, durable delivery architecture and exception rules; implementation is pending provider setup.
 - [`../CLAUDE.md`](../CLAUDE.md): implementation conventions and prompt-generation architecture.
 - [`../styles.md`](../styles.md): pendant style registry, prompt templates, and generation details.
 - [`prompting-architecture.md`](prompting-architecture.md): current style prompt flow, typography reference attachments, and font-to-style mapping.

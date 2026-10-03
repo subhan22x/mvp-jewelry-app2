@@ -26,3 +26,5 @@ temp_check.py
 *.tsbuildinfo
 .vercel
 .style-editor-backups/
+# Local-only review artifact built from historic customer quote data.
+docs/owner-notification-historical-preview.html

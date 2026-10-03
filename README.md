@@ -179,6 +179,10 @@ Generated files are served through `/generated/:file` during local development. 
 | `FAL_KEY`              | (required for VVS image posts)       | fal auth for the first VVS Studio publishable image shot through `openai/gpt-image-2/edit`. `FAL_API_KEY` is also accepted. |
 | `VIDEO_ACCESS_CODE`    | (required for customer video flow)   | Internal code required before customer-facing video generation. Owner dashboard video jobs use owner access instead. |
 | `VVS_WORKER_SECRET`    | (required in production)             | Secret accepted by the VVS Studio durable job worker. |
+| `RESEND_API_KEY` | required for owner email alerts | Server-only Resend API key. |
+| `NOTIFICATION_EMAIL_FROM` | required for owner email alerts | Verified sender identity, such as `Grow Jewelry <alerts@growjewelry.io>`. |
+| `RESEND_WEBHOOK_SECRET` | required for delivery tracking | Signature verification for `/api/webhooks/resend`. |
+| `NOTIFICATION_WORKER_SECRET` | required for scheduled recovery | Bearer token for `/api/internal/notifications/process`; falls back to `CRON_SECRET`. |
 | `CRON_SECRET`          | (recommended on Vercel)              | Vercel cron secret. Also accepted by the VVS Studio worker. |
 | `VVS_INTERNAL_ADMIN_EMAILS` | empty                            | Comma-separated owner emails allowed to edit VVS Studio model, prompt, and style settings. |
 | `NEXT_PUBLIC_SUPABASE_URL` | (required for owner auth)        | Supabase project URL. |
@@ -208,6 +212,8 @@ Generated files are served through `/generated/:file` during local development. 
 | `STRIPE_PRICE_VALUE`   | empty                                | Reserved Stripe Price ID for the future Value plan. |
 | `STRIPE_PRICE_BUNDLE`  | empty                                | Reserved Stripe Price ID for the future Bundle plan. |
 | `STRIPE_TRIAL_DAYS`    | `7`                                  | Free-trial length used when creating the first Stripe subscription through Checkout. |
+
+See [owner notification architecture and activation](docs/owner-notifications.md) for default-on email settings, the Postgres migration, retry scheduler and signed webhooks. SMS is reserved and disabled.
 
 See [Stripe billing setup](docs/stripe-billing.md) for the Stripe-owned price catalog, runtime credentials, webhook lifecycle, and launch checklist.
 

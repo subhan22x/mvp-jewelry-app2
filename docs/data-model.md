@@ -22,7 +22,8 @@ Current domains:
 
 - Identity and tenant shell: `User`, `Account`, `AccountMembership`.
 - Pendant generation: `Request`, `Result`, `ResultRevision`, `VideoGeneration`, `Model3dGeneration`, `Lead`, `QuoteRequest`.
-- Account configuration: `AppSetting`.
+- Account configuration: `AppSetting` (including notification preferences).
+- Owner communications: `OwnerNotification`, `NotificationWebhookEvent`; Request stores `notificationAudience` to exclude owner and historical activity.
 - Public storefront: `StoreProfile`, `StoreService`, `ProductCollection`, `Product`, `StoreReview`.
 - VVS Studio: `VvsStudioShoot`, `VvsStudioUpload`, `VvsStudioImageGeneration`, `VvsStudioVideoGeneration`, `VvsStudioJob`.
 - Subscription metering: `UsagePlan`, `AccountUsageBucket`, `UsageEvent`.
@@ -39,6 +40,7 @@ erDiagram
   ACCOUNT ||--o{ PRODUCT : lists
   ACCOUNT ||--o{ STORE_REVIEW : receives
   ACCOUNT ||--o{ APP_SETTING : configures
+  ACCOUNT ||--o{ OWNER_NOTIFICATION : queues
   ACCOUNT ||--o{ REQUEST : owns
   ACCOUNT ||--o{ RESULT : owns
   ACCOUNT ||--o{ LEAD : owns
@@ -250,6 +252,7 @@ erDiagram
   ACCOUNT ||--o{ MEDIA_ASSET : owns
   ACCOUNT ||--o| MEDIA_ASSET : logo
   ACCOUNT ||--o{ APP_SETTING : configures
+  ACCOUNT ||--o{ OWNER_NOTIFICATION : queues
   ACCOUNT ||--o{ USAGE_EVENT : records
   ACCOUNT ||--o{ MESSAGE : sends
   ACCOUNT ||--o{ PAYMENT : collects
