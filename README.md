@@ -6,7 +6,7 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 
 ## Status
 
-- **Working visible MVP flows:** custom name pendants, picture pendants, owner quote review, owner Design, and VVS Studio.
+- **Working visible MVP flows:** custom name pendants, picture pendants, logo pendants, owner quote review, owner Design, and VVS Studio.
 - **Hidden but preserved:** public storefront profile, collections, and reviews remain implemented and data-backed, but are hidden from normal MVP navigation.
 - **Current tenant mode:** owner dashboard routes resolve the signed-in owner's active account membership. Customer pendant requests still default to the seeded `demo` storefront until storefront-aware design links are completed.
 - **SaaS direction:** see `SAAS_PRODUCT_MAP.md` for the planned multi-account SaaS architecture, subscription billing, CRM, and onboarding roadmap.

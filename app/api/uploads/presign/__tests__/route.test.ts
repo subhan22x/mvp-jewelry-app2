@@ -34,10 +34,10 @@ describe("/api/uploads/presign", () => {
     });
   });
 
-  it("creates a signed public picture-pendant upload", async () => {
+  it.each(["picture-pendant", "logo-pendant"])("creates a signed public %s upload", async purpose => {
     const { POST } = await import("../route");
     const response = await POST(request({
-      purpose: "picture-pendant",
+      purpose,
       fileName: "portrait.png",
       contentType: "image/png",
       size: 1024
@@ -51,7 +51,7 @@ describe("/api/uploads/presign", () => {
       originalName: "portrait.png",
       size: 1024
     }));
-    expect(json.key).toMatch(/^incoming\/picture-pendant\/.+\.png$/);
+    expect(json.key).toMatch(new RegExp(`^incoming/${purpose}/.+\\.png$`));
   });
 
   it("requires owner auth for owner upload scopes", async () => {

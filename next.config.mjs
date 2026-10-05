@@ -2,6 +2,11 @@
 const nextConfig = {
   images: { unoptimized: true },
   outputFileTracingIncludes: {
+    "/api/logo-requests": [
+      "./src/lib/logo-pendants/*.prompt",
+      "./src/lib/logo-pendants/*.yml",
+      "./public/logo-pendants/references/**/*"
+    ],
     // Name pendant generation resolves YAML-configured attachment paths at
     // runtime, so Next's static tracer can miss these public reference assets.
     "/api/requests": [

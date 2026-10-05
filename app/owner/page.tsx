@@ -56,6 +56,7 @@ function quoteTitle(quote: QuoteRow) {
   return quote.text
     || quote.request?.text
     || (quote.productType === "picture" ? "Picture pendant" : null)
+    || (quote.productType === "logo" ? "Logo pendant" : null)
     || (quote.productType === "bracelet" ? "Bracelet" : null)
     || (quote.productType === "necklace" ? "Necklace" : null)
     || (quote.productType === "grillz" ? "Grillz" : null)
@@ -65,6 +66,7 @@ function quoteTitle(quote: QuoteRow) {
 function productLabel(quote: QuoteRow) {
   const productType = quote.productType ?? quote.request?.productType;
   if (productType === "picture") return "Picture pendant";
+  if (productType === "logo") return "Logo pendant";
   if (productType === "bracelet") return "Bracelet";
   if (productType === "necklace") return "Necklace";
   if (productType === "grillz") return (quote.pendantFinish ?? quote.request?.pendantFinish) === "custom_grillz" ? "Custom Grillz" : "Grillz";

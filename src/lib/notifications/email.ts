@@ -21,7 +21,7 @@ export function previewImageUrl(value: string | null, baseUrl: string) {
     return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url.href : null;
   } catch { return null; }
 }
-const categories: Record<string, string> = { name: "Name pendant", picture: "Picture pendant", grillz: "Grillz", bracelet: "Bracelet", necklace: "Necklace", general_quote: "Custom jewelry" };
+const categories: Record<string, string> = { name: "Name pendant", picture: "Picture pendant", logo: "Logo pendant", grillz: "Grillz", bracelet: "Bracelet", necklace: "Necklace", general_quote: "Custom jewelry" };
 
 type QuoteDetails = {
   styleId?: string | null; pendantFinish?: string | null; twoTone?: boolean | null;

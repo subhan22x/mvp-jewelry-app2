@@ -15,6 +15,8 @@ function loadStyle(dir: string): StyleConfig {
 }
 
 export function getStyle(styleId: string): StyleConfig {
+  // styleId comes from public request bodies; never interpolate glob syntax or paths.
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(styleId)) throw new Error("Invalid style ID.");
   if (cache.has(styleId)) return cache.get(styleId)!;
   const matches = fg.sync(`**/${styleId}/style.yml`, { cwd: STYLES_DIR, onlyFiles: true, absolute: true });
   if (!matches.length) throw new Error(`Style not found: ${styleId}`);

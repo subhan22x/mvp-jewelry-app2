@@ -1,0 +1,8 @@
+shapeContext: " and the selected pendant shape style"
+shapes:
+  custom: ""
+  circle: "The finished pendant should follow the selected round shape, with a clean, balanced outer silhouette and a premium custom-jewelry aesthetic."
+  shield: "The finished pendant should follow the selected shield shape, with a clean, balanced outer silhouette and a premium custom-jewelry aesthetic."
+  hexa: "The finished pendant should follow the selected hexagonal shape, with a clean, balanced outer silhouette and a premium custom-jewelry aesthetic."
+  diamond: "The finished pendant should follow the selected diamond shape, with a clean, balanced outer silhouette and a premium custom-jewelry aesthetic."
+aboutLogo: 'About logo: {{TEXT}}'
