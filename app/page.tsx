@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import NewLandingPage from "./new-landing-page/NewLandingPage";
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const jakarta = localFont({
+  src: "../public/fonts/google/plusjakartasans/Regular.ttf",
+  weight: "400 800",
+  display: "swap",
   variable: "--font-jakarta"
 });
-const jbMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const jbMono = localFont({
+  src: "../public/fonts/google/jetbrainsmono/Regular.ttf",
+  weight: "400 500",
+  display: "swap",
   variable: "--font-jbmono"
 });
 const shuffle = localFont({
