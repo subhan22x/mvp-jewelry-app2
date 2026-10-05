@@ -1,6 +1,21 @@
 # Prompting Architecture
 
-This document explains how name pendant prompting currently works and how typography reference images are attached to generation requests.
+This document explains name and logo pendant prompting and how reference images are attached to generation requests.
+
+## Logo Pendant Flow
+
+The Logo builder at `/pendants/logo` (also available under `/s/:slug/design/pendants/logo`) posts to `/api/logo-requests`.
+
+- `src/lib/logo-pendants/pendant.prompt` owns the editable natural-language prompt. `snippets.yml` owns the shape clauses and optional About logo context.
+- The strict template renderer fills `SHAPE_CLAUSE`, `METAL_COLOR`, and `ADDITIONAL_TEXT_INSTRUCTION`. Custom has an empty shape clause; no shape wording or shape example is included. Circle, Shield, Hexa, and Diamond use their selected silhouette in the prompt.
+- The prompt always requests VVS natural diamonds, micro pavé detailing, a flat pendant, and a centered top down shot on black suede. Stone type, diamond quality, metal type, and size selections are saved as request/quote metadata. The selected gold color combination controls prompt color.
+- `src/lib/logo-pendants/assets.yml` maps each selected shape to a pendant example in `public/logo-pendants/references/`. The shared connector sends the uploaded logo first and the selected example second. Custom sends only the logo. Hexa maps to the hexagon reference. Reference selection depends on shape; the customer’s metal choices remain prompt variables. Shape picker thumbnails remain separate UI assets.
+- Browser uploads use the existing signed direct R2 upload flow (`logo-pendant` purpose), with multipart fallback when direct upload is unavailable. The API validates and decodes images before generation, normalizes them into a temporary PNG, and removes that temporary file after success or failure.
+- Two pending `Result` rows store the exact rendered prompt and attachment paths. Both models run in parallel through the shared connector: variant 1 uses Gemini Pro at 2K and variant 2 uses Gemini Flash at 1K, both at 9:16. Each success consumes an image usage credit, while owner signup credits still cover the full Generate click through the shared service. Shared temporary logo files remain available until both attempts settle. Polling displays results progressively and waits for both attempts; older single-draft logo requests retain their original completion behavior.
+- Account and QR attribution, owner signup credits, paid usage checks, contact capture, automatic draft quotes, and owner alerts use the existing shared services. Existing Request fields hold logo choices, so no database migration is required.
+- Loading/contact is a separate screen using the same `LeadCaptureModal` / `CustomerLeadCaptureScreen` as iced-out name pendants. Submitting contact reveals the shared `CustomerResultsScreen`, with selection, preview, download, and up to two image revisions through the existing request revision APIs. Generation continues polling while contact is captured.
+
+The Next.js output tracing include for `/api/logo-requests` bundles the editable `.prompt` and `.yml` files and the shape reference images for production.
 
 ## Name Pendant Flow
 

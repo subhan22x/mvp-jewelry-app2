@@ -1,18 +1,18 @@
 import "./globals.css";
 import { Suspense } from "react";
-import { Archivo_Narrow, Boldonse, Figtree, Instrument_Sans, Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import ThemeSwitcher from "./ThemeSwitcher";
 import ThemeStyles from "./ThemeStyles";
 import GuidedTour from "./components/GuidedTour";
 
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
-const plusJakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["700"], variable: "--font-plus-jakarta" });
-const instrumentSans = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument-sans" });
-const archivoNarrow = Archivo_Narrow({ subsets: ["latin"], variable: "--font-archivo-narrow" });
-const boldonse = Boldonse({
-  subsets: ["latin"],
-  weight: ["400"],
+const figtree = localFont({ src: "../public/fonts/google/figtree/Regular.ttf", weight: "300 900", display: "swap", variable: "--font-figtree" });
+const plusJakarta = localFont({ src: "../public/fonts/google/plusjakartasans/Regular.ttf", weight: "700", display: "swap", variable: "--font-plus-jakarta" });
+const instrumentSans = localFont({ src: "../public/fonts/google/instrumentsans/Regular.ttf", weight: "400 700", display: "swap", variable: "--font-instrument-sans" });
+const archivoNarrow = localFont({ src: "../public/fonts/google/archivonarrow/Regular.ttf", weight: "400 700", display: "swap", variable: "--font-archivo-narrow" });
+const boldonse = localFont({
+  src: "../public/fonts/google/boldonse/Regular.ttf",
+  weight: "400",
+  display: "swap",
   variable: "--font-boldonse",
   adjustFontFallback: false
 });

@@ -3,7 +3,7 @@
 import type { ChangeEvent, CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Caveat } from "next/font/google";
+import localFont from "next/font/local";
 import dynamic from "next/dynamic";
 import "react-international-phone/style.css";
 import { isAuthApiError } from "@supabase/auth-js";
@@ -25,7 +25,12 @@ const PhoneInput = dynamic(
   { ssr: false, loading: () => <div className="ob-input" aria-hidden="true" /> }
 );
 
-const handwriting = Caveat({ subsets: ["latin"], weight: ["500", "600"] });
+const handwriting = localFont({
+  src: "../../public/fonts/caveat/Caveat-Variable.ttf",
+  weight: "500 600",
+  style: "normal",
+  display: "swap"
+});
 
 const GOLD = "#e8b06a";
 const CREAM = "#ede4d4";

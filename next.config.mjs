@@ -2,6 +2,11 @@
 const nextConfig = {
   images: { unoptimized: true },
   outputFileTracingIncludes: {
+    "/api/logo-requests": [
+      "./src/lib/logo-pendants/*.prompt",
+      "./src/lib/logo-pendants/*.yml",
+      "./public/logo-pendants/references/**/*"
+    ],
     // Name pendant generation resolves YAML-configured attachment paths at
     // runtime, so Next's static tracer can miss these public reference assets.
     "/api/requests": [
@@ -37,6 +42,14 @@ const nextConfig = {
       "./public/generated/**/*",
       "./public/necklaces/references/_originals/**/*",
       "./public/vvs-studio/**/*"
+    ],
+    // Necklace generation needs necklace references and can reuse pendant
+    // results, but never reads logo shape examples or marketing images.
+    // Dynamic provider reads otherwise pull these unrelated assets in too.
+    "/api/necklace-requests": [
+      "./public/logo-pendants/**/*",
+      "./public/landing/**/*",
+      "./public/new-landing/**/*"
     ],
     // The vvs-studio job processor additionally reads inputs via a dynamic
     // fs.readFile under public/, dragging the whole tree in. Safe to exclude

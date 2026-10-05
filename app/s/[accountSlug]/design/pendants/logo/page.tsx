@@ -7,5 +7,5 @@ export default async function PublicLogoPendantPage({ params }: { params: Promis
   const { accountSlug } = await params;
   const tenant = await requirePublicTenantPage(accountSlug);
 
-  return <LogoPendantBuilder basePath={`/s/${tenant.accountSlug}/design`} />;
+  return <LogoPendantBuilder accountSlug={tenant.accountSlug} basePath={`/s/${tenant.accountSlug}/design`} />;
 }
