@@ -194,6 +194,7 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
 
   function handleBack() {
     if (step === 0) return;
+    if (step === 2 && !window.confirm("Return to review? Generating again will replace your current drafts in this view. Download any drafts you want to keep first.")) return;
     generationEpochRef.current += 1;
     if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
     if (revisionTimeoutRef.current) clearTimeout(revisionTimeoutRef.current);

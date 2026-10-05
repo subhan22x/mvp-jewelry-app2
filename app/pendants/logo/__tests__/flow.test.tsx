@@ -29,7 +29,7 @@ describe("logo loading and iced-out results flow", () => {
     vi.stubGlobal("URL", class extends URL { static createObjectURL = () => "blob:logo"; static revokeObjectURL = vi.fn(); });
     mocks.fetch.mockImplementation(async url => String(url).endsWith("/api/logo-requests") ? json({ requestId: "request" }) : json({ done: true, results: [original] }));
   });
-  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
   it("starts with Additional info enabled and sends brand context", async () => {
     const user = userEvent.setup();
@@ -74,6 +74,20 @@ describe("logo loading and iced-out results flow", () => {
     expect(screen.getByRole("button", { name: "Logo pendant draft 1" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Logo pendant draft 2" }));
     expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+  });
+
+  it.each(["back", "Back", "Edit design"])("warns before leaving results using %s and respects cancellation", async buttonName => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = await generate();
+    await user.click(screen.getByRole("button", { name: "Submit contact" }));
+    await screen.findByText("Choose your favourite");
+    await user.click(screen.getByRole("button", { name: buttonName }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Generating again will replace your current drafts"));
+    expect(screen.getByText("Choose your favourite")).toBeInTheDocument();
+    confirm.mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: buttonName }));
+    expect(screen.getByText("Choose size")).toBeInTheDocument();
+    expect(mocks.fetch.mock.calls.filter(([url]) => url === "/api/logo-requests")).toHaveLength(1);
   });
 
   it("keeps loading/contact separate from results even when generation finishes first", async () => {
