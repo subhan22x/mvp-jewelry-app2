@@ -43,6 +43,14 @@ const nextConfig = {
       "./public/necklaces/references/_originals/**/*",
       "./public/vvs-studio/**/*"
     ],
+    // Necklace generation needs necklace references and can reuse pendant
+    // results, but never reads logo shape examples or marketing images.
+    // Dynamic provider reads otherwise pull these unrelated assets in too.
+    "/api/necklace-requests": [
+      "./public/logo-pendants/**/*",
+      "./public/landing/**/*",
+      "./public/new-landing/**/*"
+    ],
     // The vvs-studio job processor additionally reads inputs via a dynamic
     // fs.readFile under public/, dragging the whole tree in. Safe to exclude
     // entirely because imageUrlToAttachment falls back to fetching by URL.
