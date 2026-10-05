@@ -67,7 +67,7 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
     const accountId = await resolveAccountIdFromSlug(body.accountSlug)
       ?? (await getOwnerContext())?.accountId ?? getDefaultAccountId();
     const qrKitAttribution = await resolveQrKitAttributionFromRequest(req, body.accountSlug);
-    await ensureUsageAvailable(accountId, "design_image_generated", 1);
+    await ensureUsageAvailable(accountId, "design_image_generated", 2);
 
     const imageBuffer = directImage ? (await readDirectUpload(directImage)).buffer : Buffer.from(await image!.arrayBuffer());
     if (imageBuffer.length <= 0 || imageBuffer.length > LOGO_UPLOAD_MAX_BYTES) return jsonError("Logo image must be nonempty and 10MB or smaller.");
@@ -112,56 +112,63 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
         uploadFileName: imageName
       }
     });
-    const attempt = await prisma.result.create({
+    const attempts = await Promise.all([1, 2].map(variant => prisma.result.create({
       data: {
         accountId,
         requestId: request.id,
-        variant: 1,
+        variant,
         prompt,
         status: "pending",
         startedAt: new Date(),
         attachmentPathsJson: JSON.stringify(attachments)
       }
-    });
+    })));
     await bindSignupGeneration(request.id);
     const generationTempDir = tempDir;
     tempDir = null;
 
     scheduleBackgroundTask((async () => {
-      const startedMs = attempt.startedAt?.getTime() ?? Date.now();
       try {
-        const { imageUrl, modelId } = await generateImage({
-          prompt,
-          attachments,
-          requestId: request.id,
-          variant: 1,
-          modelIdOverride: "gemini-3.1-flash-image"
-        });
-        const completedAt = new Date();
-        const updated = await prisma.result.update({
-          where: { id: attempt.id },
-          data: { imageUrl, modelId, status: "succeeded", error: null, completedAt, durationMs: Math.max(0, completedAt.getTime() - startedMs) }
-        });
-        await consumeUsageCredit({
-          accountId,
-          kind: "design_image_generated",
-          sourceType: "Result",
-          sourceId: updated.id,
-          metadata: { requestId: request.id, productType: "logo", variant: 1 }
-        }).catch(error => {
-          console.error(`[logo request ${request.id}] usage tracking failed:`, error);
-        });
-        await ensureDraftQuoteForRequest(request.id).catch(error => {
-          console.error(`[quote draft ${request.id}] automatic creation failed:`, error);
-        });
-      } catch (error) {
-        console.error("[logo pendant] generation failed:", error);
-        const completedAt = new Date();
-        await prisma.result.update({
-          where: { id: attempt.id },
-          data: { status: "failed", error: "Logo pendant generation failed. Please try again.", completedAt, durationMs: Math.max(0, completedAt.getTime() - startedMs) }
-        });
+        const settled = await Promise.allSettled(attempts.map(async attempt => {
+          const startedMs = attempt.startedAt?.getTime() ?? Date.now();
+          try {
+            const { imageUrl, modelId } = await generateImage({
+              prompt,
+              attachments,
+              requestId: request.id,
+              variant: attempt.variant
+            });
+            const completedAt = new Date();
+            const updated = await prisma.result.update({
+              where: { id: attempt.id },
+              data: { imageUrl, modelId, status: "succeeded", error: null, completedAt, durationMs: Math.max(0, completedAt.getTime() - startedMs) }
+            });
+            await consumeUsageCredit({
+              accountId,
+              kind: "design_image_generated",
+              sourceType: "Result",
+              sourceId: updated.id,
+              metadata: { requestId: request.id, productType: "logo", variant: attempt.variant }
+            }).catch(error => {
+              console.error(`[logo request ${request.id}] usage tracking failed:`, error);
+            });
+            await ensureDraftQuoteForRequest(request.id).catch(error => {
+              console.error(`[quote draft ${request.id}] automatic creation failed:`, error);
+            });
+          } catch (error) {
+            console.error("[logo pendant] generation failed:", error);
+            const completedAt = new Date();
+            await prisma.result.update({
+              where: { id: attempt.id },
+              data: { status: "failed", error: "Logo pendant generation failed. Please try again.", completedAt, durationMs: Math.max(0, completedAt.getTime() - startedMs) }
+            });
+          }
+        }));
+        for (const result of settled) {
+          if (result.status === "rejected") console.error("[logo pendant] result persistence failed:", result.reason);
+        }
       } finally {
+        // Both models share the normalized logo; keep it until both have settled.
         await removeTempDir(generationTempDir);
       }
     })(), `logo-request:${request.id}`);

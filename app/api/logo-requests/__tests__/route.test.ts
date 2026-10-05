@@ -45,17 +45,18 @@ describe("logo generation pipeline", () => {
     mocks.usage.mockResolvedValue({});
     mocks.usageResponse.mockReturnValue(null);
     mocks.requestCreate.mockResolvedValue({ id: "logo-request" });
-    mocks.resultCreate.mockImplementation(async ({ data }) => ({ id: "logo-result", ...data }));
-    mocks.resultUpdate.mockResolvedValue({ id: "logo-result" });
+    mocks.resultCreate.mockImplementation(async ({ data }) => ({ id: data.variant === 1 ? "logo-result" : "logo-result-2", ...data }));
+    mocks.resultUpdate.mockImplementation(async ({ where }) => ({ id: where.id }));
     mocks.generate.mockResolvedValue({ imageUrl: "/generated/logo.png", modelId: "gemini-test" });
     mocks.consume.mockResolvedValue({});
     mocks.quote.mockResolvedValue({ ok: true });
   });
 
-  it("returns a pending request, sends only the logo, saves the exact prompt and completes usage/quote tracking", async () => {
+  it("returns two pending variants, sends only the logo for Custom, and tracks both results", async () => {
     const { POST } = await import("../route");
     let complete!: (value: { imageUrl: string; modelId: string }) => void;
-    mocks.generate.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    const pendingGeneration = new Promise<{ imageUrl: string; modelId: string }>(resolve => { complete = resolve; });
+    mocks.generate.mockReturnValue(pendingGeneration);
     const bytes = await imageBytes();
     const response = await POST(await formRequest(new File([bytes], "logo.png", { type: "image/png" })));
     expect(response.status).toBe(201);
@@ -63,6 +64,12 @@ describe("logo generation pipeline", () => {
     expect(mocks.resultUpdate).not.toHaveBeenCalled();
     const data = mocks.requestCreate.mock.calls[0][0].data;
     expect(data).toMatchObject({ accountId: "store-account", qrKitId: "qr-1", productType: "logo", styleId: "logo_custom", stoneType: "cz", diamondQuality: "vs", metalType: "silver", primaryMetal: "rose_gold", secondaryMetal: "white_gold", text: "GROW" });
+    expect(mocks.usage).toHaveBeenCalledWith("store-account", "design_image_generated", 2);
+    expect(mocks.resultCreate).toHaveBeenCalledTimes(2);
+    expect(mocks.generate.mock.calls.map(([args]) => args.variant)).toEqual([1, 2]);
+    expect(mocks.generate.mock.calls[1][0].attachments).toEqual(mocks.generate.mock.calls[0][0].attachments);
+    expect(mocks.generate.mock.calls[1][0].prompt).toBe(mocks.generate.mock.calls[0][0].prompt);
+    expect(mocks.generate.mock.calls[0][0].modelIdOverride).toBeUndefined();
     const generation = mocks.generate.mock.calls[0][0];
     expect(generation.attachments).toHaveLength(1);
     expect(generation.prompt).not.toMatch(/selected .*shape|pendant shape/);
@@ -85,7 +92,8 @@ describe("logo generation pipeline", () => {
   ])("sends and records the logo plus the %s reference", async (shape, filename) => {
     const { POST } = await import("../route");
     let complete!: (value: { imageUrl: string; modelId: string }) => void;
-    mocks.generate.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    const pendingGeneration = new Promise<{ imageUrl: string; modelId: string }>(resolve => { complete = resolve; });
+    mocks.generate.mockReturnValue(pendingGeneration);
     const bytes = await imageBytes();
     const response = await POST(await formRequest(new File([bytes], "logo.png", { type: "image/png" }), { shape }));
     expect(response.status).toBe(201);
@@ -187,7 +195,8 @@ describe("logo generation pipeline", () => {
 
   it("bounds normalized logo dimensions without enlarging small images", async () => {
     let complete!: (value: { imageUrl: string; modelId: string }) => void;
-    mocks.generate.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    const pendingGeneration = new Promise<{ imageUrl: string; modelId: string }>(resolve => { complete = resolve; });
+    mocks.generate.mockReturnValue(pendingGeneration);
     const bytes = await sharp({ create: { width: 3000, height: 1000, channels: 3, background: "white" } }).png().toBuffer();
     const { POST } = await import("../route");
     expect((await POST(await formRequest(new File([bytes], "logo.png", { type: "image/png" })))).status).toBe(201);
@@ -199,6 +208,29 @@ describe("logo generation pipeline", () => {
       complete({ imageUrl: "/generated/logo.png", modelId: "gemini-test" });
       await Promise.all(mocks.tasks);
     }
+  });
+
+  it("keeps the shared logo until both models finish and preserves partial success", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    let failPro!: (error: Error) => void;
+    let finishFlash!: (value: { imageUrl: string; modelId: string }) => void;
+    mocks.generate.mockImplementation(({ variant }) => variant === 1
+      ? new Promise((_, reject) => { failPro = reject; })
+      : new Promise(resolve => { finishFlash = resolve; }));
+    const { POST } = await import("../route");
+    const bytes = await imageBytes();
+    expect((await POST(await formRequest(new File([bytes], "logo.png", { type: "image/png" })))).status).toBe(201);
+    const logoPath = mocks.generate.mock.calls[0][0].attachments[0];
+    failPro(new Error("Pro unavailable"));
+    await vi.waitFor(() => expect(mocks.resultUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "logo-result" }, data: expect.objectContaining({ status: "failed" }) })));
+    await expect(fs.access(logoPath)).resolves.toBeUndefined();
+    finishFlash({ imageUrl: "/generated/flash.png", modelId: "gemini-3.1-flash-image" });
+    await Promise.all(mocks.tasks);
+    expect(mocks.resultUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "logo-result-2" }, data: expect.objectContaining({ status: "succeeded", imageUrl: "/generated/flash.png" }) }));
+    expect(mocks.consume).toHaveBeenCalledTimes(1);
+    expect(mocks.consume).toHaveBeenCalledWith(expect.objectContaining({ sourceId: "logo-result-2" }));
+    await expect(fs.access(logoPath)).rejects.toThrow();
+    consoleSpy.mockRestore();
   });
 
   it("accepts direct R2 logo uploads", async () => {
@@ -244,7 +276,7 @@ describe("logo generation pipeline", () => {
     const bytes = await imageBytes();
     await POST(await formRequest(new File([bytes], "logo.png", { type: "image/png" })));
     await Promise.all(mocks.tasks);
-    expect(mocks.resultUpdate).toHaveBeenCalledTimes(1);
+    expect(mocks.resultUpdate).toHaveBeenCalledTimes(2);
     expect(mocks.resultUpdate.mock.calls[0][0].data.status).toBe("succeeded");
     expect(mocks.quote).toHaveBeenCalledWith("logo-request");
     consoleSpy.mockRestore();

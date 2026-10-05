@@ -142,8 +142,7 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [generatedResultId, setGeneratedResultId] = useState<string | null>(null);
+  const [originalResults, setOriginalResults] = useState<LogoResult[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<CustomerDesignResult | null>(null);
   const [revisions, setRevisions] = useState<LogoResult[]>([]);
@@ -177,7 +176,7 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
   const activeShape = SHAPES.find(option => option.id === shape) ?? SHAPES[0];
   const activeColor = COLOR_COMBOS.find(option => option.id === colorCombo) ?? COLOR_COMBOS[0];
   const results: LogoResult[] = [
-    ...(generatedImageUrl && generatedResultId ? [{ id: generatedResultId, label: "Logo pendant draft", src: generatedImageUrl, status: "succeeded" as const }] : []),
+    ...originalResults,
     ...revisions
   ];
   const canCreateRevision = revisions.length < 2 && !isRevisionSubmitting;
@@ -211,8 +210,7 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
   async function handleGenerate() {
     if (isGenerating || isRevisionSubmitting || !logoFile) return;
     setError(null);
-    setGeneratedImageUrl(null);
-    setGeneratedResultId(null);
+    setOriginalResults([]);
     setSelectedResultId(null);
     setRevisions([]);
     setRevisionError(null);
@@ -256,16 +254,18 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
           const pollData = await pollResponse.json();
           if (epoch !== generationEpochRef.current) return;
           if (!pollResponse.ok) throw new Error("Unable to load logo pendant results.");
-          const imageUrl = pollData.results?.[0]?.imageUrl;
-          if (imageUrl) {
-            const resultId = pollData.results[0].id;
-            setGeneratedImageUrl(imageUrl);
-            setGeneratedResultId(resultId);
-          }
+          const successful = pollData.results ?? [];
+          const attempts = pollData.attempts ?? successful.map((result: { id: string; variant: number; imageUrl: string }) => ({ ...result, status: "succeeded" }));
+          setOriginalResults(attempts.map((attempt: { id: string; variant: number; imageUrl?: string; status: "pending" | "succeeded" | "failed" }) => ({
+            id: attempt.id,
+            label: `Logo pendant draft ${attempt.variant}`,
+            src: attempt.imageUrl,
+            status: attempt.status
+          })));
           if (pollData.done) {
             setIsGenerating(false);
             pollTimeoutRef.current = null;
-            if (!imageUrl) {
+            if (!successful.length) {
               const failed = pollData.attempts?.find((attempt: { status: string; error?: string }) => attempt.status === "failed");
               setError(failed?.error ?? "No logo pendant image was generated. Please try again.");
             }
@@ -640,10 +640,10 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
               <div className="space-y-6">
                 <CustomerResultsScreen
                   results={results}
-                  expectedCount={Math.max(1, results.length)}
+                  expectedCount={Math.max(2, results.length)}
                   selectedResultId={selectedResultId}
                   isGenerating={isGenerating}
-                  generationCountLabel={isGenerating ? `${generatedImageUrl ? 1 : 0} of 1 generated` : undefined}
+                  generationCountLabel={isGenerating ? `${originalResults.filter(result => result.status === "succeeded").length} of 2 generated` : undefined}
                   errors={[error, revisionError]}
                   usageLabel={`${revisions.length} of 2 revisions used`}
                   canEdit={canCreateRevision}

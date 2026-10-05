@@ -7,7 +7,7 @@ Date: 2026-10-05. Scope: current uncommitted logo feature and the shared paths i
 - Customer settings are validated with Zod. Prompt prose stays in `src/lib/logo-pendants/pendant.prompt`; shape/context snippets and attachment mappings stay in YAML.
 - Shape values are an enum and map to repository-owned reference paths. No client-supplied local attachment paths are accepted.
 - Initial generation uses the existing signed R2 upload helper, multipart fallback, shared Google connector, R2 output storage, and background scheduler. The scheduler uses Vercel `waitUntil` in production.
-- One original Result stores its exact prompt and attachment paths. Polling expects one result for logo requests. Custom sends one image; named shapes send the uploaded logo and matching example.
+- Two original Results store their exact prompt and attachment paths. Pro/2K and Flash/1K run concurrently through shared variant routing. Polling waits for both, displays completed images progressively, and retains compatibility with earlier single-draft requests. Shared logo files remain available until both model tasks settle. Custom sends one image; named shapes send the uploaded logo and matching example.
 - Storefront routes use `requirePublicTenantPage`; generation uses existing Account resolution and billing/signup-credit services. QR attribution, contact intake, automatic draft quotes, and owner notification delivery reuse shared code.
 - Loading/contact and results use the same components as name pendants. Revisions use the existing request revision APIs and the two-revision limit.
 - No schema migration, new provider SDK, or new billing/storage integration is required.
@@ -23,12 +23,12 @@ Date: 2026-10-05. Scope: current uncommitted logo feature and the shared paths i
 
 | Check | Result |
 | --- | --- |
-| `npx vitest run` | 963 passed, 10 skipped; 126 test files passed, 4 skipped |
+| `npx vitest run` | 971 passed, 10 skipped; 126 test files passed, 4 skipped |
 | `npx tsc --noEmit --incremental false` | Passed |
 | `npm run build` | Passed, including lint/type checks and static generation |
 | Production output trace | Contains prompt, both YAML files, and all four shape reference PNGs |
 | API adversarial tests | Invalid settings, inaccessible Account, billing denial, invalid bytes, disguised SVG, compressed oversized images, dishonest direct-upload size metadata, error disclosure, success/failure cleanup |
-| Attachment/provider tests | Correct reference for every named shape; Custom has only the logo; Base64 decodes to the exact expected files in Google SDK payloads |
+| Attachment/provider tests | Correct reference for every named shape; Custom has only the logo; Base64 decodes to the exact expected files in Google SDK payloads; Pro/2K and Flash/1K routing, partial success, progressive results, and shared-file lifetime covered |
 | Browser smoke against local production build | Desktop 1440 × 1000 and mobile 390 × 844 passed; no page errors or horizontal overflow |
 | Browser flow coverage | Direct-upload JSON payload, enabled About logo context, review, separate real loading/contact screen, results selection/download/preview, two revisions, Back without another generation |
 | Changed-file credential-pattern scan | No matches for selected private-key, AWS, GitHub-token, or Stripe-live-key patterns; this is a limited pattern scan |

@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildLogoPendantAttachments } from "../attachments";
 import { buildLogoPendantPrompt } from "../prompt";
+import { resolveGenerationConfig } from "../../providers";
 import { GoogleProvider } from "../../providers/google";
 import type { LogoShape } from "../config";
 
@@ -21,6 +22,7 @@ describe("logo image attachments in the Google request", () => {
   let logoPath: string;
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.stubEnv("GOOGLE_API_KEY", "test-key");
     directory = await fs.mkdtemp(path.join(os.tmpdir(), "logo-attachment-test-"));
     logoPath = path.join(directory, "logo.png");
     const logo = await sharp({ create: { width: 4, height: 4, channels: 4, background: "red" } }).png().toBuffer();
@@ -28,7 +30,19 @@ describe("logo image attachments in the Google request", () => {
     mocks.generateContent.mockResolvedValue({ candidates: [{ content: { parts: [{ inlineData: { data: logo.toString("base64"), mimeType: "image/png" } }] } }] });
   });
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await fs.rm(directory, { recursive: true, force: true });
+  });
+
+  it("routes variant 1 to Pro 2K and variant 2 to Flash 1K", async () => {
+    for (const variant of [1, 2]) {
+      const { provider, ...config } = resolveGenerationConfig(variant);
+      await provider.generate({ ...config, prompt: "Test logo pendant", attachments: [logoPath] });
+    }
+    expect(mocks.generateContent.mock.calls.map(([payload]) => ({ model: payload.model, imageConfig: payload.config.imageConfig }))).toEqual([
+      { model: "gemini-3-pro-image-preview", imageConfig: { imageSize: "2K", aspectRatio: "9:16" } },
+      { model: "gemini-3.1-flash-image", imageConfig: { imageSize: "1K", aspectRatio: "9:16" } }
+    ]);
   });
 
   it.each<[LogoShape, string | null]>([

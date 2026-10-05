@@ -59,6 +59,23 @@ describe("logo loading and iced-out results flow", () => {
     expect(post?.[1].body.get("additionalText")).toBe("");
   });
 
+  it("shows Flash progressively while Pro is pending and allows selecting it", async () => {
+    mocks.fetch.mockImplementation(async url => String(url).endsWith("/api/logo-requests") ? json({ requestId: "request" }) : json({
+      done: false,
+      results: [{ ...original, id: "flash-result", variant: 2 }],
+      attempts: [
+        { id: "pro-result", variant: 1, status: "pending", imageUrl: null },
+        { id: "flash-result", variant: 2, status: "succeeded", imageUrl: original.imageUrl }
+      ]
+    }));
+    const user = await generate();
+    await user.click(screen.getByRole("button", { name: "Submit contact" }));
+    expect(await screen.findByText("1 of 2 generated")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Logo pendant draft 1" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Logo pendant draft 2" }));
+    expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+  });
+
   it("keeps loading/contact separate from results even when generation finishes first", async () => {
     const user = await generate();
     await waitFor(() => expect(mocks.fetch).toHaveBeenCalledWith("/api/requests/request"));
@@ -68,10 +85,10 @@ describe("logo loading and iced-out results flow", () => {
     expect(await screen.findByText("Choose your favourite")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Contact loading screen" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Logo pendant draft" }));
+    await user.click(screen.getByRole("button", { name: "Logo pendant draft 1" }));
     expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Preview Logo pendant draft" }));
-    const preview = screen.getByRole("dialog", { name: "Logo pendant draft preview" });
+    await user.click(screen.getByRole("button", { name: "Preview Logo pendant draft 1" }));
+    const preview = screen.getByRole("dialog", { name: "Logo pendant draft 1 preview" });
     expect(within(preview).getByRole("link", { name: "Download" })).toHaveAttribute("href", original.imageUrl);
     await user.click(within(preview).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -91,27 +108,27 @@ describe("logo loading and iced-out results flow", () => {
     });
     const user = await generate();
     await user.click(screen.getByRole("button", { name: "Submit contact" }));
-    await screen.findByRole("button", { name: "Edit Logo pendant draft" });
-    for (const label of ["Logo pendant draft", "Rev 1"]) {
+    await screen.findByRole("button", { name: "Edit Logo pendant draft 1" });
+    for (const label of ["Logo pendant draft 1", "Rev 1"]) {
       await user.click(screen.getByRole("button", { name: `Edit ${label}` }));
       await user.type(screen.getByLabelText("Revision notes"), "Make the logo larger");
       await user.click(screen.getByRole("button", { name: "create revision" }));
       await screen.findByText(new RegExp(`Rev ${revisionCount} selected`));
     }
     expect(screen.getByText(/2 of 2 revisions used/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit Logo pendant draft" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit Logo pendant draft 1" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rev 2" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("shows revision submission errors without using a revision slot", async () => {
     const user = await generate();
     await user.click(screen.getByRole("button", { name: "Submit contact" }));
-    await user.click(await screen.findByRole("button", { name: "Edit Logo pendant draft" }));
+    await user.click(await screen.findByRole("button", { name: "Edit Logo pendant draft 1" }));
     await user.type(screen.getByLabelText("Revision notes"), "Make the border thinner");
     mocks.fetch.mockResolvedValueOnce(json({ error: "Monthly usage limit reached." }, false));
     await user.click(screen.getByRole("button", { name: "create revision" }));
     expect(await screen.findByText("Monthly usage limit reached.")).toBeInTheDocument();
     expect(screen.getByText(/0 of 2 revisions used/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit Logo pendant draft" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit Logo pendant draft 1" })).toBeInTheDocument();
   });
 });
