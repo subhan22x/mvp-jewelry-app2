@@ -130,6 +130,17 @@ The polished store-owner dashboard lives at `/owner`. It is request- and quote-c
 - `/owner/account` also shows account status, the current subscription plan, free-trial state, Stripe Checkout for the Basic plan, and the Stripe billing portal when a customer is linked.
 - `Send Quote` currently opens manual delivery options. The owner can copy the prepared message or open the device share sheet. Twilio and email delivery are intentionally not wired yet.
 
+## Printed QR displays
+
+Platform admins manage numbered displays at `/admin/qr-kits`. Printed codes always
+encode `/scan/<publicToken>`, not the final destination. Available, unassigned kits
+redirect to `/design` without store attribution; after assignment the same code
+redirects to `/s/<accountSlug>/design?kit=<publicToken>` and establishes attribution.
+Unknown, suspended, lost, or retired kits go to `/qr-unavailable`. Scan redirects
+are temporary and non-cacheable. No reprint is needed when assigning a kit.
+Pre-assignment activity uses the generic design flow and is not transferred to
+the subsequently assigned Account. Download print codes from the production domain.
+
 ## Owner notification recovery
 
 Owner customer-activity email alerts use Resend and a persistent Postgres delivery queue. Cloudflare wakes the protected Vercel notification worker every five minutes to recover missed/retry deliveries; immediate background sending remains active. See [owner notifications](docs/owner-notifications.md), the [scheduler runbook](workers/owner-notification-scheduler/README.md), and [capacity evidence](docs/notification-capacity.md).

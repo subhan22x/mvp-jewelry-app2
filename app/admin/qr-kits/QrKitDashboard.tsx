@@ -135,7 +135,7 @@ export default function QrKitDashboard({ initialKits, counts }: { initialKits: K
           {kits.map(kit => (
             <article key={kit.id} className="grid gap-4 px-5 py-5 lg:grid-cols-[1.1fr_1fr_1fr_auto] lg:items-center">
               <div><p className="font-mono text-base font-bold text-[#f7bc5f]">{kit.displayCode}</p><p className="mt-1 text-xs text-[#8c909f]">{kit.batch.label} · {kit.batch.printTemplateVersion}</p></div>
-              <div><p className="text-sm font-semibold capitalize">{kit.status}</p><p className="mt-1 text-xs text-[#8c909f]">{kit.account ? `${kit.account.name} · /s/${kit.account.slug}` : "Not assigned"}</p></div>
+              <div><p className="text-sm font-semibold capitalize">{kit.status}</p><p className="mt-1 text-xs text-[#8c909f]">{kit.account ? `${kit.account.name} · /s/${kit.account.slug}` : kit.status === "available" ? "Not assigned — opens Grow Jewelry design" : "Not assigned"}</p></div>
               <div className="text-xs text-[#8c909f]">{kit.status === "available" ? "Choose the store receiving this display." : `Assigned ${kit.assignedAt ? new Date(kit.assignedAt).toLocaleDateString() : ""}`}</div>
               <div className="flex gap-2"><button type="button" onClick={() => downloadQr(kit)} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-bold">PNG</button>{kit.status === "available" && <button type="button" onClick={() => setAssigningKit(kit)} className="rounded-lg bg-[#f7bc5f] px-3 py-2 text-xs font-bold text-[#101114]">Choose Account</button>}</div>
             </article>
