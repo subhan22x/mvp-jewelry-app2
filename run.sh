@@ -135,7 +135,7 @@ fi
 log "Starting Next dev server at http://localhost:$PORT"
 
 if [ "$PRISMA_STUDIO" = "1" ]; then
-  npx next dev -p "$PORT"
+  npm run dev -- --port "$PORT"
 else
-  exec npx next dev -p "$PORT"
+  exec npm run dev -- --port "$PORT"
 fi

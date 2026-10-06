@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import GrillzToothDiagram from "./GrillzToothDiagram";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource, type ThumbnailId } from "@/src/lib/thumbnails/browser";
 import DesignStepHeader from "@/app/components/DesignStepHeader";
 import ThemedOptionButton from "@/app/components/ThemedOptionButton";
 import LeadCaptureModal from "@/app/name/components/LeadCaptureModal";
@@ -103,8 +104,8 @@ function StyleScreen({
               >
                 <div className="relative aspect-square w-full overflow-hidden rounded-[22px] bg-black">
                   {style.src ? (
-                    <Image
-                      src={style.src}
+                    <StaticThumbnail
+                      assetId={thumbnailIdForSource(style.src)}
                       alt={style.label}
                       fill
                       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
@@ -287,6 +288,7 @@ function ReviewScreen({
   goldColor,
   styleLabel,
   stylePreviewUrl,
+  stylePreviewAssetId,
   diamondQuality,
   generationStatus,
   generationError,
@@ -300,6 +302,7 @@ function ReviewScreen({
   goldColor: GrillzGoldColor;
   styleLabel: string;
   stylePreviewUrl: string | null;
+  stylePreviewAssetId?: ThumbnailId;
   diamondQuality: GrillzDiamondQuality;
   generationStatus: GenerationStatus;
   generationError: string | null;
@@ -335,7 +338,7 @@ function ReviewScreen({
         <p className="text-sm font-bold">Selected style</p>
         <div className={cx("mt-4 flex aspect-square items-center justify-center overflow-hidden", themeRadius.imageOption, themeSurface.strong)}>
           {stylePreviewUrl ? (
-            <img src={stylePreviewUrl} alt={`${styleLabel} style reference`} className="h-full w-full rounded-[1.1rem] object-contain" />
+            stylePreviewAssetId ? <StaticThumbnail assetId={stylePreviewAssetId} alt={`${styleLabel} style reference`} sizes="(max-width: 640px) 85vw, 640px" className="h-full w-full rounded-[1.1rem] object-contain" /> : <img src={stylePreviewUrl} alt={`${styleLabel} style reference`} className="h-full w-full rounded-[1.1rem] object-contain" />
           ) : (
             <span className="px-6 text-center text-sm text-white/35">{styleLabel}</span>
           )}
@@ -596,6 +599,7 @@ export default function GrillzBuilder({
             goldColor={goldColor}
             styleLabel={selectedStyle.label}
             stylePreviewUrl={stylePreviewUrl}
+            stylePreviewAssetId={styleId === CUSTOM_GRILLZ_STYLE_ID ? undefined : thumbnailIdForSource(selectedStyle.src)}
             diamondQuality={diamondQuality}
             generationStatus={generationStatus}
             generationError={generationError}

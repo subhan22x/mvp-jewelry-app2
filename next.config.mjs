@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: { unoptimized: true },
+  async headers() {
+    return process.env.NODE_ENV === "development" ? [] : [{
+      source: "/thumbnails/:path*",
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }]
+    }];
+  },
   outputFileTracingIncludes: {
     "/api/logo-requests": [
       "./src/lib/logo-pendants/*.prompt",
@@ -39,6 +45,7 @@ const nextConfig = {
     // function. Each route still keeps the category reference dir it needs.
     // See CLAUDE.md "Deployment gotchas".
     "/api": [
+      "./public/thumbnails/**/*",
       "./public/generated/**/*",
       "./public/necklaces/references/_originals/**/*",
       "./public/vvs-studio/**/*"

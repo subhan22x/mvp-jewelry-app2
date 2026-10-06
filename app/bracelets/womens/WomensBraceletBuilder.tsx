@@ -1,5 +1,10 @@
 "use client";
 
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
+
+import { WOMENS_STYLES } from "@/src/lib/thumbnails/flow-assets";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import DesignProgressBar from "@/app/components/DesignProgressBar";
@@ -11,10 +16,7 @@ type WomensStyleKey = "womens_1" | "womens_2";
 type ColorKey = "rose_gold" | "yellow_gold" | "white";
 type MetalKey = "gold" | "silver";
 
-const WOMENS_STYLES: Array<{ id: WomensStyleKey; label: string; src: string }> = [
-  { id: "womens_1", label: "Bar bracelet", src: "/bracelets/styles/womens-bracelet-1.webp" },
-  { id: "womens_2", label: "Script bracelet", src: "/bracelets/styles/womens-bracelet-2.webp" }
-];
+
 
 const COLOR_COMBOS: Array<{ id: ColorKey; label: string; swatch: string }> = [
   { id: "rose_gold", label: "Rose Gold", swatch: "from-[#e8a182] via-[#d48669] to-[#f3d7c9]" },
@@ -207,7 +209,7 @@ export default function WomensBraceletBuilder({
 
           <aside className={panelClass("h-fit min-w-0 p-4")}>
             <div className={cx("relative aspect-square overflow-hidden", themeRadius.imageOption, themeSurface.muted)}>
-              <img src={selectedStyle.src} alt={selectedStyle.label} className="h-full w-full object-cover object-center" />
+              <StaticThumbnail assetId={thumbnailIdForSource(selectedStyle.src)} sizes="(max-width: 640px) 45vw, 320px" alt={selectedStyle.label} className="h-full w-full object-cover object-center" />
             </div>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between gap-4">

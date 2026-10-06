@@ -1,4 +1,5 @@
-import Image from "next/image";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import Link from "next/link";
 import DesignStepHeader from "../components/DesignStepHeader";
 import { NECKLACE_STYLES } from "./necklace-options";
@@ -36,8 +37,8 @@ export default function NecklacesIndex({ basePath }: { basePath?: string } = {})
               <>
                 <div className="relative aspect-square w-full overflow-hidden rounded-[22px] bg-black">
                   {style.thumb ? (
-                    <Image
-                      src={style.thumb}
+                    <StaticThumbnail
+                      assetId={thumbnailIdForSource(style.thumb)}
                       alt={style.label}
                       fill
                       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"

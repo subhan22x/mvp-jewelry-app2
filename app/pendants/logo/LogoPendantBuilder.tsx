@@ -1,5 +1,10 @@
 "use client";
 
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
+
+import { SHAPES } from "@/src/lib/thumbnails/flow-assets";
+
 import Link from "next/link";
 import { ChangeEvent, ReactNode, useEffect, useRef, useState } from "react";
 import DesignProgressBar from "../../components/DesignProgressBar";
@@ -17,54 +22,7 @@ type DiamondQuality = "vs" | "vvs";
 type MetalType = "gold" | "silver" | "platinum";
 type LogoResult = CustomerDesignResult & { sourceResultId?: string; revisionNumber?: number };
 
-const SHAPES: Array<{
-  id: ShapeOption;
-  label: string;
-  previewClass: string;
-  iconSizeClass: string;
-  previewSizeClass: string;
-  iconSrc?: string;
-}> = [
-  {
-    id: "custom",
-    label: "Custom",
-    previewClass: "rounded-[34%_66%_58%_42%/42%_38%_62%_58%]",
-    iconSizeClass: "h-16 w-16",
-    previewSizeClass: "h-[68%] w-[68%]",
-  },
-  {
-    id: "circle",
-    label: "Circle",
-    previewClass: "rounded-full",
-    iconSizeClass: "h-20 w-20",
-    previewSizeClass: "h-[68%] w-[68%]",
-    iconSrc: "/logo-pendants/shapes/circle.png",
-  },
-  {
-    id: "shield",
-    label: "Shield",
-    previewClass: "[clip-path:polygon(50%_0,92%_18%,82%_78%,50%_100%,18%_78%,8%_18%)]",
-    iconSizeClass: "h-20 w-20",
-    previewSizeClass: "h-[70%] w-[62%]",
-    iconSrc: "/logo-pendants/shapes/shield.png",
-  },
-  {
-    id: "hexa",
-    label: "Hexa",
-    previewClass: "[clip-path:polygon(25%_4%,75%_4%,100%_50%,75%_96%,25%_96%,0_50%)]",
-    iconSizeClass: "h-20 w-20",
-    previewSizeClass: "h-[68%] w-[68%]",
-    iconSrc: "/logo-pendants/shapes/hexa.png",
-  },
-  {
-    id: "diamond",
-    label: "Diamond",
-    previewClass: "[clip-path:polygon(50%_0,100%_50%,50%_100%,0_50%)]",
-    iconSizeClass: "h-20 w-20",
-    previewSizeClass: "h-[66%] w-[66%]",
-    iconSrc: "/logo-pendants/shapes/diamond.png",
-  },
-];
+
 
 const COLOR_COMBOS: Array<{ id: ColorCombo; label: string; summary: string; swatch: string }> = [
   { id: "YELLOW_WHITE", label: "Yellow + White Gold", summary: "Yellow gold + White gold", swatch: "from-[#f8cf61] via-[#f6c456] to-[#e9edf2]" },
@@ -437,8 +395,8 @@ export default function LogoPendantBuilder({ basePath, accountSlug }: { basePath
                         >
                           {option.iconSrc ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={option.iconSrc}
+                            <StaticThumbnail
+                              assetId={thumbnailIdForSource(option.iconSrc)} sizes="80px"
                               alt=""
                               className={cx("object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.35)] saturate-150 transition group-hover:scale-105", option.iconSizeClass)}
                               aria-hidden

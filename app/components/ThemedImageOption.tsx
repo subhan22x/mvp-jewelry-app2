@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import type { ReactNode } from "react";
 import { imageOptionButtonClass, styleOptionFrameClass } from "@/src/lib/theme/ui-classes";
 
@@ -40,8 +41,8 @@ export default function ThemedImageOption({
         className={imageOptionButtonClass({ selected, disabled })}
       >
         {src ? (
-          <Image
-            src={src}
+          <StaticThumbnail
+            assetId={thumbnailIdForSource(src)}
             alt={label}
             fill
             sizes={imageSizes}

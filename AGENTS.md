@@ -95,6 +95,25 @@ Each style's `variantMatrix` defines exactly two entries; `buildVariants` iterat
 3. Add the style to `data/pendant-styles.json` so it appears in the UI picker.
 4. Add a thumbnail at `public/pendants/<style>.png`.
 
+## Static customer thumbnails
+
+Read `docs/static-thumbnails.md` before adding customer picker, category, guide,
+or selected-style preview images. Existing registered flow metadata is consumed
+by `scripts/thumbnails/catalog.ts`; new flows register their pure metadata once.
+Use `app/components/StaticThumbnail.tsx` with a registered ID and accurate `sizes`.
+Do not infer asset purpose by scanning directories, or optimize model references,
+picture masks, uploads, or generated results through this build pipeline.
+
+`npm run dev` and `run.sh` generate and watch registered inputs; `npm run build`
+generates before compilation. Run `npm run thumbnails` after asset/config changes
+and commit `src/lib/thumbnails/manifest.generated.json`. Derivatives under
+`public/thumbnails/` and `.thumbnail-cache/` are ignored. Never hand-edit the
+manifest, prune files while serving them, or replace original attachment paths
+with derivative URLs. Keep derivatives excluded from API function traces.
+
+Checks: `npm run thumbnails:check`, focused generator/component tests, and
+`node scripts/thumbnails/check-watch.cjs` (isolated fixture, port 3059).
+
 ## Template families and overrides
 
 **Target convention** (planned, see roadmap):

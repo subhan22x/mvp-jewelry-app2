@@ -1,31 +1,19 @@
 "use client";
 
-import Image from "next/image";
+import { pendantCards as cards } from "@/src/lib/thumbnails/flow-assets";
+
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import DesignStepHeader from "../components/DesignStepHeader";
 import NameBuilder from "../name/NameBuilder";
 import { TOUR_STEP_EVENT, TOUR_STORAGE_KEY } from "@/src/lib/tour/steps";
 
-type CardConfig = {
-  id: string;
-  label: string;
-  subtitle?: string;
-  href?: string;
-  disabled?: boolean;
-  active?: boolean;
-  thumb?: string;
-};
+
 
 // Pendant format tiles live here; add or update cards to change pendant entry points.
-const cards: CardConfig[] = [
-  { id: "name", label: "Icedout", href: "/name", active: true, thumb: "/pendants/mojo-deja.png" },
-  { id: "picture", label: "Picture Pendants", href: "/picture-pendants", thumb: "/picture-pendants/picturependant3.jpg" },
-  { id: "nameplates", label: "Nameplates", href: "/pendants/nameplates", thumb: "/plain-pendants/plain_style_5.png" },
-  { id: "logo", label: "Logo", href: "/pendants/logo", thumb: "/logo-pendants/logo-pendant-thumbnail.jpg" },
-  { id: "custom", label: "Custom Design", href: "#", disabled: true },
-  { id: "inspired", label: "Get Inspired", href: "#", disabled: true }
-];
+
 
 // Shared styling for each card. Adjust spacing or borders in one place.
 const baseCardClass =
@@ -101,8 +89,8 @@ export default function PendantsIndex({ basePath }: { basePath?: string } = {}) 
               <>
                 <div className="relative aspect-square w-full overflow-hidden rounded-[22px] bg-black">
                   {card.thumb ? (
-                    <Image
-                      src={card.thumb}
+                    <StaticThumbnail
+                      assetId={thumbnailIdForSource(card.thumb)}
                       alt={card.label}
                       fill
                       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"

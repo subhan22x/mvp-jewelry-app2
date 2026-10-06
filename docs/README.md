@@ -18,6 +18,7 @@ These documents should match the running application:
 
 ## Architecture Notes
 
+- [`static-thumbnails.md`](static-thumbnails.md): static customer asset registration, responsive derivatives, development watcher, immutable caching, and future-flow checklist.
 - [`owner-notifications.md`](owner-notifications.md): owner notification behavior, Settings, Resend delivery and activation status.
 - [`../workers/owner-notification-scheduler/README.md`](../workers/owner-notification-scheduler/README.md): Cloudflare scheduler deployment, tests and recovery operations.
 - [`notification-capacity.md`](notification-capacity.md): inspected quotas, concurrency test evidence and capacity limits.

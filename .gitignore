@@ -30,3 +30,7 @@ temp_check.py
 docs/owner-notification-historical-preview.html
 .wrangler/
 .dev.vars*
+
+# Generated browser image derivatives; the bootstrap manifest is tracked.
+public/thumbnails/
+.thumbnail-cache/

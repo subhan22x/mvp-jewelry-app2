@@ -1,9 +1,12 @@
 "use client";
 
+import { PLAIN_STYLES } from "@/src/lib/thumbnails/flow-assets";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TOUR_STEP_EVENT, TOUR_STORAGE_KEY } from "@/src/lib/tour/steps";
-import Image from "next/image";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import ThemedImageOption from "../components/ThemedImageOption";
 import ThemedOptionButton from "../components/ThemedOptionButton";
 import DesignProgressBar from "../components/DesignProgressBar";
@@ -98,14 +101,7 @@ const STONE_TYPES: ReadonlyArray<{ id: StoneTypeKey; label: string }> = [
   { id: "moissanite", label: "Moissanite" }
 ];
 
-const PLAIN_STYLES: ReadonlyArray<{ id: PlainStyleKey; label: string; src: string }> = [
-  { id: "plain_style_1", label: "Amour", src: "/plain-pendants/plain_style_1.png" },
-  { id: "plain_style_2", label: "Olivia", src: "/plain-pendants/plain_style_2.png" },
-  { id: "plain_style_3", label: "Hayley", src: "/plain-pendants/plain_style_3.png" },
-  { id: "plain_style_4", label: "Paige", src: "/plain-pendants/plain_style_4.png" },
-  { id: "plain_style_5", label: "Audrey", src: "/plain-pendants/plain_style_5.png" },
-  { id: "plain_style_6", label: "Wesley", src: "/plain-pendants/plain_style_6.png" }
-];
+
 
 const PLAIN_COLORS: ReadonlyArray<{ id: PlainColorKey; label: string; summary: string; swatch: string }> = [
   { id: "gold", label: "Gold", summary: "Gold", swatch: "from-[#f8d36f] via-[#d8a532] to-[#fff1a8]" },
@@ -921,8 +917,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                     <div className="pt-5">
                       <h2 className="text-lg font-semibold">Chain Style</h2>
                       <div className="mt-4 overflow-hidden rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)]">
-                        <Image
-                          src="/plain-pendants/chain-options.png"
+                        <StaticThumbnail
+                          assetId={thumbnailIdForSource("/plain-pendants/chain-options.png")}
                           alt="Chain style examples"
                           width={1055}
                           height={1252}
@@ -1109,8 +1105,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                   <div className={panelClass("mt-4 p-4")}>
 	                    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[var(--theme-surface-strong)]">
 	                      {isPlain ? (
-                          <Image
-                            src={activePlainStyle.src}
+                          <StaticThumbnail
+                            assetId={thumbnailIdForSource(activePlainStyle.src)}
                             alt={`${activePlainStyle.label} preview`}
                             fill
                             sizes="(max-width: 640px) 220px, 360px"
@@ -1118,8 +1114,8 @@ export default function NameBuilder({ mode = "icedout", backHref = "/pendants", 
                             priority
                           />
                         ) : activeStyle && (
-	                        <Image
-	                          src={activeStyle.src}
+	                        <StaticThumbnail
+	                          assetId={thumbnailIdForSource(activeStyle.src)}
 	                          alt={`${activeStyle.label} preview`}
                           fill
                           sizes="(max-width: 640px) 220px, 360px"
