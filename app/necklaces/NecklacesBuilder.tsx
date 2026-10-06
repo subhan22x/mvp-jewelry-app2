@@ -1,6 +1,9 @@
 "use client";
 
-import Image from "next/image";
+import { SIZE_OPTIONS } from "@/src/lib/thumbnails/flow-assets";
+
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import Link from "next/link";
 import { useState } from "react";
 import CustomerLeadCaptureScreen from "@/app/components/customer-flow/CustomerLeadCaptureScreen";
@@ -20,12 +23,7 @@ const METAL_OPTIONS: Array<{ id: MetalColor; label: string; swatch: string }> = 
   { id: "rose_gold", label: "Rose Gold", swatch: "from-[#f0b092] via-[#d68768] to-[#f7d8ca]" }
 ];
 
-const SIZE_OPTIONS: Array<{ id: SizeKey; label: string; fit: string; guide: string }> = [
-  { id: "18", label: "18 in", fit: "collarbone", guide: "/necklaces/size-guide/chain-18.png" },
-  { id: "20", label: "20 in", fit: "upper chest", guide: "/necklaces/size-guide/chain-20.png" },
-  { id: "22", label: "22 in", fit: "mid chest", guide: "/necklaces/size-guide/chain-22.png" },
-  { id: "30", label: "30 in", fit: "low statement length", guide: "/necklaces/size-guide/chain-30.png" }
-];
+
 
 const STONE_OPTIONS: Array<{ id: StoneType; label: string }> = [
   { id: "vvs_moissanite", label: "VVS Moissanite" },
@@ -307,8 +305,8 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
             <div className="mt-2 flex items-center gap-3 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] p-2.5">
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-black sm:h-24 sm:w-24">
                 {initialStyle.thumb ? (
-                  <Image
-                    src={initialStyle.thumb}
+                  <StaticThumbnail
+                    assetId={thumbnailIdForSource(initialStyle.thumb)}
                     alt={initialStyle.label}
                     fill
                     sizes="112px"
@@ -371,8 +369,8 @@ export default function NecklacesBuilder({ basePath, initialStyle }: { basePath?
                 <h3 className="text-sm font-semibold text-[var(--theme-text-soft)]">Size</h3>
                 <div className="mt-2 rounded-2xl border-2 border-[color:var(--theme-border)] bg-[var(--theme-surface)] p-2.5">
                   <div className="relative h-[42vh] max-h-[360px] min-h-[280px] overflow-hidden rounded-xl bg-black">
-                    <Image
-                      src={selectedSize.guide}
+                    <StaticThumbnail
+                      assetId={thumbnailIdForSource(selectedSize.guide)}
                       alt={`${selectedSize.label} chain length guide`}
                       fill
                       sizes="(max-width: 768px) 100vw, 640px"

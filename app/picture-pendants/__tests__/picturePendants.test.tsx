@@ -17,7 +17,7 @@ vi.mock('react-international-phone', () => ({
 
 vi.mock('@/lib/assets', () => ({
   picturePendantStyles: [
-    { id: 'oval', label: 'Oval Frame', src: '/samples/Gemini_Generated_Image_a8vnkga8vnkga8vn.png', available: true }
+    { id: 'oval', label: 'Oval Frame', src: '/picture-pendants/pendant1.jpg', available: true }
   ]
 }));
 

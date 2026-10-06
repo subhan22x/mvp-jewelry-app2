@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "npm run prisma:generate && next build",
+    "dev": "node scripts/dev-with-thumbnails.mjs",
+    "build": "npm run thumbnails && npm run prisma:generate && next build",
     "start": "next start",
     "start:next": "next start",
     "start:render": "next start",
@@ -27,7 +27,9 @@
     "billing:check": "node scripts/check-stripe-billing.mjs",
     "test:notification-scheduler": "npm --prefix workers/owner-notification-scheduler test",
     "check:notification-scheduler": "npm --prefix workers/owner-notification-scheduler run typecheck",
-    "test:notification-recovery": "tsx scripts/test-notification-recovery.ts"
+    "test:notification-recovery": "tsx scripts/test-notification-recovery.ts",
+    "thumbnails": "tsx scripts/generate-thumbnails.ts",
+    "thumbnails:check": "tsx scripts/generate-thumbnails.ts --check"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",

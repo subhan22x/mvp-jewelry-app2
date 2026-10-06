@@ -15,6 +15,25 @@ This file is a handoff for future coding agents. It captures operational project
 - Do not run broad test suites for every small UI change. Use them when shared behavior, data models, providers, or route contracts change.
 - Use `rg` for search and `apply_patch` for manual edits.
 
+## Static Customer Image Pipeline
+
+- Start with `static-thumbnails.md`; the implemented plan and validation record
+  are `plans/static-thumbnail-pipeline.md` and
+  `reviews/2026-10-06-static-thumbnail-validation.md`.
+- Build-only registration lives in `scripts/thumbnails/catalog.ts`. Shared pure
+  UI definitions live in `src/lib/thumbnails/flow-assets.ts`; retain original
+  source paths for generation and compositing. The browser imports only the
+  generated manifest/types through `StaticThumbnail`.
+- Registered metadata additions regenerate automatically. A new flow must
+  register its metadata explicitly; putting files in `public/` is insufficient.
+- Commit the generated manifest, ignore conversion outputs/cache, and use the
+  npm dev/build entry points. Build/dev need development dependencies installed.
+- Preserve content-hashed URLs, output integrity checks, atomic manifest
+  publication, pass-scoped locking, and watcher input allowlists. Never clean
+  derivative files while a local server is serving them.
+- Runtime uploads/results, branding, marketing images, and interactive layers
+  require separate treatment. This pipeline does not classify arbitrary JSX.
+
 ## MVP Scope
 
 The MVP is intentionally streamlined.

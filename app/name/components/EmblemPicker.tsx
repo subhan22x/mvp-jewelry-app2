@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import Image from "next/image";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import { emblems } from "@/lib/assets";
 import { cx, themeFocusRing } from "@/src/lib/theme/ui-classes";
 
@@ -95,8 +96,8 @@ function EmblemDiamond({ assetId, label, src, active, onSelect }: EmblemDiamondP
       />
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <span className={emblemDiamond.imageFrame}>
-          <Image
-            src={src}
+          <StaticThumbnail
+            assetId={thumbnailIdForSource(src)}
             alt={label}
             fill
             sizes="(max-width: 480px) 145px, 160px"

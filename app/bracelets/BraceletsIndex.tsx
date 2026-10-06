@@ -1,29 +1,12 @@
-import Image from "next/image";
+import { braceletCards as cards } from "@/src/lib/thumbnails/flow-assets";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import Link from "next/link";
 import DesignStepHeader from "../components/DesignStepHeader";
 
-type BraceletCard = {
-  id: string;
-  label: string;
-  href: string;
-  thumb: string;
-  active?: boolean;
-};
 
-const cards: BraceletCard[] = [
-  {
-    id: "icedout",
-    label: "Icedout Bracelets",
-    href: "/bracelets/icedout",
-    thumb: "/bracelets/styles/icedout-bracelet-1.png"
-  },
-  {
-    id: "womens",
-    label: "Women's Bracelets",
-    href: "/bracelets/womens",
-    thumb: "/bracelets/styles/womens-bracelet-1.webp"
-  }
-];
+
+
 
 const baseCardClass =
   "group relative flex min-h-[208px] flex-col items-center justify-between rounded-[28px] border border-white/15 bg-black/90 p-5 text-center transition hover:border-white/35";
@@ -60,8 +43,8 @@ export default function BraceletsIndex({ basePath }: { basePath?: string } = {})
             return (
               <Link key={card.id} href={card.href} className={className}>
                 <div className="relative aspect-square w-full overflow-hidden rounded-[22px] bg-black">
-                  <Image
-                    src={card.thumb}
+                  <StaticThumbnail
+                    assetId={thumbnailIdForSource(card.thumb)}
                     alt={card.label}
                     fill
                     sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"

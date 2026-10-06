@@ -1,24 +1,13 @@
-import Image from "next/image";
+import { categories } from "@/src/lib/thumbnails/flow-assets";
+import StaticThumbnail from "@/app/components/StaticThumbnail";
+import { thumbnailIdForSource } from "@/src/lib/thumbnails/browser";
 import Link from "next/link";
 import DesignStepHeader from "../components/DesignStepHeader";
 import { cx, themeBorder, themeSurface } from "@/src/lib/theme/ui-classes";
 
-type CategoryCard = {
-  id: string;
-  label: string;
-  href: string;
-  iconSrc: string;
-  available: boolean;
-};
 
-const categories: CategoryCard[] = [
-  { id: "pendant", label: "Pendant", href: "/pendants", iconSrc: "/category-icons/pendant.png", available: true },
-  { id: "grillz", label: "Grillz", href: "/grillz", iconSrc: "/category-icons/grillz.svg", available: true },
-  { id: "bracelet", label: "Bracelet", href: "/bracelets", iconSrc: "/category-icons/bracelet.png", available: true },
-  { id: "necklace", label: "Necklace", href: "/necklaces", iconSrc: "/category-icons/necklace.png", available: true },
-  { id: "ring", label: "Ring", href: "/coming-soon", iconSrc: "/category-icons/ring.png", available: false },
-  { id: "watches", label: "Watches", href: "/coming-soon", iconSrc: "/category-icons/watch.png", available: false }
-];
+
+
 
 const cardClass = cx(
   "group relative flex aspect-square min-h-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl p-3 text-center shadow-[0_18px_38px_rgba(0,0,0,0.28)] transition hover:shadow-[0_0_28px_var(--theme-selected-glow)] sm:gap-3 sm:rounded-[28px] sm:p-5",
@@ -64,8 +53,8 @@ export default function DesignEntry({ basePath }: { basePath?: string } = {}) {
             const content = (
               <>
                 <div className="relative h-14 w-14 sm:h-28 sm:w-28">
-                  <Image
-                    src={category.iconSrc}
+                  <StaticThumbnail
+                    assetId={thumbnailIdForSource(category.iconSrc)}
                     alt=""
                     fill
                     sizes="(max-width: 640px) 56px, 112px"
