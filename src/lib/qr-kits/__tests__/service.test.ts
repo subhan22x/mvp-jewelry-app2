@@ -5,7 +5,7 @@ vi.mock("@/server/db/client", () => {
   const tx = { account: { findUnique: mocks.accountFind }, qrKit: { findUnique: mocks.findUnique, updateMany: mocks.updateMany, findUniqueOrThrow: mocks.findUnique }, qrKitEvent: { create: mocks.eventCreate } };
   return { prisma: { ...tx, $transaction: async (fn: any) => fn(tx) } };
 });
-import { assignQrKit, changeQrKitStatus, nextQrKitCookieValue, resolveQrKitAttribution, resolveQrKitAttributionFromRequest } from "../service";
+import { assignQrKit, changeQrKitStatus, nextQrKitCookieValue, resolvePublicQrKit, resolveQrKitAttribution, resolveQrKitAttributionFromRequest } from "../service";
 const token = "A".repeat(32);
 const account = { id: "account", slug: "store", status: "active", subscriptionStatus: "canceled", subscriptionPlanKey: "basic", trialEndsAt: null, subscriptionCurrentPeriodEnd: null, cancelAtPeriodEnd: false, billingIssueStartedAt: null, StoreProfile: { isPublished: true }, AccessExceptions: [{ id: "grant", expiresAt: null, revokedAt: null }] };
 beforeEach(() => {
@@ -16,6 +16,29 @@ beforeEach(() => {
   mocks.updateMany.mockResolvedValue({ count: 0 });
 });
 describe("QR access and attribution boundaries", () => {
+  it("allows the generic fallback only for an available kit without an Account", async () => {
+    mocks.findUnique.mockResolvedValue({ status: "available", accountId: null, account: null });
+    expect(await resolvePublicQrKit(token)).toEqual({ state: "unassigned" });
+  });
+  it("resolves the assigned Account slug", async () => {
+    expect(await resolvePublicQrKit(token)).toEqual({ state: "assigned", accountSlug: "store" });
+  });
+  it.each([
+    null,
+    { status: "available", accountId: "account", account },
+    { status: "assigned", accountId: null, account: null },
+    ...["suspended", "lost", "retired"].flatMap(status => [
+      { status, accountId: "account", account },
+      { status, accountId: null, account: null }
+    ])
+  ])("keeps missing, inconsistent and inactive kits unavailable: %j", async kit => {
+    mocks.findUnique.mockResolvedValue(kit);
+    expect(await resolvePublicQrKit(token)).toEqual({ state: "unavailable" });
+  });
+  it.each(["", "short", "A".repeat(33), "/".repeat(32)])("rejects malformed scan tokens without a database lookup: %s", async malformed => {
+    expect(await resolvePublicQrKit(malformed)).toEqual({ state: "unavailable" });
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
   it("honors complimentary access when scanning a published store", async () => {
     expect(await resolveQrKitAttribution("store", token)).toEqual({ qrKitId: "kit" });
   });

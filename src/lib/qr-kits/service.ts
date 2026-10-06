@@ -199,11 +199,18 @@ export async function resolveQrKitAttributionFromRequest(req: Request, accountSl
   return resolveQrKitAttribution(accountSlug, qrKitCookieEntries(req.headers.get("cookie"))[accountSlug]);
 }
 
-export async function resolvePublicQrKit(publicToken: string) {
+type PublicQrKitResolution =
+  | { state: "unassigned" }
+  | { state: "assigned"; accountSlug: string }
+  | { state: "unavailable" };
+
+export async function resolvePublicQrKit(publicToken: string): Promise<PublicQrKitResolution> {
+  if (!/^[A-Za-z0-9_-]{32}$/.test(publicToken)) return { state: "unavailable" };
   const kit = await prisma.qrKit.findUnique({
     where: { publicToken },
-    select: { status: true, account: { select: { slug: true } } }
+    select: { status: true, accountId: true, account: { select: { slug: true } } }
   });
-  if (!kit || !kit.account || kit.status !== "assigned") return null;
-  return kit.account.slug;
+  if (kit?.status === "available" && kit.accountId === null) return { state: "unassigned" };
+  if (kit?.status === "assigned" && kit.account) return { state: "assigned", accountSlug: kit.account.slug };
+  return { state: "unavailable" };
 }

@@ -31,6 +31,10 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("Account picker and QR assignment", () => {
+  it("shows the generic destination for available, unassigned kits", () => {
+    dashboard();
+    expect(screen.getAllByText("Not assigned — opens Grow Jewelry design")).toHaveLength(2);
+  });
   it("lists Accounts without typing, distinguishes duplicate names, and requires selection", async () => {
     dashboard();
     const dialog = await openPicker();
