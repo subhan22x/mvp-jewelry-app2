@@ -1,13 +1,14 @@
 # Static thumbnail pipeline validation
 
 Branch: `codex/static-thumbnail-pipeline`. Validation performed locally on
-2026-10-06. No preview/production deployment was made by this change.
+2026-10-06, then repeated from an isolated export of the committed branch on
+current main. A PR was opened; deployment checks are tracked separately.
 
 ## Results
 
 | Check | Result |
 | --- | --- |
-| Full Vitest suite | 128 files passed, 4 skipped; 988 tests passed, 10 skipped |
+| Full Vitest suite | Isolated committed checkout: 73 files passed, 2 skipped; 570 tests passed, 5 skipped |
 | Focused generator/component tests | 14 passed |
 | TypeScript | `npx tsc --noEmit --incremental false` passed |
 | Clean production build | Passed after moving derivative output and conversion cache out of the repo |
@@ -30,6 +31,10 @@ Browser automation used installed Playwright/Chromium. Screenshots and response
 records were saved under `/tmp/thumbnail-*` and `/tmp/thumb-*` during validation.
 The watcher check is reproducible with `node scripts/thumbnails/check-watch.cjs`
 (port 3059 must be free).
+
+The earlier working-directory run reported 988 passing tests and 10 skips; it
+also discovered tests in an ignored nested `.claude/worktrees/` checkout. The
+primary count above is the isolated PR checkout, without those unrelated files.
 
 ## Measured grillz transfer reduction
 
