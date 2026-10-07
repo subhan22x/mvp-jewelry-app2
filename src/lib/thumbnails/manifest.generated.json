@@ -567,6 +567,78 @@
       ],
       "source": "/emblems/SPADE EMBLEM.png"
     },
+    "grillz.gold_hearts": {
+      "kind": "raster",
+      "width": 1254,
+      "height": 1254,
+      "variants": [
+        {
+          "width": 160,
+          "height": 160,
+          "url": "/thumbnails/258c6340646c42bbbdb41be97b61ed0a090a56915e552fb5c3162e1f41aeab38-160.webp",
+          "bytes": 3504,
+          "hash": "258c6340646c42bbbdb41be97b61ed0a090a56915e552fb5c3162e1f41aeab38"
+        },
+        {
+          "width": 320,
+          "height": 320,
+          "url": "/thumbnails/5773bb705a8764098c89a892a8484385d1eb99a1a19cd53a23c246d8b186c071-320.webp",
+          "bytes": 10714,
+          "hash": "5773bb705a8764098c89a892a8484385d1eb99a1a19cd53a23c246d8b186c071"
+        },
+        {
+          "width": 640,
+          "height": 640,
+          "url": "/thumbnails/b2bc8b2a534d7838c7dd10a7922423f4f8902e1180966e75cec758693372a624-640.webp",
+          "bytes": 40562,
+          "hash": "b2bc8b2a534d7838c7dd10a7922423f4f8902e1180966e75cec758693372a624"
+        },
+        {
+          "width": 960,
+          "height": 960,
+          "url": "/thumbnails/d188666f43f57dc70734a0ab2f09d56778a4a803888a9dd33d8a5e11bd2c2197-960.webp",
+          "bytes": 87664,
+          "hash": "d188666f43f57dc70734a0ab2f09d56778a4a803888a9dd33d8a5e11bd2c2197"
+        }
+      ],
+      "source": "/grillz/styles/gold-hearts.png"
+    },
+    "grillz.gold_silver": {
+      "kind": "raster",
+      "width": 1254,
+      "height": 1254,
+      "variants": [
+        {
+          "width": 160,
+          "height": 160,
+          "url": "/thumbnails/ffe61fb45a85536da2a5ce92960ddfdb2a30c2125cc9c03c1f4a4cfd53dcf03f-160.webp",
+          "bytes": 6548,
+          "hash": "ffe61fb45a85536da2a5ce92960ddfdb2a30c2125cc9c03c1f4a4cfd53dcf03f"
+        },
+        {
+          "width": 320,
+          "height": 320,
+          "url": "/thumbnails/5ef3794a7503164703dc4ff14b63f211c4cc7cac8e2f2fa27d2a3ab38fda3b78-320.webp",
+          "bytes": 23120,
+          "hash": "5ef3794a7503164703dc4ff14b63f211c4cc7cac8e2f2fa27d2a3ab38fda3b78"
+        },
+        {
+          "width": 640,
+          "height": 640,
+          "url": "/thumbnails/bc56aedcf4459fa6345b93bd4d84133f4cfe56f6563356df274d3878d8e4c01f-640.webp",
+          "bytes": 78410,
+          "hash": "bc56aedcf4459fa6345b93bd4d84133f4cfe56f6563356df274d3878d8e4c01f"
+        },
+        {
+          "width": 960,
+          "height": 960,
+          "url": "/thumbnails/0dde061f4892fdab7550847f2175b46c4993e46fd1259857aac7a7415b2215df-960.webp",
+          "bytes": 143002,
+          "hash": "0dde061f4892fdab7550847f2175b46c4993e46fd1259857aac7a7415b2215df"
+        }
+      ],
+      "source": "/grillz/styles/gold-silver.png"
+    },
     "grillz.honeycomb_icedout": {
       "kind": "raster",
       "width": 1368,
@@ -602,6 +674,42 @@
         }
       ],
       "source": "/grillz/styles/honeycomb-icedout.png"
+    },
+    "grillz.iced_diamond": {
+      "kind": "raster",
+      "width": 1402,
+      "height": 1122,
+      "variants": [
+        {
+          "width": 160,
+          "height": 128,
+          "url": "/thumbnails/a8d92820c42a347c49da3b685fc0e4bf7d4c39c66719ad20e86ded85f36a6e7d-160.webp",
+          "bytes": 4828,
+          "hash": "a8d92820c42a347c49da3b685fc0e4bf7d4c39c66719ad20e86ded85f36a6e7d"
+        },
+        {
+          "width": 320,
+          "height": 256,
+          "url": "/thumbnails/0c68e921fa9f46e0cd451b602bb27b54a16750cab3971ad6c880ec3fc4b35a2f-320.webp",
+          "bytes": 19242,
+          "hash": "0c68e921fa9f46e0cd451b602bb27b54a16750cab3971ad6c880ec3fc4b35a2f"
+        },
+        {
+          "width": 640,
+          "height": 512,
+          "url": "/thumbnails/487a31ee262d918a622f175f860abb882dd76d425e63e36d9299297b723356da-640.webp",
+          "bytes": 76654,
+          "hash": "487a31ee262d918a622f175f860abb882dd76d425e63e36d9299297b723356da"
+        },
+        {
+          "width": 960,
+          "height": 768,
+          "url": "/thumbnails/0e817c5adf040431af19e6a48397795a13285cefe1494364e410dffbff1dcc43-960.webp",
+          "bytes": 159368,
+          "hash": "0e817c5adf040431af19e6a48397795a13285cefe1494364e410dffbff1dcc43"
+        }
+      ],
+      "source": "/grillz/styles/iced-diamond.png"
     },
     "grillz.invisible_set": {
       "kind": "raster",
@@ -639,6 +747,42 @@
       ],
       "source": "/grillz/styles/invisible-set.png"
     },
+    "grillz.luxury_silver": {
+      "kind": "raster",
+      "width": 1254,
+      "height": 1254,
+      "variants": [
+        {
+          "width": 160,
+          "height": 160,
+          "url": "/thumbnails/0399132fc4530ca969640582404ee4b12be9967f816a42df14e78b786c3e626b-160.webp",
+          "bytes": 5980,
+          "hash": "0399132fc4530ca969640582404ee4b12be9967f816a42df14e78b786c3e626b"
+        },
+        {
+          "width": 320,
+          "height": 320,
+          "url": "/thumbnails/fa12618b6b25126aa4d11c7fe8af8aee7a93f02f6a05554c88e358acb0924ed6-320.webp",
+          "bytes": 20302,
+          "hash": "fa12618b6b25126aa4d11c7fe8af8aee7a93f02f6a05554c88e358acb0924ed6"
+        },
+        {
+          "width": 640,
+          "height": 640,
+          "url": "/thumbnails/57295117b27d82110bbe3b31ff5476875b93f8cbdb42d407287525da84215bf7-640.webp",
+          "bytes": 65412,
+          "hash": "57295117b27d82110bbe3b31ff5476875b93f8cbdb42d407287525da84215bf7"
+        },
+        {
+          "width": 960,
+          "height": 960,
+          "url": "/thumbnails/7da98726e19997e1deb463c1ddc3734a5eba49cae926e127171dbef44d6ef30d-960.webp",
+          "bytes": 121130,
+          "hash": "7da98726e19997e1deb463c1ddc3734a5eba49cae926e127171dbef44d6ef30d"
+        }
+      ],
+      "source": "/grillz/styles/luxury-silver.png"
+    },
     "grillz.openface": {
       "kind": "raster",
       "width": 1368,
@@ -674,6 +818,78 @@
         }
       ],
       "source": "/grillz/styles/openface.png"
+    },
+    "grillz.rainbow_gemstone": {
+      "kind": "raster",
+      "width": 1448,
+      "height": 1086,
+      "variants": [
+        {
+          "width": 160,
+          "height": 120,
+          "url": "/thumbnails/3de4392567fb8aa88692dd2c5ee18ba8bcfa8b0dca8d22e609db098f3c12eda5-160.webp",
+          "bytes": 4354,
+          "hash": "3de4392567fb8aa88692dd2c5ee18ba8bcfa8b0dca8d22e609db098f3c12eda5"
+        },
+        {
+          "width": 320,
+          "height": 240,
+          "url": "/thumbnails/45bfe004f0c4f0007e53216e91e90881b164764c345df6843d9f63d085bbe32f-320.webp",
+          "bytes": 16352,
+          "hash": "45bfe004f0c4f0007e53216e91e90881b164764c345df6843d9f63d085bbe32f"
+        },
+        {
+          "width": 640,
+          "height": 480,
+          "url": "/thumbnails/21c3d1ac9ea8d17ace1994b3e4b029ff4d764091c5a36e9d0f84d766d2637868-640.webp",
+          "bytes": 66492,
+          "hash": "21c3d1ac9ea8d17ace1994b3e4b029ff4d764091c5a36e9d0f84d766d2637868"
+        },
+        {
+          "width": 960,
+          "height": 720,
+          "url": "/thumbnails/9637270bbbf84a0fc76720595284f39111a2e795de8059bde927a35e393eba1c-960.webp",
+          "bytes": 140484,
+          "hash": "9637270bbbf84a0fc76720595284f39111a2e795de8059bde927a35e393eba1c"
+        }
+      ],
+      "source": "/grillz/styles/rainbow-gemstone.png"
+    },
+    "grillz.rose_gold": {
+      "kind": "raster",
+      "width": 1254,
+      "height": 1254,
+      "variants": [
+        {
+          "width": 160,
+          "height": 160,
+          "url": "/thumbnails/cc13e45cc7d92092aa9d6a7ebdcb443e313d24af4615e004f3b7415b53d18a2d-160.webp",
+          "bytes": 5614,
+          "hash": "cc13e45cc7d92092aa9d6a7ebdcb443e313d24af4615e004f3b7415b53d18a2d"
+        },
+        {
+          "width": 320,
+          "height": 320,
+          "url": "/thumbnails/2ebb7df612589dec53ff1a61a34a9debe8fb2b12bd872c57a284c20db788b781-320.webp",
+          "bytes": 21464,
+          "hash": "2ebb7df612589dec53ff1a61a34a9debe8fb2b12bd872c57a284c20db788b781"
+        },
+        {
+          "width": 640,
+          "height": 640,
+          "url": "/thumbnails/090638a9cbe01665fc99541bea11f716b783313b5799fecfdb45472d8062fef5-640.webp",
+          "bytes": 77622,
+          "hash": "090638a9cbe01665fc99541bea11f716b783313b5799fecfdb45472d8062fef5"
+        },
+        {
+          "width": 960,
+          "height": 960,
+          "url": "/thumbnails/14f9ae56ef9ef8c53f77ea396b12b41e74ed549b538ffc85c166519af232725f-960.webp",
+          "bytes": 157764,
+          "hash": "14f9ae56ef9ef8c53f77ea396b12b41e74ed549b538ffc85c166519af232725f"
+        }
+      ],
+      "source": "/grillz/styles/rose-gold.png"
     },
     "grillz.solid_gold": {
       "kind": "raster",
@@ -2052,9 +2268,15 @@
     "emblem.heart": "681e53d15760bb8cb94ecf14cadcd76ae9b74feae312b581e106a1397e72487c",
     "emblem.moneybag": "bfbe7564488ed801d715e0cb08fbbdd21ec2d69c7b4e50160912fbd69dba4eac",
     "emblem.spade": "77094a0aaf02f249b858c910831b62d54e6ec4df0c97432a36ed7dbbe180af35",
+    "grillz.gold_hearts": "fdf04ee0a894ae7cfc9295451de0e059a665bbf33c03e4a63da76b92b4f52108",
+    "grillz.gold_silver": "f1db993d4ffc3f09b56eebd6db93eba1cbd01631d87ac47c277f467fbb509982",
     "grillz.honeycomb_icedout": "34525ea481514e87e26f6a042fea7499ba751eedaa32c6f5cee929fd6ef1405f",
+    "grillz.iced_diamond": "616c99d1f425e24b06158b35c6db5b7cf4f4654caee0023f347274ac7b2b175b",
     "grillz.invisible_set": "0433f638522cbff9769bceacbe1c4f591bd6b274a85b90fb924b3a8c3fdfb576",
+    "grillz.luxury_silver": "ee915712c5fc275feb7c4df4aaf5e804f23ba94eb2ac786da6b8fa688dd36ead",
     "grillz.openface": "672dc8be1bbbea3830b011e498fe023a4eee1745738edac7993b748c8f79699f",
+    "grillz.rainbow_gemstone": "884464cf811f404545d2cea0bcec7423dfb00d7c0720754b3d316fdde8d6bb63",
+    "grillz.rose_gold": "ac5518b797386ed6e49e0123a9e5a3dcd05e4841348366fd8dd43fd6899b6ead",
     "grillz.solid_gold": "6d9170ef35f11d0351b97c8aafa3360b1d8c6f797f1c12fda8a10dfe52b798e8",
     "logo.shape.circle": "fd1d967b4b1fc3b68cfaba4448e1abdf86fa00abfc03cc72060b3cebf3975e79",
     "logo.shape.diamond": "8a3976c1de36b7e2670f8444b69e1b2caeb1fa3aa57e6508eb0a90ed1f7e978c",

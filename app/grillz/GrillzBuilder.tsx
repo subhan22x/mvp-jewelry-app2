@@ -27,6 +27,7 @@ const landingCardClass =
 
 type Screen = "style" | "customize" | "review";
 type GenerationStatus = "idle" | "pending" | "succeeded" | "failed";
+type QuoteStatus = "idle" | "pending" | "succeeded";
 type LeadContact = { leadId: string; name: string; phone: string; email: string };
 
 const MAX_POLL_ATTEMPTS = 50;
@@ -98,7 +99,10 @@ function StyleScreen({
               <button
                 key={style.id}
                 type="button"
-                onClick={() => setStyleId(style.id)}
+                onClick={() => {
+                  setStyleId(style.id);
+                  onNext();
+                }}
                 aria-pressed={isActive}
                 className={className}
               >
@@ -130,13 +134,6 @@ function StyleScreen({
           })}
         </section>
 
-        <button
-          type="button"
-          onClick={onNext}
-          className="mt-8 h-12 w-full rounded-xl bg-[#ffc66c] text-sm font-bold text-black"
-        >
-          Continue
-        </button>
       </div>
     </main>
   );
@@ -290,11 +287,15 @@ function ReviewScreen({
   stylePreviewUrl,
   stylePreviewAssetId,
   diamondQuality,
+  onDiamondQualityChange,
   generationStatus,
   generationError,
   generatedImageUrl,
   requestId,
   leadContact,
+  quoteStatus,
+  quoteError,
+  onRequestQuote,
   onGenerate,
   onEdit
 }: {
@@ -304,11 +305,15 @@ function ReviewScreen({
   stylePreviewUrl: string | null;
   stylePreviewAssetId?: ThumbnailId;
   diamondQuality: GrillzDiamondQuality;
+  onDiamondQualityChange: (quality: GrillzDiamondQuality) => void;
   generationStatus: GenerationStatus;
   generationError: string | null;
   generatedImageUrl: string | null;
   requestId: string | null;
   leadContact: LeadContact | null;
+  quoteStatus: QuoteStatus;
+  quoteError: string | null;
+  onRequestQuote: () => void;
   onGenerate: () => void;
   onEdit: () => void;
 }) {
@@ -324,6 +329,7 @@ function ReviewScreen({
             <ThemedOptionButton
               key={option.id}
               selected={diamondQuality === option.id}
+              onClick={() => onDiamondQualityChange(option.id)}
               size="lg"
               minWidthClass="min-w-[72px]"
               uppercase
@@ -386,9 +392,18 @@ function ReviewScreen({
       </section>
 
       {generatedImageUrl ? (
-        <button type="button" className="mt-8 h-12 w-full rounded-xl bg-[#ffc66c] text-sm font-bold text-black">
-          get a quote
-        </button>
+        <div className="mt-8">
+          {quoteError ? <p role="alert" className="mb-3 text-sm text-red-200">{quoteError}</p> : null}
+          {quoteStatus === "succeeded" ? <p role="status" className="mb-3 text-sm text-emerald-200">Your design and contact details are ready for the store to prepare a quote.</p> : null}
+          <button
+            type="button"
+            onClick={onRequestQuote}
+            disabled={!leadContact || quoteStatus !== "idle"}
+            className="h-12 w-full rounded-xl bg-[#ffc66c] text-sm font-bold text-black disabled:opacity-50"
+          >
+            {quoteStatus === "pending" ? "Requesting quote..." : quoteStatus === "succeeded" ? "Quote requested" : "get a quote"}
+          </button>
+        </div>
       ) : null}
     </>
   );
@@ -415,9 +430,12 @@ export default function GrillzBuilder({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [leadContact, setLeadContact] = useState<LeadContact | null>(null);
+  const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>("idle");
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [customInspirationFile, setCustomInspirationFile] = useState<File | null>(null);
   const [customInspirationPreviewUrl, setCustomInspirationPreviewUrl] = useState<string | null>(null);
   const pollAbortRef = useRef<AbortController | null>(null);
+  const quoteAbortRef = useRef<AbortController | null>(null);
   const selectedStyle = GRILLZ_STYLES.find(style => style.id === styleId) ?? GRILLZ_STYLES[0];
   const stylePreviewUrl = styleId === CUSTOM_GRILLZ_STYLE_ID ? customInspirationPreviewUrl : selectedStyle.src;
 
@@ -427,10 +445,16 @@ export default function GrillzBuilder({
     };
   }, [customInspirationPreviewUrl]);
 
-  useEffect(() => () => pollAbortRef.current?.abort(), []);
+  useEffect(() => () => {
+    pollAbortRef.current?.abort();
+    quoteAbortRef.current?.abort();
+  }, []);
 
   function invalidateDraft() {
     pollAbortRef.current?.abort();
+    quoteAbortRef.current?.abort();
+    setQuoteStatus("idle");
+    setQuoteError(null);
     setGeneratedImageUrl(null);
     setRequestId(null);
     setGenerationStatus("idle");
@@ -501,6 +525,9 @@ export default function GrillzBuilder({
     setGenerationError(null);
     setGeneratedImageUrl(null);
     setLeadContact(null);
+    quoteAbortRef.current?.abort();
+    setQuoteStatus("idle");
+    setQuoteError(null);
 
     try {
       const isCustomStyle = styleId === CUSTOM_GRILLZ_STYLE_ID;
@@ -548,6 +575,36 @@ export default function GrillzBuilder({
       if (controller.signal.aborted) return;
       setGenerationStatus("failed");
       setGenerationError(error instanceof Error ? error.message : "Grillz generation failed.");
+    }
+  }
+
+  async function requestQuote() {
+    if (!requestId || !generatedImageUrl || !leadContact || quoteStatus !== "idle") return;
+    const controller = new AbortController();
+    quoteAbortRef.current = controller;
+    setQuoteStatus("pending");
+    setQuoteError(null);
+    try {
+      const response = await fetch("/api/quote-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          requestId,
+          diamondQuality,
+          customerName: leadContact.name,
+          customerPhone: leadContact.phone,
+          customerEmail: leadContact.email
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (controller.signal.aborted) return;
+      if (!response.ok) throw new Error(data.error ?? "Unable to request a quote.");
+      setQuoteStatus("succeeded");
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setQuoteStatus("idle");
+      setQuoteError(error instanceof Error ? error.message : "Unable to request a quote.");
     }
   }
 
@@ -601,11 +658,18 @@ export default function GrillzBuilder({
             stylePreviewUrl={stylePreviewUrl}
             stylePreviewAssetId={styleId === CUSTOM_GRILLZ_STYLE_ID ? undefined : thumbnailIdForSource(selectedStyle.src)}
             diamondQuality={diamondQuality}
+            onDiamondQualityChange={next => {
+              if (next !== diamondQuality) invalidateDraft();
+              setDiamondQuality(next);
+            }}
             generationStatus={generationStatus}
             generationError={generationError}
             generatedImageUrl={generatedImageUrl}
             requestId={requestId}
             leadContact={leadContact}
+            quoteStatus={quoteStatus}
+            quoteError={quoteError}
+            onRequestQuote={requestQuote}
             onGenerate={generateGrillz}
             onEdit={() => setScreen("customize")}
           />

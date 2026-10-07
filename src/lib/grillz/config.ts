@@ -3,6 +3,12 @@ export type GrillzStyleId =
   | "invisible_set"
   | "openface"
   | "solid_gold"
+  | "luxury_silver"
+  | "gold_silver"
+  | "rose_gold"
+  | "rainbow_gemstone"
+  | "iced_diamond"
+  | "gold_hearts"
   | "custom_inspiration";
 
 export type GrillzGoldColor = "yellow_gold" | "white_gold" | "rose_gold";
@@ -40,6 +46,42 @@ export const GRILLZ_STYLES: GrillzStyle[] = [
     label: "Solid Gold",
     description: "Polished solid gold grillz",
     src: "/grillz/styles/solid-gold.png"
+  },
+  {
+    id: "luxury_silver",
+    label: "Luxury Silver",
+    description: "Luxury silver grillz on a black dental cast",
+    src: "/grillz/styles/luxury-silver.png"
+  },
+  {
+    id: "gold_silver",
+    label: "Gold Silver",
+    description: "Luxury gold and silver grillz",
+    src: "/grillz/styles/gold-silver.png"
+  },
+  {
+    id: "rose_gold",
+    label: "Rose Gold",
+    description: "Diamond-paved rose gold arch grillz",
+    src: "/grillz/styles/rose-gold.png"
+  },
+  {
+    id: "rainbow_gemstone",
+    label: "Rainbow Gemstone",
+    description: "Iced-out rainbow gemstone grillz",
+    src: "/grillz/styles/rainbow-gemstone.png"
+  },
+  {
+    id: "iced_diamond",
+    label: "Iced Diamond",
+    description: "Iced-out diamond grillz",
+    src: "/grillz/styles/iced-diamond.png"
+  },
+  {
+    id: "gold_hearts",
+    label: "Gold Hearts",
+    description: "Black grillz with gold hearts",
+    src: "/grillz/styles/gold-hearts.png"
   },
   {
     id: "custom_inspiration",
