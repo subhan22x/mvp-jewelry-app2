@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/server/db/client';
 import { getDefaultAccountId } from '@/src/lib/account';
-import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
+import { PublicTenantAccessError, resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
 import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from '@/src/lib/qr-kits/service';
 
@@ -43,6 +43,9 @@ export async function POST(req: Request) {
       email: lead.email
     }, { status: 201 });
   } catch (err: any) {
+    if (err instanceof PublicTenantAccessError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     if (err instanceof QrKitAttributionError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }

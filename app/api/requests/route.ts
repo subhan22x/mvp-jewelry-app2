@@ -9,7 +9,7 @@ import { getDefaultAccountId } from '@/src/lib/account';
 import { getNamePromptMode } from '@/src/lib/prompt-mode';
 import { scheduleBackgroundTask } from '@/src/lib/platform/background';
 import { loadStyleOverride } from '@/src/lib/styles/style-overrides';
-import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
+import { PublicTenantAccessError, resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
 import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
 import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from '@/src/lib/qr-kits/service';
@@ -188,6 +188,9 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
 
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
+    if (err instanceof PublicTenantAccessError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     if (err instanceof QrKitAttributionError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }

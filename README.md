@@ -8,7 +8,7 @@ The app is **not** a CAD tool, checkout system, or manufacturing pipeline. It is
 
 - **Working visible MVP flows:** custom name pendants, picture pendants, logo pendants, owner quote review, owner Design, and VVS Studio.
 - **Hidden but preserved:** public storefront profile, collections, and reviews remain implemented and data-backed, but are hidden from normal MVP navigation.
-- **Current tenant mode:** owner dashboard routes resolve the signed-in owner's active account membership. Customer pendant requests still default to the seeded `demo` storefront until storefront-aware design links are completed.
+- **Current tenant mode:** owner dashboard routes resolve the signed-in owner's active account membership. Anonymous root try-out requests use `DEFAULT_ACCOUNT_ID`; authenticated owners use their active Account, and store-specific links use that store Account.
 - **SaaS direction:** see `SAAS_PRODUCT_MAP.md` for the planned multi-account SaaS architecture, subscription billing, CRM, and onboarding roadmap.
 - **Data model review:** see `docs/data-model.md` for current and target ER diagrams.
 - **Production storage direction:** Supabase/Postgres for relational data; Cloudflare R2 for generated images, videos, logos, and uploads.
@@ -213,7 +213,7 @@ Generated files are served through `/generated/:file` during local development. 
 | `MODEL3D_PROMPT`       | built-in jewelry prompt              | Optional Rodin prompt override for quote-bound 3D preview jobs. |
 | `MODEL3D_TIER`         | `Gen-2.5-High`                       | Rodin generation tier. |
 | `MODEL3D_POLL_TIMEOUT_MS` | `180000`                          | Maximum wait for Rodin image-to-3D polling. |
-| `DEFAULT_ACCOUNT_ID`   | (required in production)            | Account receiving root design-wizard requests until storefront-aware links replace this fallback. |
+| `DEFAULT_ACCOUNT_ID`   | (required in production)            | Account receiving anonymous root try-out requests; configure the SaaS admin Account ID. |
 | `R2_ACCOUNT_ID`        | (required in production)            | Cloudflare account ID for R2 media storage. |
 | `R2_ACCESS_KEY_ID`     | (required in production)            | R2 access key ID. |
 | `R2_SECRET_ACCESS_KEY` | (required in production)            | R2 secret access key. |
