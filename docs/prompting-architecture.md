@@ -1,6 +1,6 @@
 # Prompting Architecture
 
-This document explains name and logo pendant prompting and how reference images are attached to generation requests.
+This document explains name and logo pendant prompting, Grillz generation, and how reference images are attached to generation requests.
 
 ## Logo Pendant Flow
 
@@ -171,3 +171,38 @@ This lets style config add typography references without changing each prompt te
 - Update colored iced-out emblem assets under `public/emblems/colored/`; keep `assets.emblemRefs` as generic fallbacks.
 - Keep font mappings documented in this file whenever a style font changes.
 - Keep generated typography PNGs temporary; do not commit rendered text-reference outputs.
+
+## Grillz Flow
+
+`app/grillz/GrillzBuilder.tsx` serves `/grillz` and the Account-scoped
+`/s/:slug/design/grillz` route. Customers choose a style, upper/lower teeth, gold
+color, stone type, and VS/VVS quality before generating one image. Selecting a
+style card advances directly to customization. Changing choices invalidates the
+current draft so its request metadata stays consistent.
+
+`src/lib/grillz/config.ts` owns the shared style IDs, labels, descriptions, and
+preview paths. To add a preset, add its ID to `GrillzStyleId`, add a
+`GRILLZ_STYLES` entry, and put its original preview under `public/grillz/styles/`.
+The picker and API allowlist derive from that metadata. The thumbnail catalog
+already registers Grillz styles: run `npm run thumbnails` and commit the updated
+manifest. Preset descriptions and previews are not model inputs.
+
+`POST /api/grillz-requests` validates the choices, resolves Account and QR
+attribution, checks usage, and renders `grillz-product-photo.prompt` through
+`buildGrillzPrompt`. The prompt contains the style label, selected teeth, gold
+color, stone type, diamond quality, and any inspiration text. Presets send only
+that prompt. Custom requires an uploaded inspiration image, which is passed as
+an attachment and removed from temporary storage after generation settles.
+
+A pending `Result` stores the exact prompt. Background generation uses the
+shared connector and `scheduleBackgroundTask` (`waitUntil` on Vercel), records
+success or failure, and meters successful output. The browser polls
+`GET /api/requests/:id` every two seconds and captures customer contact through
+the shared lead screen. Successful output plus contact creates an automatic
+private quote draft. The customer quote button calls the existing idempotent
+`/api/quote-requests` endpoint and shows pending, success, or retryable error
+feedback; it does not price or publish the quote.
+
+New presets: Luxury Silver, Gold Silver, Rose Gold, Rainbow Gemstone,
+Iced Diamond, and Gold Hearts. Material names in style labels describe the
+preview; the separate customer material choices still control the prompt.
