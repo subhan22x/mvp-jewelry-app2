@@ -13,7 +13,7 @@ import { getOwnerContext } from "@/src/lib/auth/owner-context";
 import { scheduleBackgroundTask } from "@/src/lib/platform/background";
 import { ensureDraftQuoteForRequest } from "@/src/lib/quotes/ensure-draft-quote";
 import { directUploadReferenceSchema, readDirectUpload } from "@/src/lib/storage/direct-upload";
-import { resolveAccountIdFromSlug } from "@/src/lib/tenant";
+import { PublicTenantAccessError, resolveAccountIdFromSlug } from "@/src/lib/tenant";
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from "@/src/lib/usage";
 import {
   NECKLACE_METAL_LABELS,
@@ -306,6 +306,9 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
     }, { status: 201 });
   } catch (err: unknown) {
     await removeTempDir(tempDir);
+    if (err instanceof PublicTenantAccessError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     if (err instanceof QrKitAttributionError) return jsonError(err.message, err.status);
     const usage = usageErrorResponse(err);
     if (usage) return jsonError(usage.error, 402);

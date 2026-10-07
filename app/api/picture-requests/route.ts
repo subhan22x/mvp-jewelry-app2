@@ -12,7 +12,7 @@ import { saveGeneratedImage } from '@/lib/styles/connector';
 import { getDefaultAccountId } from '@/src/lib/account';
 import { scheduleBackgroundTask } from '@/src/lib/platform/background';
 import { directUploadReferenceSchema, readDirectUpload } from '@/src/lib/storage/direct-upload';
-import { resolveAccountIdFromSlug } from '@/src/lib/tenant';
+import { PublicTenantAccessError, resolveAccountIdFromSlug } from '@/src/lib/tenant';
 import { consumeUsageCredit, ensureUsageAvailable, usageErrorResponse } from '@/src/lib/usage';
 import { ensureDraftQuoteForRequest } from '@/src/lib/quotes/ensure-draft-quote';
 import { QrKitAttributionError, resolveQrKitAttributionFromRequest } from '@/src/lib/qr-kits/service';
@@ -199,6 +199,9 @@ export const POST = withSignupGeneration(async function POST(req: Request) {
     return NextResponse.json({ requestId: request.id }, { status: 201 });
   } catch (err: any) {
     await removeTempDir(tempDir);
+    if (err instanceof PublicTenantAccessError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     if (err instanceof QrKitAttributionError) return jsonError(err.message, err.status);
     const usage = usageErrorResponse(err);
     if (usage) return jsonError(usage.error, 402);

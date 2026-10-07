@@ -1,3 +1,5 @@
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
+import { createClient } from "@/src/lib/supabase/server";
 import { isSupabaseAuthConfigured } from "@/src/lib/supabase/env";
 import { prisma } from "@/server/db/client";
 import { evaluateAccountEntitlement } from "@/src/lib/billing/entitlements";
@@ -15,8 +17,8 @@ export type PublicTenantAccess =
 export class PublicTenantAccessError extends Error {
   status = 403;
 
-  constructor(public reason: Exclude<PublicTenantAccess["status"], "ok">) {
-    super(reason === "access_denied" ? "Storefront access is denied." : "Storefront is not available.");
+  constructor(public reason: Exclude<PublicTenantAccess["status"], "ok">, message?: string) {
+    super(message ?? (reason === "access_denied" ? "Storefront access is denied." : "Storefront is not available."));
   }
 }
 
@@ -72,7 +74,22 @@ export async function resolveAccountIdFromSlug(accountSlug: string | null | unde
   const owner = isSupabaseAuthConfigured()
     ? await (await import("@/src/lib/auth/owner-context")).getOwnerContext()
     : null;
-  if (!slug) return owner?.accountId ?? null;
+  if (!slug) {
+    if (owner) return owner.accountId;
+    if (isSupabaseAuthConfigured()) {
+      // A missing membership does not make an authenticated visitor anonymous.
+      // Only a genuinely missing session may use DEFAULT_ACCOUNT_ID.
+      const supabase = await createClient();
+      const { data, error } = await supabase.auth.getUser();
+      if (error && !isAuthSessionMissingError(error)) {
+        throw new PublicTenantAccessError("access_denied", "Unable to verify your session. Please sign in again.");
+      }
+      if (data.user) {
+        throw new PublicTenantAccessError("access_denied", "Your login has no active Account. Complete account setup or contact support.");
+      }
+    }
+    return null;
+  }
   if (owner) {
     const ownedAccount = await prisma.account.findUnique({ where: { id: owner.accountId }, select: { slug: true } });
     if (ownedAccount?.slug === slug) return owner.accountId;

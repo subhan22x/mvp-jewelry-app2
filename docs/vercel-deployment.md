@@ -41,7 +41,34 @@ R2_BUCKET_NAME="mvp-jewelry-media"
 R2_PUBLIC_BASE_URL="https://media.your-domain.example"
 ```
 
-`DEFAULT_ACCOUNT_ID` is still required because the root pendant wizard is not yet storefront-aware. Production now fails closed if that value is missing instead of silently writing customer requests to the seeded demo account.
+`DEFAULT_ACCOUNT_ID` is the server-only destination for anonymous visitors using the
+root public try-out (`/design`, without a store slug). Set it to the active Account
+used by the SaaS admin's `/owner` dashboard, after verifying the admin login and
+Account membership. Do not use an email address or User ID as its value.
+
+For the verified `subhanhussain22@gmail.com` login, the receiving Account is
+`cd27b099-e2a2-4b71-8c3a-60daa9525729` (`dev`, Development Store). Reverify its
+membership and entitlement before a production configuration change. The PR
+preview uses a branch-specific override; production needs the same setting when
+releasing this change. Environment changes require a new deployment.
+
+Authenticated owners continue generating into their own active Account. Logged-in
+visitors without an active Account cannot use the anonymous fallback; the API
+returns 403 with an account-setup message. Store links (`/s/:slug/design`) retain
+their existing store attribution and access checks. Auth verification failures
+also block the root fallback rather than silently assigning activity to the admin.
+
+The generation routes already persist Request and Result rows under the resolved
+Account. Leads inherit Request ownership, and one successful image plus customer
+name, phone, and email creates one draft QuoteRequest in that Account. Generation
+without complete contact, or entirely failed generation, does not create a quote.
+Existing records are not reassigned. The receiving Account must retain generation
+entitlement and available monthly usage.
+
+Preview verification: open `/design` signed out, generate and submit contact, then
+sign in as the admin and confirm the quote at `/owner`. Also check a logged-in
+store owner and an anonymous store-specific link retain their original Accounts.
+Production fails closed if `DEFAULT_ACCOUNT_ID` is missing.
 
 ## R2 Browser CORS
 
