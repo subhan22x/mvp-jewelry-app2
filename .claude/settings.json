@@ -10,5 +10,6 @@
       "Bash(systemctl --user restart unison-downloads.service)",
       "Bash(systemctl --user status unison-downloads.service --no-pager)"
     ]
-  }
+  },
+  "idleCompaction": false
 }
